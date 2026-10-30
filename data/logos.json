@@ -1,0 +1,795 @@
+{
+  "entries": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "logo": "assets/logos/postgresql.png",
+      "sourceUrl": "https://www.postgresql.org/media/img/about/press/elephant.png",
+      "officialWebsite": "https://www.postgresql.org/",
+      "kind": "logo oficial",
+      "bytes": 50279,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "kafka",
+      "name": "Apache Kafka",
+      "logo": "assets/logos/kafka.png",
+      "sourceUrl": "https://kafka.apache.org/logos/kafka_logo--simple.png",
+      "officialWebsite": "https://kafka.apache.org/",
+      "kind": "logo oficial",
+      "bytes": 3233,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Redis",
+      "id": "redis",
+      "logo": "assets/logos/redis.png",
+      "sourceUrl": "https://redis.io/apple-icon.png?apple-icon.0oi7qb05iiq_i.png",
+      "officialWebsite": "https://redis.io/",
+      "kind": "ícone oficial",
+      "bytes": 3659,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "RabbitMQ",
+      "id": "rabbitmq",
+      "logo": "assets/logos/rabbitmq.svg",
+      "sourceUrl": "https://www.rabbitmq.com/img/rabbitmq-logo.svg",
+      "officialWebsite": "https://www.rabbitmq.com/",
+      "kind": "ícone oficial",
+      "bytes": 2087,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Kubernetes",
+      "id": "kubernetes",
+      "logo": "assets/logos/kubernetes.png",
+      "sourceUrl": "https://kubernetes.io/icons/apple-touch-icon-76x76.png",
+      "officialWebsite": "https://kubernetes.io/",
+      "kind": "ícone oficial",
+      "bytes": 5984,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Docker",
+      "id": "docker",
+      "logo": "assets/logos/docker.png",
+      "sourceUrl": "https://www.docker.com/app/uploads/2024/02/cropped-docker-logo-favicon-180x180.png",
+      "officialWebsite": "https://www.docker.com/",
+      "kind": "ícone oficial",
+      "bytes": 2900,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Clojure",
+      "id": "clojure",
+      "logo": "assets/logos/clojure.png",
+      "sourceUrl": "https://clojure.org/images/clojure-logo-icon-256.png",
+      "officialWebsite": "https://clojure.org/",
+      "kind": "ícone oficial",
+      "bytes": 10604,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Datomic",
+      "id": "datomic",
+      "logo": "assets/logos/datomic.svg",
+      "sourceUrl": "https://www.datomic.com/images/Datomic%20wordmark%20horizontal.svg",
+      "officialWebsite": "https://www.datomic.com/",
+      "kind": "logo oficial",
+      "bytes": 10470,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Go",
+      "id": "go",
+      "logo": "assets/logos/go.svg",
+      "sourceUrl": "https://go.dev/images/favicon-gopher.svg",
+      "officialWebsite": "https://go.dev/",
+      "kind": "ícone oficial",
+      "bytes": 17826,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Python",
+      "id": "python",
+      "logo": "assets/logos/python.png",
+      "sourceUrl": "https://www.python.org/static/apple-touch-icon-precomposed.png",
+      "officialWebsite": "https://www.python.org/",
+      "kind": "ícone oficial",
+      "bytes": 2463,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Node.js",
+      "id": "nodejs",
+      "logo": "assets/logos/nodejs.png",
+      "sourceUrl": "https://nodejs.org/static/images/favicons/favicon.png",
+      "officialWebsite": "https://nodejs.org/en",
+      "kind": "ícone oficial",
+      "bytes": 1130,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Amazon Web Services",
+      "id": "aws",
+      "logo": "assets/logos/aws.png",
+      "sourceUrl": "https://a0.awsstatic.com/libra-css/images/site/touch-icon-iphone-114-smile.png",
+      "officialWebsite": "https://aws.amazon.com/",
+      "kind": "ícone oficial",
+      "bytes": 2352,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "HashiCorp (fornecedor de Terraform)",
+      "id": "terraform",
+      "logo": "assets/logos/terraform.svg",
+      "sourceUrl": "https://developer.hashicorp.com/favicon.svg",
+      "officialWebsite": "https://developer.hashicorp.com/terraform",
+      "kind": "ícone oficial do fornecedor",
+      "bytes": 594,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Prometheus",
+      "id": "prometheus",
+      "logo": "assets/logos/prometheus.svg",
+      "sourceUrl": "https://prometheus.io/icon.svg?7aa022e51797bcef",
+      "officialWebsite": "https://prometheus.io/",
+      "kind": "ícone oficial",
+      "bytes": 1028,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Grafana",
+      "id": "grafana",
+      "logo": "assets/logos/grafana.ico",
+      "sourceUrl": "https://grafana.com/favicon.ico?67f0da79a12facce",
+      "officialWebsite": "https://grafana.com/",
+      "kind": "ícone oficial",
+      "bytes": 1150,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "OpenTelemetry",
+      "id": "opentelemetry",
+      "logo": "assets/logos/opentelemetry.svg",
+      "sourceUrl": "https://opentelemetry.io/favicon.svg",
+      "officialWebsite": "https://opentelemetry.io/",
+      "kind": "ícone oficial",
+      "bytes": 1422,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "MongoDB",
+      "id": "mongodb",
+      "logo": "assets/logos/mongodb.ico",
+      "sourceUrl": "https://www.mongodb.com/assets/images/global/favicon.ico",
+      "officialWebsite": "https://www.mongodb.com/",
+      "kind": "ícone oficial",
+      "bytes": 32988,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Apache Spark",
+      "id": "spark",
+      "logo": "assets/logos/spark.ico",
+      "sourceUrl": "https://spark.apache.org/favicon.ico",
+      "officialWebsite": "https://spark.apache.org/",
+      "kind": "ícone oficial",
+      "bytes": 15406,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Apache Flink",
+      "id": "flink",
+      "logo": "assets/logos/flink.ico",
+      "sourceUrl": "https://flink.apache.org/favicon.png",
+      "officialWebsite": "https://flink.apache.org/",
+      "kind": "ícone oficial",
+      "bytes": 1150,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Elastic (fornecedor de Elasticsearch)",
+      "id": "elasticsearch",
+      "logo": "assets/logos/elasticsearch.svg",
+      "sourceUrl": "https://www.elastic.co/favicon.svg",
+      "officialWebsite": "https://www.elastic.co/elasticsearch",
+      "kind": "ícone oficial do fornecedor",
+      "bytes": 3314,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Apache Cassandra",
+      "id": "cassandra",
+      "logo": "assets/logos/cassandra.png",
+      "sourceUrl": "https://cassandra.apache.org/assets/img/favicon.ico",
+      "officialWebsite": "https://cassandra.apache.org/_/index.html",
+      "kind": "ícone oficial",
+      "bytes": 16637,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "etcd",
+      "id": "etcd",
+      "logo": "assets/logos/etcd.png",
+      "sourceUrl": "https://etcd.io/favicons/apple-touch-icon-180x180.png",
+      "officialWebsite": "https://etcd.io/",
+      "kind": "ícone oficial",
+      "bytes": 3182,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Temporal",
+      "id": "temporal",
+      "logo": "assets/logos/temporal.svg",
+      "sourceUrl": "https://temporal.io/favicon.svg",
+      "officialWebsite": "https://temporal.io/",
+      "kind": "ícone oficial",
+      "bytes": 1731,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "CockroachDB",
+      "id": "cockroachdb",
+      "logo": "assets/logos/cockroachdb.png",
+      "sourceUrl": "https://www.cockroachlabs.com/icon1.png?38190d312b196e2c",
+      "officialWebsite": "https://www.cockroachlabs.com/",
+      "kind": "ícone oficial",
+      "bytes": 4521,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "nginx",
+      "name": "NGINX",
+      "logo": "assets/logos/nginx.svg",
+      "sourceUrl": "https://nginx.org/img/nginx_logo.svg",
+      "officialWebsite": "https://nginx.org/",
+      "kind": "logo oficial",
+      "bytes": 10689,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "sqs",
+      "name": "Amazon SQS",
+      "logo": "assets/logos/sqs.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Application-Integration/64/Arch_Amazon-Simple-Queue-Service_64.svg",
+      "bytes": 6056,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "sns",
+      "name": "Amazon SNS",
+      "logo": "assets/logos/sns.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Application-Integration/64/Arch_Amazon-Simple-Notification-Service_64.svg",
+      "bytes": 2922,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "eventbridge",
+      "name": "Amazon EventBridge",
+      "logo": "assets/logos/eventbridge.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Application-Integration/64/Arch_Amazon-EventBridge_64.svg",
+      "bytes": 4013,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "kinesis",
+      "name": "Amazon Kinesis Data Streams",
+      "logo": "assets/logos/kinesis.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Analytics/64/Arch_Amazon-Kinesis-Data-Streams_64.svg",
+      "bytes": 2396,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "msk",
+      "name": "Amazon MSK",
+      "logo": "assets/logos/msk.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Analytics/64/Arch_Amazon-Managed-Streaming-for-Apache-Kafka_64.svg",
+      "bytes": 6344,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "lambda",
+      "name": "AWS Lambda",
+      "logo": "assets/logos/lambda.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Compute/64/Arch_AWS-Lambda_64.svg",
+      "bytes": 1810,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "ecs",
+      "name": "Amazon ECS",
+      "logo": "assets/logos/ecs.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Containers/64/Arch_Amazon-Elastic-Container-Service_64.svg",
+      "bytes": 2357,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "eks",
+      "name": "Amazon EKS",
+      "logo": "assets/logos/eks.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Containers/64/Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
+      "bytes": 2566,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "rds",
+      "name": "Amazon RDS",
+      "logo": "assets/logos/rds.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Databases/64/Arch_Amazon-RDS_64.svg",
+      "bytes": 2520,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "aurora",
+      "name": "Amazon Aurora",
+      "logo": "assets/logos/aurora.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Databases/64/Arch_Amazon-Aurora_64.svg",
+      "bytes": 4003,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "dynamodb",
+      "name": "Amazon DynamoDB",
+      "logo": "assets/logos/dynamodb.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Databases/64/Arch_Amazon-DynamoDB_64.svg",
+      "bytes": 6016,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "s3",
+      "name": "Amazon S3",
+      "logo": "assets/logos/s3.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Storage/64/Arch_Amazon-Simple-Storage-Service_64.svg",
+      "bytes": 2010,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "api-gateway",
+      "name": "Amazon API Gateway",
+      "logo": "assets/logos/api-gateway.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Networking-Content-Delivery/64/Arch_Amazon-API-Gateway_64.svg",
+      "bytes": 1915,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "elasticache",
+      "name": "Amazon ElastiCache",
+      "logo": "assets/logos/elasticache.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Databases/64/Arch_Amazon-ElastiCache_64.svg",
+      "bytes": 4909,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "step-functions",
+      "name": "AWS Step Functions",
+      "logo": "assets/logos/step-functions.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Application-Integration/64/Arch_AWS-Step-Functions_64.svg",
+      "bytes": 2040,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "ec2",
+      "name": "Amazon EC2",
+      "logo": "assets/logos/ec2.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Compute/64/Arch_Amazon-EC2_64.svg",
+      "bytes": 1969,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "cloudwatch",
+      "name": "Amazon CloudWatch",
+      "logo": "assets/logos/cloudwatch.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Management-Tools/64/Arch_Amazon-CloudWatch_64.svg",
+      "bytes": 4292,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "secrets-manager",
+      "name": "AWS Secrets Manager",
+      "logo": "assets/logos/secrets-manager.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Security-Identity/64/Arch_AWS-Secrets-Manager_64.svg",
+      "bytes": 2931,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "route53",
+      "name": "Amazon Route 53",
+      "logo": "assets/logos/route53.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Networking-Content-Delivery/64/Arch_Amazon-Route-53_64.svg",
+      "bytes": 6663,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "elb",
+      "name": "Elastic Load Balancing",
+      "logo": "assets/logos/elb.svg",
+      "sourceUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+      "officialWebsite": "https://aws.amazon.com/architecture/icons/",
+      "kind": "ícone oficial de arquitetura AWS",
+      "archivePath": "Architecture-Service-Icons_07312026/Arch_Networking-Content-Delivery/64/Arch_Elastic-Load-Balancing_64.svg",
+      "bytes": 1833,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-service-bus",
+      "name": "Azure Service Bus",
+      "logo": "assets/logos/azure-service-bus.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/integration/10836-icon-service-Azure-Service-Bus.svg",
+      "bytes": 2683,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-event-hubs",
+      "name": "Azure Event Hubs",
+      "logo": "assets/logos/azure-event-hubs.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/analytics/00039-icon-service-Event-Hubs.svg",
+      "bytes": 2497,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-functions",
+      "name": "Azure Functions",
+      "logo": "assets/logos/azure-functions.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/compute/10029-icon-service-Function-Apps.svg",
+      "bytes": 1747,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-aks",
+      "name": "Azure Kubernetes Service (AKS)",
+      "logo": "assets/logos/azure-aks.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/containers/10023-icon-service-Kubernetes-Services.svg",
+      "bytes": 3943,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-postgresql",
+      "name": "Azure Database for PostgreSQL",
+      "logo": "assets/logos/azure-postgresql.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/databases/10131-icon-service-Azure-Database-PostgreSQL-Server.svg",
+      "bytes": 3564,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-cosmos-db",
+      "name": "Azure Cosmos DB",
+      "logo": "assets/logos/azure-cosmos-db.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/databases/10121-icon-service-Azure-Cosmos-DB.svg",
+      "bytes": 2599,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-blob",
+      "name": "Azure Blob Storage (block blob)",
+      "logo": "assets/logos/azure-blob.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/general/10780-icon-service-Blob-Block.svg",
+      "bytes": 1073,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-storage",
+      "name": "Azure Storage Account",
+      "logo": "assets/logos/azure-storage.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/storage/10086-icon-service-Storage-Accounts.svg",
+      "bytes": 1157,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-api-management",
+      "name": "Azure API Management",
+      "logo": "assets/logos/azure-api-management.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/integration/10042-icon-service-API-Management-Services.svg",
+      "bytes": 1533,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-redis",
+      "name": "Azure Managed Redis",
+      "logo": "assets/logos/azure-redis.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/databases/03675-icon-service-Azure-Managed-Redis.svg",
+      "bytes": 2612,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-event-grid",
+      "name": "Azure Event Grid (topic)",
+      "logo": "assets/logos/azure-event-grid.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/integration/10206-icon-service-Event-Grid-Topics.svg",
+      "bytes": 2930,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-vm",
+      "name": "Azure Virtual Machines",
+      "logo": "assets/logos/azure-vm.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/compute/10021-icon-service-Virtual-Machine.svg",
+      "bytes": 1330,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-sql",
+      "name": "Azure SQL Database",
+      "logo": "assets/logos/azure-sql.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/databases/10130-icon-service-SQL-Database.svg",
+      "bytes": 2420,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-monitor",
+      "name": "Azure Monitor",
+      "logo": "assets/logos/azure-monitor.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/monitor/00001-icon-service-Monitor.svg",
+      "bytes": 1934,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-key-vault",
+      "name": "Azure Key Vault",
+      "logo": "assets/logos/azure-key-vault.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/security/10245-icon-service-Key-Vaults.svg",
+      "bytes": 2231,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-app-gateway",
+      "name": "Azure Application Gateway",
+      "logo": "assets/logos/azure-app-gateway.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/networking/10076-icon-service-Application-Gateways.svg",
+      "bytes": 3351,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-front-door",
+      "name": "Azure Front Door",
+      "logo": "assets/logos/azure-front-door.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/networking/10073-icon-service-Front-Door-and-CDN-Profiles.svg",
+      "bytes": 942,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Spring (projeto de Spring Modulith)",
+      "id": "spring",
+      "logo": "assets/logos/spring.svg",
+      "sourceUrl": "https://spring.io/favicon.svg?v=96334d577af708644f6f0495dd1c7bc8",
+      "officialWebsite": "https://spring.io/projects/spring-modulith/",
+      "kind": "ícone oficial do projeto Spring",
+      "bytes": 1633,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Debezium",
+      "id": "debezium",
+      "logo": "assets/logos/debezium.ico",
+      "sourceUrl": "https://debezium.io/favicon.ico",
+      "officialWebsite": "https://debezium.io/",
+      "kind": "ícone oficial",
+      "bytes": 1150,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "RocksDB",
+      "id": "rocks",
+      "logo": "assets/logos/rocks.png",
+      "sourceUrl": "https://rocksdb.org/static/favicon.png",
+      "officialWebsite": "https://rocksdb.org/",
+      "kind": "ícone oficial",
+      "bytes": 3927,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Apache Iceberg",
+      "id": "iceberg",
+      "logo": "assets/logos/iceberg.png",
+      "sourceUrl": "https://iceberg.apache.org/assets/images/favicon-96x96.png",
+      "officialWebsite": "https://iceberg.apache.org/",
+      "kind": "ícone oficial",
+      "bytes": 5456,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "SPIFFE / SPIRE",
+      "id": "spiffe",
+      "logo": "assets/logos/spiffe.ico",
+      "sourceUrl": "https://spiffe.io/favicon.ico",
+      "officialWebsite": "https://spiffe.io/",
+      "kind": "ícone oficial",
+      "bytes": 15086,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "TigerBeetle",
+      "id": "tigerbeetle",
+      "logo": "assets/logos/tigerbeetle.png",
+      "sourceUrl": "https://framerusercontent.com/images/gEexTFoKfxSFUJtZ4hQ8msN5fE.png",
+      "officialWebsite": "https://tigerbeetle.com/",
+      "kind": "ícone oficial",
+      "bytes": 16838,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Istio",
+      "id": "istio",
+      "logo": "assets/logos/istio.svg",
+      "sourceUrl": "https://istio.io/latest/favicons/safari-pinned-tab.svg",
+      "officialWebsite": "https://istio.io/",
+      "kind": "ícone oficial",
+      "bytes": 473,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "name": "Keycloak",
+      "id": "keycloak",
+      "logo": "assets/logos/keycloak.svg",
+      "sourceUrl": "https://www.keycloak.org/resources/favicon.svg",
+      "officialWebsite": "https://www.keycloak.org/",
+      "kind": "ícone oficial",
+      "bytes": 6718,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "envoy",
+      "name": "Envoy",
+      "logo": "assets/logos/envoy.svg",
+      "sourceUrl": "https://www.envoyproxy.io/theme/images/envoy-logo.svg",
+      "officialWebsite": "https://www.envoyproxy.io/",
+      "kind": "logo oficial",
+      "bytes": 5074,
+      "retrieved": "2026-10-30"
+    },
+    {
+      "id": "azure-container-apps",
+      "name": "Azure Container Apps (worker)",
+      "logo": "assets/logos/azure-container-apps.svg",
+      "sourceUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+      "officialWebsite": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "kind": "ícone oficial de arquitetura Azure",
+      "archivePath": "Azure_Public_Service_Icons/Icons/other/02884-icon-service-Worker-Container-App.svg",
+      "bytes": 3169,
+      "retrieved": "2026-10-30"
+    }
+  ],
+  "unavailable": [
+    {
+      "name": "Java",
+      "id": "java",
+      "officialWebsite": "https://www.java.com/en/",
+      "reason": "Nenhum logo/ícone específico verificável no HTML público acessível."
+    },
+    {
+      "name": "MySQL",
+      "id": "mysql",
+      "officialWebsite": "https://www.mysql.com/",
+      "reason": "HTTP Error 403: Forbidden"
+    },
+    {
+      "name": "ScyllaDB",
+      "id": "scylladb",
+      "officialWebsite": "https://www.scylladb.com/",
+      "reason": "HTTP Error 403: Forbidden"
+    }
+  ],
+  "note": "Arquivos obtidos dos sites oficiais ou dos pacotes oficiais AWS (31/07/2026) e Azure V24. Marcas pertencem aos titulares. Os ícones de HashiCorp e Elastic identificam o fornecedor; não são apresentados como marcas específicas dos produtos. Uso educacional em diagramas, sem afiliação.",
+  "officialCollections": [
+    {
+      "provider": "AWS",
+      "url": "https://aws.amazon.com/architecture/icons/",
+      "archiveUrl": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip"
+    },
+    {
+      "provider": "Azure",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+      "archiveUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip"
+    }
+  ]
+}

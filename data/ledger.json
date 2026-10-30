@@ -1,0 +1,1343 @@
+{
+  "title": "Ledger em profundidade",
+  "subtitle": "Do caminho do dinheiro aos datoms, código verificável e falhas distribuídas.",
+  "scope": "Arquitetura de referência proposta e laboratório didático; inspirados em evidência pública e documentação oficial, sem afirmar a topologia privada atual do ledger Nubank.",
+  "metadata": {
+    "language": "pt-BR",
+    "reviewedOn": "2026-10-30",
+    "sections": 5,
+    "signConvention": "delta = crédito − débito; customer representa passivo operacional protegido; clearing é contrapartida assinada didática",
+    "codeScope": "Uma instância em memória no laboratório; não Datomic nem runtime de produção."
+  },
+  "sections": [
+    {
+      "id": "1",
+      "title": "MAPA COMPLETO DA ARQUITETURA (DIAGRAMA ASCII)",
+      "intro": "Uma arquitetura de referência para explicar um ledger financeiro: preserva as nove peças pedidas, explicita a fronteira do commit e torna visíveis as partes que faltam num desenho apenas com caixas de tecnologias.",
+      "blocks": [
+        {
+          "type": "callout",
+          "title": "Como ler este desenho",
+          "text": "Proposta didática inspirada em materiais públicos sobre Nubank e nas garantias documentadas das tecnologias. Não é a topologia interna completa do ledger do Nubank. Ordem de eventos, schemas, tokens de leitura, estados e dimensionamento abaixo são decisões desta referência. A palestra histórica e o relato público de sharding não permitem inferir todos os componentes atuais.",
+          "sourceIds": [
+            "ledger-nu-history",
+            "ledger-nu-shards"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "As nove peças, com os caminhos de confirmação explícitos",
+          "text": "+----------------------------------------------------------------------------+\n| [1] CLIENTE MOBILE -> API GATEWAY: Envoy / Kong                            |\n| Identidade, tenant, deadline, operation_id; autorização do recurso no      |\n| serviço.                                                                   |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [2] REDIS: rate limit + cache transitório de idempotência/resposta         |\n| Cache miss não prova ausência de pagamento. Dedupe definitiva fica no      |\n| core.                                                                      |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [3] ACCOUNT SERVICE: Clojure / Go                                          |\n| Contrato + autorização + routing: shard_id e ownership_epoch.              |\n| Publica comando estável com operation_id e fingerprint.                    |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [4] KAFKA INBOUND: comandos, ordenação por partição/chave                  |\n| Ack configurado permite 202 ACCEPTED; ainda não permite dizer LIQUIDADO.   |\n| Consumidor confirma progresso depois de resolver o resultado durável.      |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [5] CORE CLOJURE + DATOMIC: autoridade transacional de um database         |\n| Commit local: dedupe + regras + journal + entries + saldo/versão           |\n| + intenção de evento. Não inclui Kafka ou outro shard automaticamente.     |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [6] STORAGE DURÁVEL DATOMIC: edição e backend suportados                   |\n| Pro: exemplo DynamoDB ou backend SQL conforme configuração documentada.    |\n| Cloud: arquitetura própria; não transplantar o deployment Pro              |\n| literalmente.                                                              |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| AUXILIAR: RELAY recuperável de tx-log / outbox durável                     |\n| Lê intenção confirmada, publica, espera ack e só então avança checkpoint.  |\n| Crash após publish pode duplicar. Não é dual write no handler HTTP.        |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [7] KAFKA OUTBOUND: fatos confirmados                                      |\n| LedgerTransactionPosted com event_id, operation_id e schema_version.       |\n| Duplicatas de transporte são possíveis; identidade permanece estável.      |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [8] PROJECTORS: runtime de consumidores + gravação atômica de visão        |\n| Dedupe + transformação + versão/checkpoint; gaps e replay têm protocolo.   |\n| Reconstruir visão não significa executar novamente pagamentos/push.        |\n+----------------------------------------------------------------------------+\n                                    |\n                                    v\n+----------------------------------------------------------------------------+\n| [9] READ STORES: Redis + DynamoDB de aplicação                             |\n| Projeções de saldo/extrato/status, NÃO réplicas Datomic.                   |\n| Consistência da tabela não prova frescor em relação ao ledger.             |\n+----------------------------------------------------------------------------+\n\n[9] -> API de consulta -> aplicativo (frescor e fallback definidos).\nApós [5]+[6], resultado autoritativo = COMMITTED; liquidação externa depende\nda autoridade do processo. ACCEPTED, COMMITTED e SETTLED não são sinônimos.\n\nACID local: [5]+[6] de um database/shard. Inbound [4] e outbound [7] são\nfronteiras separadas. Storage DynamoDB [6] != projeção DynamoDB [9].\n\nTransversais: ownership/fencing, observabilidade, reconciliação, autorização,\nchaves/segredos, backups/PITR, quotas, migrações e recuperação testada.",
+          "language": "text"
+        },
+        {
+          "type": "prose",
+          "title": "O que significa cada resposta",
+          "paragraphs": [
+            "O gateway recebe a intenção de transferir R$ 150,00, mas ainda não existe débito. Depois da validação de formato, identidade e permissão, o Account Service publica o comando no Kafka inbound. Se esse for o contrato assíncrono escolhido, somente a confirmação de persistência do broker permite responder “aceito para processamento”. A resposta deve trazer operation_id e endereço/contrato para consultar estado. Não se pode apresentar “pago” porque a fila aceitou o pedido.",
+            "O core consome a mensagem e pede uma transação à autoridade do shard. A transação lê o estado necessário, confirma que a chave não representa outro payload, valida moeda e limites, cria lançamentos equilibrados e registra resultado e intenção de evento. O commit é o ponto em que o ledger conhece o efeito. “Contabilizado”, “enviado ao parceiro” e “liquidado externamente” podem ser estados diferentes. Só chame de liquidado aquilo que a autoridade do fluxo consegue provar.",
+            "Uma API síncrona é alternativa válida: chamar o core e aguardar o commit pode simplificar a experiência se orçamento e disponibilidade permitirem. Nesse modo, Kafka inbound deixa de ser obrigatório no caminho crítico. A decisão deve responder ao requisito de latência e absorção de picos, não à crença de que um banco precisa sempre de Kafka entre toda chamada e toda escrita.",
+            "Se a rede cair após o commit, o chamador não sabe se a operação aconteceu. Repetir a mesma identidade lógica permite descobrir o resultado anterior. Criar uma chave nova equivale a pedir outra transferência. O status consultado na projeção pode ainda estar atrasado; por isso a leitura de status autoritativo precisa de caminho definido, com custo e limite próprios."
+          ],
+          "sourceIds": [
+            "ledger-kafka",
+            "ledger-retry",
+            "ledger-datomic-processing"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Três fronteiras que o entrevistador pode testar",
+          "headers": [
+            "Fronteira",
+            "Garantia que podemos prometer",
+            "O que ainda pode falhar"
+          ],
+          "rows": [
+            [
+              "Gateway → Kafka inbound",
+              "Comando aceito conforme ack e política de durabilidade configurados.",
+              "Ainda pode ser rejeitado por saldo, moeda, chave conflitante ou regra no core; backlog aumenta o tempo de conclusão."
+            ],
+            [
+              "Core → Datomic",
+              "Grupo de efeitos locais confirmado atomicamente no database responsável.",
+              "Resposta pode se perder; transação pode abortar; não inclui pagamento externo, outro shard ou Kafka outbound automaticamente."
+            ],
+            [
+              "Ledger → projeção",
+              "Evento será tentado a partir da intenção durável; visão pode ser reconstruída.",
+              "Relay e consumidor podem repetir; projeção pode atrasar, pular evento se checkpoint estiver errado ou receber ordem diferente da esperada."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-functions",
+            "ledger-outbox"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Ordenação e sharding: o domínio vem antes da chave",
+          "paragraphs": [
+            "Uma chave Kafka por account_id ajuda a ordenar comandos dessa conta dentro de uma partição. Não torna atômica uma transferência que toca duas contas em partições ou databases diferentes. A primeira pergunta é qual unidade possui a invariante. Para um ledger local, todos os lançamentos do journal precisam caber na mesma autoridade transacional. Em uma operação entre shards, cada lado mantém seu journal local balanceado com contas de trânsito; uma saga/reconciliação coordena o compromisso entre as duas autoridades.",
+            "A conta de trânsito não é um truque que cria atomicidade global. Ela explicita obrigação pendente e permite provar o estado de cada lado. Uma região ou shard pode ter confirmado a reserva enquanto o outro ainda não concluiu. A API e o operador precisam enxergar esse estado intermediário. Em timeout externo, consultar ou reconciliar antes de liberar fundos evita simultaneamente devolver disponibilidade e depois reconhecer um pagamento realizado.",
+            "O roteador resolve account_id ou uma unidade de ledger para shard_id e ownership_epoch. Na migração, backfill e catch-up precedem a troca do dono. Um writer antigo precisa ser rejeitado pelo destino com fencing/versão de ownership; apenas trocar DNS ou expirar um lock no Redis não impede um processo pausado de voltar e escrever. Não existe transação Datomic única abrangendo databases independentes só porque usam o mesmo produto."
+          ],
+          "sourceIds": [
+            "ledger-nu-shards",
+            "ledger-datomic-processing"
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Narrativa de 90 segundos para apresentar o mapa",
+          "items": [
+            "Começo pelas invariantes: um único efeito por operação, soma zero por moeda, saldo disponível protegido e trilha de correções.",
+            "Mostro a fronteira ACID no core e diferencio comando aceito, commit local e liquidação externa.",
+            "Explico que Redis é otimização; a idempotência que protege dinheiro mora junto do efeito durável.",
+            "Saio do commit por outbox/tx-log, admito duplicatas e descrevo o consumidor idempotente.",
+            "Termino com o maior compromisso: ordenação local e leitura rápida exigem contrato explícito para cross-shard, atraso e recuperação."
+          ]
+        }
+      ],
+      "sourceIds": [
+        "ledger-nu-history",
+        "ledger-nu-shards",
+        "ledger-kafka",
+        "ledger-retry",
+        "ledger-datomic-processing",
+        "ledger-datomic-functions",
+        "ledger-outbox"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "DICIONÁRIO COMPLETO DAS PEÇAS E TECNOLOGIAS (A VISÃO DO NUBANK)",
+      "intro": "A visão aqui é de responsabilidades e garantias, contextualizada por evidência pública do Nubank. Tecnologia só ganha lugar quando há um requisito, uma alternativa e uma falha que sabemos tratar.",
+      "blocks": [
+        {
+          "type": "prose",
+          "title": "1 · Cliente mobile e API Gateway: contrato antes de tráfego",
+          "paragraphs": [
+            "O cliente mantém a identidade da operação ao repetir um pedido causado por timeout. O gateway termina/encaminha TLS, limita tamanho de mensagem, propaga trace e deadline e pode validar token. Envoy é um proxy extensível; Kong é uma plataforma de gateway baseada em plugins e políticas. Nenhum deles sabe, por padrão, se um lançamento financeiro já ocorreu.",
+            "O serviço de domínio ainda verifica se a identidade pode operar a conta e executar aquela ação. A entrada não aceita tenant ou shard indicado pelo usuário como autoridade. O contrato deve distinguir falha de autenticação, rejeição de negócio, sobrecarga e resultado desconhecido. Health check, drain e limite de conexões protegem o caminho de entrada; um retry automático do proxy em POST financeiro só é seguro quando a operação inteira tem idempotência comprovada."
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "2 · Redis: aceleração, admissão e informação descartável",
+          "paragraphs": [
+            "Redis pode manter token buckets, respostas já conhecidas e marcadores transitórios de “em processamento”. Rate limiting precisa de atualização atômica e escopo adequado: usuário, tenant, endpoint ou custo. Um cache de idempotência ajuda a poupar consultas, mas eviction, expiração, failover e perda de memória significam que sua ausência nunca prova que o pagamento não aconteceu.",
+            "A decisão final continua no ledger: chave única no escopo, hash de payload e efeito entram na mesma transação. Um lock Redis tampouco substitui o controle de concorrência do banco. Se Redis cair, leituras de cache podem ir à fonte com limite de concorrência; a política de admissão precisa definir se falha aberta ou fechada é aceitável por endpoint. Deixar todo o tráfego cair no banco durante um incidente de cache pode transformar uma falha pequena em uma queda financeira."
+          ],
+          "sourceIds": [
+            "ledger-retry",
+            "ledger-overload"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "3 · Account Service: coordenação e fronteira de autorização",
+          "paragraphs": [
+            "Clojure e Go são alternativas de implementação do serviço, não sinônimos de uma garantia financeira. A responsabilidade é validar o contrato, resolver identidades, aplicar autorização, escolher o domínio de roteamento e produzir um comando estável. A linguagem funcional ajuda a separar decisões puras de I/O; Go oferece um runtime e modelo de concorrência diferentes. Em ambos, rede, persistência e timeout continuam existindo.",
+            "Uma consulta de saldo antecipada pode melhorar uma mensagem de erro, mas não autoriza gasto: outro comando pode consumir o saldo antes do commit. A invariante precisa ser reavaliada no contexto transacional do core. Logs devem preservar operation_id e trace_id, mas minimizar dados pessoais. A versão de uma decisão de autorização ou consentimento pode precisar acompanhar o comando; uma mensagem antiga não deve ser processada indefinidamente só porque foi autorizada quando entrou na fila."
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "4 · Kafka inbound: fila ordenada de intenções por partição",
+          "paragraphs": [
+            "O inbound permite absorver rajadas, limitar pressão no core e reprocessar comandos. A chave de partição precisa refletir a fronteira de ordenação. Dentro de um grupo de consumidores, o paralelismo útil depende das partições e da distribuição de chaves: cem consumidores não tornam uma única conta quente cem vezes mais paralela.",
+            "Producer idempotence, acks e replicação precisam ser configurados conscientemente. Essas propriedades reduzem classes de duplicação/perda no broker, mas não substituem dedupe do ledger nem tornam uma escrita Datomic parte de uma transação Kafka. O consumidor confirma seu progresso depois de resolver o resultado durável. Se houver crash após commit e antes do offset, a reentrega será normal e deverá retornar o resultado já registrado. A idade do comando mais antigo importa tanto quanto o lag em quantidade."
+          ],
+          "sourceIds": [
+            "ledger-kafka"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "5 · Core Clojure + Datomic: autoridade transacional",
+          "paragraphs": [
+            "O core traduz um comando autorizado em fatos que respeitam invariantes. Seu caminho crítico inclui localizar a operação existente, comparar fingerprint, verificar contas e moeda, validar disponibilidade, construir journal e entries e registrar a intenção de publicação. Validação dependente do estado atual precisa ocorrer em uma função/transação que enxergue o db-before apropriado, ou por outra estratégia documentada que preserve a premissa até o commit.",
+            "Datomic oferece valores imutáveis de banco e transações ordenadas por database. Isso não permite concluir “todo Datomic é uma única thread para tudo”. Consultas, caching, indexação, transporte e preparação podem ter execução independente; edição, deployment e workload importam. O ponto arquitetural é a história consistente dos commits e a fronteira de invariantes, não adivinhar a contagem de threads internas.",
+            "No Datomic Pro, transactor, peers e eventualmente Peer Server têm papéis distintos. Um peer consulta valores de banco e aproveita cache; o transactor participa do caminho de transação. Datomic Cloud possui desenho de compute groups e storage próprio. Misturar os dois em um diagrama que promete o mesmo deployment em qualquer cloud ensina uma configuração que pode nem existir."
+          ],
+          "sourceIds": [
+            "ledger-datomic-processing",
+            "ledger-datomic-functions",
+            "ledger-datomic-cache",
+            "ledger-datomic-cloud"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "6 · Storage Datomic: persistência interna não é tabela de negócio pública",
+          "paragraphs": [
+            "No Pro, deve-se escolher um backend suportado pela edição e versão, com as permissões, capacidade e configurações exigidas. A documentação inclui DynamoDB e opções SQL. Isso não transforma os dados internos do Datomic em uma tabela de extrato que a aplicação deva ler diretamente com um cliente DynamoDB: o formato, índices e protocolo de armazenamento pertencem ao banco.",
+            "Na edição Cloud documentada, DynamoDB participa do transaction log, S3 mantém índices e EFS integra a camada de cache, complementada por memória e, conforme o tipo de nó, SSD local. São responsabilidades próprias do produto; EBS não é uma substituição genérica desse desenho. Não é correto remover uma peça desse desenho e afirmar que “o Datomic é só DynamoDB com uma API diferente”. Da mesma forma, DynamoDB Global Tables não é uma substituição aceita pelo storage Pro segundo a documentação consultada. Failover regional precisa respeitar o protocolo suportado, não uma montagem de replicação inventada.",
+            "Durabilidade não significa conservação infinita de toda versão em qualquer configuração. Backups, retenção, disponibilidade de chaves, crescimento dos índices e procedimentos de recuperação continuam necessários. Imutabilidade lógica reduz certas classes de corrupção acidental, mas credencial comprometida, comando autorizado errado e bugs de aplicação ainda podem produzir fatos financeiros incorretos que precisarão de reparação auditável."
+          ],
+          "sourceIds": [
+            "ledger-datomic-storage",
+            "ledger-datomic-cloud",
+            "ledger-dr"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "7 · Kafka outbound: fatos confirmados e o relay indispensável",
+          "paragraphs": [
+            "O outbound divulga fatos como LedgerTransactionPosted, com event_id, operation_id, journal_id, shard/epoch e versão do contrato. Um fato só deve afirmar aquilo que o ledger confirmou. Não executar “transact no Datomic; depois produce no Kafka” e chamar isso de publicação garantida: o processo pode cair entre os dois.",
+            "Há duas famílias de solução: gravar a intenção de evento na mesma transação do journal e usar relay, ou consumir de forma recuperável o transaction log e derivar eventos com regras estáveis. Em ambas, o relay mantém checkpoint durável e só avança após publicação confirmada. Crash depois do publish e antes do checkpoint gera duplicata, que é preferível a perder o fato. Se usar fila de transaction reports em memória como notificação, é preciso uma fonte durável para recuperar lacunas após reinício.",
+            "O journal financeiro não deve ser apagado para limpar a outbox. Retenção do transporte e do audit trail têm políticas diferentes. Um novo consumidor pode precisar reconstruir estado após o Kafka já ter expirado eventos antigos; planeje snapshot mais log retido ou replay da autoridade com controle de carga."
+          ],
+          "sourceIds": [
+            "ledger-outbox",
+            "ledger-datomic-api",
+            "ledger-kafka"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "8 · Projectors: código executável que mantém visão derivada",
+          "paragraphs": [
+            "Um projector é um processo, não apenas o banco de destino. Ele interpreta eventos, transforma schema, decide como lidar com duplicatas e ordem, escreve a visão e registra progresso. Ao usar delta de saldo, marcar evento como visto e atualizar o saldo em commits separados cria uma janela que perde ou duplica dinheiro na leitura. Essas ações devem ser atômicas no destino ou coordenadas por protocolo equivalente.",
+            "Existem contratos diferentes. Um evento com saldo absoluto e versão pode substituir uma versão mais antiga por escrita condicional. Um evento com delta exige garantir que cada evento necessário seja aplicado exatamente uma vez no efeito local: descartar “versão menor que a maior vista” pode pular um débito que chegou atrasado. Para deltas ordenados, detectar gap e recuperar antes de avançar; para modelo por entradas, inserir entry_id único e materializar agregação com estratégia consistente.",
+            "Backfill e replay devem escrever uma visão nova, ter quota independente e desabilitar efeitos externos. Reexecutar eventos para reconstruir extrato não é autorização para reenviar push, executar transferência ou chamar parceiro novamente."
+          ],
+          "sourceIds": [
+            "ledger-kafka",
+            "ledger-outbox"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "9 · Redis + DynamoDB de leitura: modelo de consulta, não réplica Datomic",
+          "paragraphs": [
+            "Esses stores podem guardar saldo informativo, páginas de extrato ou status por operação. O schema nasce do access pattern: conta mais cursor temporal, lookup de operação, versão da visão e metadados de frescor. O DynamoDB aqui é um destino da aplicação, distinto do DynamoDB interno usado pelo Datomic Pro ou Cloud.",
+            "Uma leitura fortemente consistente na tabela DynamoDB confirma o estado atual daquela tabela, não que o projector já processou o último commit do ledger. Índices e modalidades têm garantias próprias; não generalize uma opção de consistência para toda consulta. Redis adiciona mais uma cópia, cuja invalidade pode estar limitada por TTL e versão, sem virar uma garantia de saldo financeiro.",
+            "Para UX, exponha frescor quando necessário e defina fallback controlado para a autoridade. Para autorização de gasto, use a fronteira transacional que preserva disponibilidade. Uma projeção muito rápida e cinco segundos atrasada pode ser ótima para uma tela, mas inadequada para decidir se duas compras concorrentes podem gastar os mesmos fundos."
+          ],
+          "sourceIds": [
+            "ledger-dynamo"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Implementações em AWS, Azure e on-prem: mesmo papel, contratos explícitos",
+          "headers": [
+            "Responsabilidade",
+            "AWS: opção concreta",
+            "Azure: opção concreta",
+            "On-prem: opção concreta e responsabilidade"
+          ],
+          "rows": [
+            [
+              "Gateway e Account Service",
+              "Envoy/Kong em ECS/EKS ou API Gateway; aplicação em ECS/Fargate.",
+              "Envoy/Kong em AKS ou API Management; aplicação em Container Apps/AKS.",
+              "Envoy/Kong e aplicação em VMs/containers; equipe opera TLS, HA e capacity."
+            ],
+            [
+              "Redis de admissão/cache",
+              "ElastiCache com engine e política de persistência escolhidas.",
+              "Azure Managed Redis, validando recursos e tier.",
+              "Redis/Valkey em hosts próprios; equipe cuida de failover, memória e upgrades."
+            ],
+            [
+              "Kafka inbound/outbound",
+              "Amazon MSK ou Kafka operado em EC2/EKS.",
+              "Kafka em AKS/VMs ou serviço Kafka de fornecedor; Event Hubs somente após revalidar compatibilidade.",
+              "Kafka em cluster próprio, com discos, replicas, networking e manutenção planejados."
+            ],
+            [
+              "Core e Datomic Pro",
+              "Core JVM em ECS/EKS/EC2; Datomic Pro com backend suportado e HA documentada.",
+              "Core JVM em AKS/VMs; Datomic Pro autogerido com backend SQL suportado, após validar configuração.",
+              "Core JVM e Datomic Pro autogeridos; PostgreSQL/SQL suportado e operação compatível com docs."
+            ],
+            [
+              "Datomic Cloud",
+              "Produto com arquitetura específica AWS; usar o desenho documentado da edição.",
+              "Não há equivalência automática “Datomic Cloud gerenciado Azure”; usar Pro ou redesenhar a persistência.",
+              "Não chamar de Datomic Cloud uma instalação própria; usar edição apropriada ou outro banco com novo desenho."
+            ],
+            [
+              "Relay e projectors",
+              "Workers ECS/EKS, offsets duráveis e observabilidade; DynamoDB/Redis como projeção opcional.",
+              "Workers Container Apps/AKS; Azure PostgreSQL ou Cosmos DB como alternativa de visão com contrato revalidado.",
+              "Workers próprios; PostgreSQL/Redis como projeção. Não há DynamoDB gerenciado local equivalente de produção."
+            ],
+            [
+              "Object storage, backup e telemetria",
+              "S3, ferramentas de backup suportadas, OpenTelemetry e backend operacional.",
+              "Blob Storage, ferramentas suportadas, OpenTelemetry e backend operacional.",
+              "Object storage próprio, cópias fora do domínio de falha, OTel; testar energia, rede e restauração."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-storage",
+            "ledger-datomic-cloud"
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Produtos que não são substituições transparentes",
+          "text": "SQS e Service Bus resolvem filas de trabalho, mas não substituem automaticamente retenção, replay e partições Kafka. Cosmos DB não replica a API, o modelo transacional e os limites do DynamoDB por ter documentos e partições. Trocar Datomic por PostgreSQL exige redesenhar histórico, consultas, transações e código: pode ser uma excelente decisão, mas é mudança de arquitetura de dados, não troca de logotipo."
+        },
+        {
+          "type": "callout",
+          "title": "Caso público Nubank: evergreen cache, com limite de evidência",
+          "text": "Em 2020, Gustavo Bicalho descreveu Clojure/Datomic/Kafka na AWS e peers na JVM dos serviços. O artigo relata pressão de memória ao recalcular saldos e uma solução com valores imutáveis em DynamoDB identificados por conta e contador de eventos. O contador da conta muda na mesma transação dos fatos relevantes; a leitura consulta essa referência antes de procurar o cache. Isso evita invalidar a conta A porque outra conta B alterou o basis-t global. É um caso histórico concreto de compromisso entre memória, recomputação e consistência. Não confirma o desenho atual completo do ledger, o fluxo Pix/TED, as nove caixas desta proposta nem nosso token de read-your-writes.",
+          "sourceIds": [
+            "ledger-nu-evergreen"
+          ]
+        }
+      ],
+      "sourceIds": [
+        "ledger-retry",
+        "ledger-overload",
+        "ledger-kafka",
+        "ledger-datomic-processing",
+        "ledger-datomic-functions",
+        "ledger-datomic-cache",
+        "ledger-datomic-cloud",
+        "ledger-datomic-storage",
+        "ledger-dr",
+        "ledger-outbox",
+        "ledger-datomic-api",
+        "ledger-dynamo",
+        "ledger-nu-evergreen"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "O MODELO DE DADOS IMPRESCINDÍVEL: DATOMS E PARTIDAS DOBRADAS",
+      "intro": "Separar fatos de banco, lançamentos contábeis e saldo operacional evita três confusões frequentes: histórico não é automaticamente event sourcing; débito não significa universalmente “menos”; e soma zero não prova sozinha que o dinheiro foi enviado à pessoa certa.",
+      "blocks": [
+        {
+          "type": "prose",
+          "title": "Datom: uma afirmação atômica com contexto temporal",
+          "paragraphs": [
+            "Um datom representa entidade, atributo, valor, transação e indicação de adição ou retração: [E A V Tx added?]. Uma entidade journal tem vários fatos, como identidade, moeda, referência à operação e ligação às entries. Uma entry também tem vários fatos, como conta, quantia e journal. Portanto, uma transferência com dois lançamentos não equivale a “dois datoms”: ela pode produzir dezenas de fatos, além de metadados e atualizações de estado.",
+            "Um valor de banco é uma visão imutável em um ponto da história. Reutilizar esse valor em várias consultas mantém a mesma base de observação. Isso não o torna eternamente atualizado: um valor antigo continua correto para seu ponto no tempo. Não confunda consistência do snapshot com frescor da última operação.",
+            "Tx identifica a transação que registrou a mudança. Timestamp de negócio e data efetiva podem ser atributos adicionais; um pagamento ocorrido ontem pode ser registrado hoje. A ordem de commits de um database não oferece automaticamente uma ordem global entre todos os shards, parceiros e regiões."
+          ],
+          "sourceIds": [
+            "ledger-datomic-model",
+            "ledger-datomic-time"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Exemplo de fatos: a entry e o saldo materializado são coisas diferentes",
+          "text": ";; IDs numéricos abaixo são ilustrativos. Keywords mostram nomes de atributos.\n;; Entry imutável: journal 900, conta Alice 101, delta = -R$150,00.\n[501 :entry/journal      900    7002 true]\n[501 :entry/account      101    7002 true]\n[501 :entry/currency     \"BRL\"  7002 true]\n[501 :entry/delta-cents -15000  7002 true]\n\n;; Saldo materializado cardinality/one: valor atual muda com histórico.\n[101 :account/balance-cents 100000 7001 true]\n[101 :account/balance-cents 100000 7002 false]\n[101 :account/balance-cents  85000 7002 true]\n\n;; A entry original não deve ser editada para simular um estorno.\n;; Um estorno cria OUTRA entry +15000 ligada a OUTRO journal.",
+          "language": "clojure"
+        },
+        {
+          "type": "callout",
+          "title": "Append-only do ledger não é “Datomic proíbe mudança”",
+          "text": "Datomic representa mudanças adicionando fatos e retrações. Ao substituir um atributo cardinality/one, a visão corrente deixa de conter o valor anterior; o histórico normalmente registra essa transição, sujeito às políticas do produto, como noHistory/excision. A imutabilidade das entries é uma regra do domínio e do controle de escrita: bloquear update/retract de lançamentos após postagem. Um saldo materializado pode mudar; seu journal original permanece auditável.",
+          "sourceIds": [
+            "ledger-datomic-data",
+            "ledger-datomic-schema"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Entidades mínimas e por que não são uma única tabela de saldo",
+          "headers": [
+            "Entidade",
+            "Campos importantes",
+            "Invariante ou uso"
+          ],
+          "rows": [
+            [
+              "Account",
+              "account_id, tenant/owner, currency, kind, version, balance/reserved quando materializados",
+              "Identidade estável; moeda e natureza explícitas; autorização por recurso; versão protege premissa concorrente."
+            ],
+            [
+              "Operation",
+              "scope+key, request_hash, status, journal_ref, resultado/commit token",
+              "Mesma chave e mesmo payload retornam o mesmo efeito; payload diferente com mesma chave gera conflito."
+            ],
+            [
+              "Journal",
+              "journal_id, entries, effective_at, posted transaction, reversal_of, reason",
+              "Unidade de postagem balanceada. Uma correção aponta o original, sem removê-lo."
+            ],
+            [
+              "Entry",
+              "entry_id, journal_ref, account_ref, currency, delta_cents",
+              "Identidade única; quantia exata; conta existente e compatível; valor não é alterado depois da postagem."
+            ],
+            [
+              "Reservation",
+              "reservation_id, account_ref, amount, status, expires_at, operation_ref",
+              "RESERVED termina em CAPTURED ou RELEASED conforme política; um timeout ambíguo não decide o estado sozinho."
+            ],
+            [
+              "Outbox/event intent",
+              "event_id, operation_ref, journal_ref, schema_version, payload/derivation inputs",
+              "Intenção de publicar entra junto do journal. Estado de entrega pode viver separado sem alterar evidência financeira."
+            ],
+            [
+              "Projection metadata",
+              "projection_version, event_id/process marker, aggregate_version, checkpoint, lineage",
+              "Frescor e dedupe da visão são medidos no destino; checkpoint Kafka não é a transação do ledger."
+            ]
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Convenção de sinais: escolha uma, documente e não a mude no meio",
+          "paragraphs": [
+            "Na contabilidade formal, escreva D_i para o valor a débito e C_i para o valor a crédito de uma entry, ambos não negativos. A regra é Σ D_i = Σ C_i, por moeda e por journal. Uma representação assinada conveniente é p_i = D_i − C_i; então Σ p_i = 0. Isso diz qual lado contábil recebeu valor, não qual saldo visível deve aumentar.",
+            "No modelo operacional do laboratório usamos delta_i = C_i − D_i = −p_i. Para uma conta de cliente modelada como passivo do banco, crédito aumenta a obrigação que o banco tem com o cliente: delta positivo aumenta o saldo operacional e delta negativo o reduz. O Account.kind=\"customer\" indica essa conta protegida no laboratório. Não significa que toda conta contábil do mundo tenha essa natureza.",
+            "Uma conta de ativo com saldo natural devedor tem interpretação diferente: seu saldo natural é −Σ delta_i, sob essa convenção de armazenamento. A clearing do laboratório é uma contrapartida algébrica assinada, com saldo negativo permitido, usada para representar o financiamento inicial do exemplo. Em um plano contábil real, separaríamos caixa/conta de liquidação, passivos de clientes, taxas, receitas, despesas e contas transitórias com tipos e regras específicos.",
+            "O benefício de guardar uma convenção assinada única é manter Σ delta_i = 0. O perigo é somar “deltas de saldos naturais” de contas com naturezas diferentes como se fossem todos a mesma grandeza. Para apresentação, converta o sinal conforme natureza da conta. Para o journal, preserve uma convenção contábil consistente e moeda explícita."
+          ],
+          "sourceIds": [
+            "ledger-ledger-model"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "As equações que precisam virar validações",
+          "text": "Para cada journal J e cada moeda c:\n  sum(delta(entry) for entry in J if currency(entry) == c) == 0\n\nPara cada entry e:\n  account(e) existe e é autorizada para o tipo de lançamento\n  currency(e) == currency(account(e))\n  delta(e) é inteiro na unidade monetária definida, dentro dos limites\n\nPara cada conta customer a, após agrupar TODAS as entries do comando:\n  balance_after(a) = balance_before(a) + sum(delta(e) for e.account == a)\n  available_after(a) = balance_after(a) - reserved_after(a)\n  available_after(a) >= 0   // quando produto não permite overdraft\n\nPara a identidade idempotente k = (tenant, operation_type, client_key):\n  se k existe e hash igual: devolver resultado existente\n  se k existe e hash diferente: rejeitar conflito\n  se k não existe: k + journal + entries + resultado + outbox no mesmo commit",
+          "language": "text"
+        },
+        {
+          "type": "table",
+          "title": "Transferência completa de R$ 150,00: Alice → Bruno",
+          "headers": [
+            "Momento",
+            "Entries em centavos",
+            "Alice",
+            "Bruno",
+            "Clearing",
+            "Interpretação"
+          ],
+          "rows": [
+            [
+              "tx1 · abertura",
+              "Alice +100000; Bruno +20000; clearing −120000",
+              "R$ 1.000,00",
+              "R$ 200,00",
+              "−R$ 1.200,00",
+              "Journal de abertura balanceado; contrapartida não nasceu do nada."
+            ],
+            [
+              "tx2 · transferência",
+              "Alice −15000; Bruno +15000",
+              "R$ 850,00",
+              "R$ 350,00",
+              "−R$ 1.200,00",
+              "Débito formal no passivo de Alice; crédito formal no passivo de Bruno. Nenhuma movimentação externa é necessária neste exemplo interno."
+            ],
+            [
+              "Retry de tx2",
+              "Nenhuma nova entry; mesma chave e fingerprint",
+              "R$ 850,00",
+              "R$ 350,00",
+              "−R$ 1.200,00",
+              "Resposta aponta ao mesmo journal. Contar a tentativa não significa criar nova transferência."
+            ],
+            [
+              "tx3 · estorno total",
+              "Alice +15000; Bruno −15000; reversal_of=tx2",
+              "R$ 1.000,00",
+              "R$ 200,00",
+              "−R$ 1.200,00",
+              "Novo journal inverso, sujeito a autorização, elegibilidade e saldo do participante que devolve."
+            ],
+            [
+              "Consulta as-of tx1",
+              "Considera somente história até tx1",
+              "R$ 1.000,00",
+              "R$ 200,00",
+              "−R$ 1.200,00",
+              "O futuro não altera o resultado histórico."
+            ],
+            [
+              "Consulta as-of tx2",
+              "Inclui tx1 e tx2, exclui tx3",
+              "R$ 850,00",
+              "R$ 350,00",
+              "−R$ 1.200,00",
+              "O estorno posterior não apaga a existência da transferência original."
+            ]
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Moeda, precisão e taxas: soma zero é necessária, não suficiente",
+          "paragraphs": [
+            "R$ 150,00 vira 15000 centavos somente porque BRL neste contrato tem duas casas decimais. Outras moedas, produtos ou ativos podem usar escala diferente; não multiplicar qualquer dinheiro por cem sem metadado. Não usar float binário para valores monetários exatos. Inteiros com escala explícita ou decimal exato exigem verificação de overflow, limites e regra de arredondamento na fronteira.",
+            "Em câmbio, não balanceie −15000 BRL com +3000 USD dizendo que a soma numérica fechou. Cada moeda precisa de contrapartidas próprias: contas de posição/clearing de BRL e USD, taxa aplicada e política de arredondamento. A equivalência econômica vem da cotação e do contrato, não de somar unidades incompatíveis.",
+            "Uma taxa de R$ 2,00 pode gerar mais de duas entries: por exemplo, débito de R$ 152,00 no passivo do cliente, crédito de R$ 150,00 em obrigação de pagamento e crédito de R$ 2,00 em receita, respeitando o desenho contábil. Também existem journals balanceados fraudulentos: trocar o beneficiário mantém a soma zero. Por isso autorização, tipo de conta, causa econômica, referência externa e reconciliação são invariantes complementares."
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Recorte de schema Datomic: identidade e valor não significam a mesma coisa",
+          "text": ";; Recorte ilustrativo, não o schema completo de produção.\n[{:db/ident :account/id\n  :db/valueType :db.type/string\n  :db/cardinality :db.cardinality/one\n  :db/unique :db.unique/identity}\n {:db/ident :operation/key\n  :db/valueType :db.type/string\n  :db/cardinality :db.cardinality/one\n  :db/unique :db.unique/value}\n {:db/ident :operation/request-hash\n  :db/valueType :db.type/string\n  :db/cardinality :db.cardinality/one}\n {:db/ident :entry/journal\n  :db/valueType :db.type/ref\n  :db/cardinality :db.cardinality/one}\n {:db/ident :entry/account\n  :db/valueType :db.type/ref\n  :db/cardinality :db.cardinality/one}\n {:db/ident :entry/currency\n  :db/valueType :db.type/string\n  :db/cardinality :db.cardinality/one}\n {:db/ident :entry/delta-cents\n  :db/valueType :db.type/long\n  :db/cardinality :db.cardinality/one}]\n\n;; :operation/key precisa incorporar escopo de maneira canônica.\n;; Não concatenar campos de modo ambíguo, nem confiar em chave sem hash.",
+          "language": "clojure"
+        },
+        {
+          "type": "callout",
+          "title": "Unicidade não implementa idempotência sozinha",
+          "text": ":db.unique/identity permite resolver/upsert da mesma entidade; isso pode mesclar atributos e ainda criar novas entries se o código não validar o comando. :db.unique/value rejeita duplicação de valor em outra entidade, mas a aplicação ainda precisa distinguir replay legítimo, conflito de payload e resultado incerto. A função transacional deve verificar a operação existente e impedir o segundo efeito. Uma constraint isolada não compara toda a intenção financeira.",
+          "sourceIds": [
+            "ledger-datomic-schema",
+            "ledger-datomic-identity"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Datalog: saldo e conferência do journal sem colapsar quantias iguais",
+          "text": ";; Usando a forma de query da API Peer como exemplo.\n;; db é um valor de banco; ledger entries não são retraídas após postagem.\n\n(d/q '[:find (sum ?delta) .\n       :with ?entry\n       :in $ ?account-id\n       :where\n       [?account :account/id ?account-id]\n       [?entry :entry/account ?account]\n       [?entry :entry/delta-cents ?delta]]\n     db \"alice\")\n\n;; Conferir soma por moeda dentro de um journal identificado por eid:\n(d/q '[:find ?currency (sum ?delta)\n       :with ?entry\n       :in $ ?journal\n       :where\n       [?entry :entry/journal ?journal]\n       [?entry :entry/currency ?currency]\n       [?entry :entry/delta-cents ?delta]]\n     db journal-eid)\n\n;; Temporalidade: consultar o valor do banco no ponto desejado.\n;; Peer e Client têm assinaturas distintas; use a API correta no projeto.\n;; Precondição: db já contém posting-t. as-of só limita o topo da história;\n;; não busca um commit ausente de um valor antigo. Obter/sincronizar primeiro\n;; conforme a API, então construir a visão temporal.\n(def db-at-posting (d/as-of db posting-t))\n\n;; :with ?entry é intencional: duas entries com delta igual continuam\n;; duas contribuições. Não agregar só o conjunto de valores distintos.",
+          "language": "clojure"
+        },
+        {
+          "type": "prose",
+          "title": "Consultas são instrumentos de auditoria, não um convite a somar toda a vida a cada compra",
+          "paragraphs": [
+            "A query acima serve para ensinar a derivação e validar uma visão. Para uma conta com milhões de lançamentos, recalcular todo o histórico a cada autorização cria custo proporcional ao histórico lido. Um saldo materializado transacional ou checkpoint verificável reduz o caminho crítico; seu valor deve ser reconciliável com o journal, e sua atualização precisa compartilhar a mesma garantia da postagem.",
+            "Datalog trabalha com relações e semântica de conjuntos. O :with ?entry preserva a multiplicidade relevante para a agregação quando duas entidades distintas têm a mesma quantia. O tipo de retorno e as assinaturas de d/q, d/as-of e d/sync variam entre Peer e Client; os exemplos não devem ser misturados como se fossem uma API única.",
+            "Retornar resultado de db-after após uma transação permite calcular a resposta a partir do estado confirmado. Isso é diferente de consultar uma projeção externa, mesmo que a projeção use DynamoDB. O identificador temporal do database pode servir como insumo de um contrato de frescor proposto, mas não certifica que um consumidor Kafka já aplicou esse ponto."
+          ],
+          "sourceIds": [
+            "ledger-datomic-query",
+            "ledger-datomic-api",
+            "ledger-datomic-sync"
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "A armadilha de duas funções transacionais no mesmo pedido",
+          "text": "Não chamar “debitar 80” e “debitar 80” em duas funções independentes supondo que a segunda verá o saldo após a primeira dentro da mesma transação. Funções transacionais observam db-before; suas expansões não são uma sequência de updates imperativos com leitura das saídas anteriores. Agrupe todos os efeitos por conta e valide a alteração total em uma unidade coerente. Uma conta com saldo 100 não pode aprovar duas reduções de 80 porque cada função, isoladamente, viu 100.",
+          "sourceIds": [
+            "ledger-datomic-functions",
+            "ledger-datomic-tx-model",
+            "ledger-datomic-compose"
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Imutabilidade sem promessa falsa de O(1)",
+          "text": "“Ledger append-only” descreve nossa política de domínio. Datomic descreve seu modelo como accumulate-only e usa árvores/segmentos imutáveis com mudanças recentes e indexação; isso não significa um único arquivo append-only nem custo O(1) para qualquer escrita ou consulta. EAVT/AEVT/AVET/VAET servem acessos distintos, e a disponibilidade/comportamento de índices depende da edição e do schema. A justificativa de performance precisa vir do workload e de medição.",
+          "sourceIds": [
+            "ledger-datomic-index"
+          ]
+        }
+      ],
+      "sourceIds": [
+        "ledger-datomic-model",
+        "ledger-datomic-time",
+        "ledger-datomic-data",
+        "ledger-datomic-schema",
+        "ledger-ledger-model",
+        "ledger-datomic-query",
+        "ledger-datomic-api",
+        "ledger-datomic-sync",
+        "ledger-datomic-functions",
+        "ledger-datomic-tx-model",
+        "ledger-datomic-index",
+        "ledger-datomic-identity",
+        "ledger-datomic-compose"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "IMPLEMENTAÇÃO DA CORE ENGINE (CÓDIGO DE NÍVEL EXPLÍCITO E PRODUÇÃO)",
+      "intro": "O código executável desta aba torna as invariantes inspecionáveis e testáveis. A passagem para produção exige substituir mecanismos didáticos por garantias duráveis comprovadas; não basta trocar um dicionário por uma chamada de rede.",
+      "blocks": [
+        {
+          "type": "callout",
+          "title": "Escopo real do laboratório executável",
+          "text": "O módulo Python entregue é um ledger didático em memória, com uma instância, um processo e threads coordenadas por RLock. Ele não é um emulador do Datomic nem um serviço pronto para movimentar dinheiro real. Sua utilidade é mostrar validação, fingerprint, idempotência, commit atômico local, consulta histórica e estorno sob concorrência. Os arquivos e testes completos aparecem nesta seção; o núcleo em Clojure/Datomic descrito no mapa é uma implementação de referência a ser desenvolvida com as APIs da edição escolhida."
+        },
+        {
+          "type": "table",
+          "title": "Contrato do runtime que acompanha o estudo",
+          "headers": [
+            "Operação",
+            "Comportamento",
+            "Limite explícito"
+          ],
+          "rows": [
+            [
+              "register_account(Account(...))",
+              "Cadastra identidade, moeda e kind customer/clearing; repetição compatível retorna a mesma conta.",
+              "Cadastro é em memória; autorização externa e persistência não fazem parte do módulo."
+            ],
+            [
+              "post(PostRequest(...))",
+              "Valida postings, calcula hash semântico, verifica replay/conflito, agrega efeitos e confirma um snapshot inteiro.",
+              "Chave tem escopo de uma instância didática; produção precisa tenant/namespace, identidade persistente e protocolo de concorrência do banco."
+            ],
+            [
+              "balance(account_id, as_of_tx=...)",
+              "Retorna saldo derivado da história até o corte solicitado.",
+              "tx_id é sequência local do exemplo, não t Datomic, tx entity ID, timestamp ou offset Kafka."
+            ],
+            [
+              "reverse(ReverseRequest(...))",
+              "Cria outro journal com sinais inversos e reversal_of; registra que o original já foi estornado.",
+              "Apenas estorno integral no modelo; regras de devolução parcial, disputas e recuperação de saldo exigem desenho adicional."
+            ],
+            [
+              "Post rejeitado antes do commit",
+              "Não altera saldo, journal ou resultado idempotente de commit.",
+              "No laboratório a rejeição não consome a chave; a mesma intenção pode ser reavaliada após aporte. Se a API quiser congelar rejeições, terá de persistir esse resultado por contrato."
+            ]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Sequência da seção crítica: o que deve permanecer junto",
+          "items": [
+            "Normalizar e validar entrada estrita: sem coerção silenciosa de float/string/bool para dinheiro; tamanho máximo, identificadores, moeda e quantias permitidas.",
+            "Calcular fingerprint canônico versionado. No runtime, a ordem dos postings é normalizada, mas multiplicidade, valores, moedas e descrição continuam no contrato; post e reverse têm tipos distintos.",
+            "Consultar identidade existente antes de gerar outro efeito. Mesmo hash retorna o journal anterior; hash divergente gera IdempotencyConflict.",
+            "Resolver todas as contas e agrupar todas as entries por conta/moeda. Verificar soma zero por moeda e calcular o efeito total, não apenas validar cada linha isoladamente.",
+            "Reconstruir/verificar a premissa de saldo e aplicar política das contas customer. O laboratório compara a derivação histórica à projeção mantida; divergência gera InvariantViolation.",
+            "Construir o próximo estado completo: journal imutável, saldos derivados, registro idempotente e relação de estorno. Somente depois publicar uma nova referência de estado sob o lock.",
+            "No banco de produção, mover essa unidade para uma transação durável equivalente, incluindo a intenção de evento. Nenhum callback externo ou chamada Kafka acontece dentro da validação transacional."
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Por que o lock do exemplo funciona e por que não atravessa processos",
+          "paragraphs": [
+            "Todos os métodos que observam ou alteram estado compartilham o mesmo lock da mesma instância. O ponto de commit é a troca do snapshot inteiro; uma exceção antes da troca deixa o anterior disponível. O journal exposto contém modelos imutáveis e os mapas internos não são oferecidos como estruturas mutáveis ao chamador. Isso permite testar concorrência de threads e ausência de estado parcial.",
+            "Dois processos Python têm memórias e locks diferentes. Colocar duas réplicas desse módulo atrás de um load balancer produziria duas autoridades divergentes. Reiniciar o processo também perde tudo. A substituição correta é uma autoridade persistente com transação, recovery e dedupe; um lock distribuído superficial não corrige a ausência de armazenamento nem garante fencing no recurso.",
+            "O exemplo privilegia verificabilidade: percorrer o histórico e copiar estruturas custa tempo e memória. O custo de um post pode crescer com o histórico armazenado e a quantidade de contas, além das entries do pedido. Em um ledger real, saldo transacional/checkpoints, índices e armazenamento estruturado substituem esse scan completo, com reconciliação independente para verificar a projeção. Manter o mesmo algoritmo em RAM e apenas aumentar a máquina não é a evolução recomendada."
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Pseudocontrato do commit persistente, sem fingir uma SDK pronta",
+          "text": "post_once(command, db_before):\n    validate_request_shape_and_authenticated_scope(command)\n    fingerprint = canonical_hash(command)\n    prior = lookup_operation(db_before, scoped_key(command))\n    if prior exists:\n        require prior.fingerprint == fingerprint\n        return NO_NEW_POSTINGS, prior.result\n\n    accounts = load_all_affected_accounts(db_before, command)\n    grouped = sum_all_deltas_by_account_and_currency(command.entries)\n    require balanced_per_currency(command.entries)\n    require correct_account_currency_and_allowed_posting_types(accounts)\n    require all_protected_balances_after(grouped, db_before) >= 0\n\n    return atomic_tx_data(\n        unique_operation_identity + fingerprint + result,\n        immutable_journal + immutable_entries,\n        materialized_balances_and_versions_if_used,\n        durable_outbox_intent\n    )\n\n// submit with the transaction mechanism of the selected Datomic edition.\n// return the confirmed result / db-after-derived response after successful commit.\n// the actual database adapter must handle conflicts, timeouts and unknown outcomes.",
+          "language": "text"
+        },
+        {
+          "type": "callout",
+          "title": "No Datomic, dados de transação não são um programa imperativo",
+          "text": "A lista de tx-data descreve um conjunto de mudanças atômicas. Ordenar duas formas na lista não autoriza assumir “a segunda leu o resultado da primeira”. Regras dependentes de múltiplos postings devem operar sobre o comando completo e um db-before coerente. Entity predicates/specs e :db/ensure têm contrato próprio; só declarar uma spec não significa que todas as futuras escritas da entidade automaticamente passarão por ela. Controle os caminhos de escrita e teste as garantias que realmente estão habilitadas.",
+          "sourceIds": [
+            "ledger-datomic-tx-model",
+            "ledger-datomic-functions",
+            "ledger-datomic-schema"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "O que falta para chamar uma implementação de produção",
+          "headers": [
+            "Área",
+            "Evidência exigida antes de operar dinheiro"
+          ],
+          "rows": [
+            [
+              "Persistência e recuperação",
+              "Crash após cada fronteira de commit; restore testado; dados e chaves recuperáveis; confirmação corresponde à durabilidade prometida."
+            ],
+            [
+              "Segurança",
+              "Autenticação e autorização por conta/operação; acesso mínimo; segregação de funções; trilha de operadores; proteção de segredos e dados pessoais."
+            ],
+            [
+              "Concorrência e ownership",
+              "Testes com múltiplos processos e falhas de rede; serialização das invariantes; fencing de writers antigos; migração de shard controlada."
+            ],
+            [
+              "Idempotência",
+              "Escopo estável, fingerprint versionado, contrato de rejeições, retenção compatível com retries/replays e comparação de payload."
+            ],
+            [
+              "Integração",
+              "Outbox/tx-log recuperável, publicação repetível, consumidores idempotentes, versionamento e reconciliação externa."
+            ],
+            [
+              "Operação",
+              "SLIs de negócio, alertas, runbooks, backup/PITR, canário, rollback compatível, limites de carga e resposta a incidentes."
+            ],
+            [
+              "Validação financeira",
+              "Revisão do plano de contas, fechamento por moeda, regra de reservas, estorno e arredondamento; teste de propriedades e comparação com uma implementação simples de referência."
+            ]
+          ]
+        }
+      ],
+      "sourceIds": [
+        "ledger-datomic-tx-model",
+        "ledger-datomic-functions",
+        "ledger-datomic-schema"
+      ]
+    },
+    {
+      "id": "5",
+      "title": "MITIGAÇÃO DE DESAFIOS EXTREMOS (SISTEMAS DISTRIBUÍDOS)",
+      "intro": "A qualidade do desenho aparece quando cada fronteira falha de maneira diferente. Comece pelo que é verdadeiro após o crash, depois decida como continuar sem fabricar sucesso, saldo ou ordem global.",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Matriz de falhas, consistência, ordenação e correção",
+          "headers": [
+            "Situação",
+            "Risco real",
+            "Resposta arquitetural e evidência a observar"
+          ],
+          "rows": [
+            [
+              "Resposta HTTP perdida depois do commit",
+              "Cliente cria outro pagamento ao tentar de novo.",
+              "Repetir a mesma chave; consultar resultado durável. Medir tentativas separadas de operações."
+            ],
+            [
+              "Redis perde a chave de dedupe",
+              "Cache miss é interpretado como operação nova.",
+              "Fonte da dedupe é o ledger. Miss obriga consultar/criar condicionalmente na mesma autoridade."
+            ],
+            [
+              "Mesma chave, outro beneficiário ou quantia",
+              "Replay vira alteração disfarçada.",
+              "Comparar fingerprint do comando, incluindo escopo e semântica. Rejeitar conflito antes de qualquer efeito."
+            ],
+            [
+              "Duas compras disputam saldo",
+              "Ambas leem disponibilidade antiga e passam na pré-validação.",
+              "Revalidar o efeito agregado na transação que decide o commit. Teste concorrente com saldo suficiente para apenas uma."
+            ],
+            [
+              "Duas tx-functions debitam a mesma conta",
+              "Cada uma enxerga db-before e aprova isoladamente.",
+              "Agrupar efeitos antes da validação; não tratar tx-data como sequência de updates com read-after-write."
+            ],
+            [
+              "Crash após commit e antes do offset inbound",
+              "Comando é entregue novamente.",
+              "Dedupe transacional retorna journal anterior; offset avança depois de resultado resolvido."
+            ],
+            [
+              "Crash entre banco e publicação outbound",
+              "Fato financeiro desaparece dos consumidores.",
+              "Outbox/tx-log durável e relay com checkpoint. Nunca confiar apenas no segundo write de um dual write."
+            ],
+            [
+              "Crash após publish e antes de checkpoint do relay",
+              "Evento chega duas vezes.",
+              "Event_id permanece o mesmo; consumidor aplica efeito local e dedupe atomicamente."
+            ],
+            [
+              "Projector marca visto antes de gravar saldo",
+              "Crash deixa evento permanentemente ignorado.",
+              "Marca e alteração na mesma transação do destino; ou desenho idempotente equivalente com prova de recuperação."
+            ],
+            [
+              "Evento com delta chega fora de ordem",
+              "“Maior versão vence” descarta deltas necessários.",
+              "Detectar gaps e aplicar sequência, ou persistir entries únicas com materialização adequada. Snapshot absoluto tem outro contrato."
+            ],
+            [
+              "Read store respondeu consistentemente, mas está atrasado",
+              "Usuário vê saldo anterior e sistema autoriza gasto incorretamente.",
+              "Fonte da autorização é o core. Token de frescor/fallback pode melhorar UX, sem confundir consistência local da projeção com atualização do ledger."
+            ],
+            [
+              "Partição de rede entre shards",
+              "Uma metade foi confirmada; outra não.",
+              "Estado de saga visível, contas transitórias e reconciliação. Não declarar sucesso global só porque um lado debitou."
+            ],
+            [
+              "Writer antigo volta após pausa longa",
+              "Dois donos do shard escrevem.",
+              "Epoch/fencing verificado pela autoridade que recebe a escrita; lock expirado sozinho é insuficiente."
+            ],
+            [
+              "Parceiro recebe pagamento mas resposta some",
+              "Compensação devolve saldo e depois pagamento é reconhecido.",
+              "Estado UNKNOWN/RECONCILING; consultar referência estável do parceiro e conciliar antes de liberar sem evidência."
+            ],
+            [
+              "Reserva expira junto da captura",
+              "Disponibilidade é devolvida e débito final também entra.",
+              "Transições terminais condicionais e atômicas; definir tratamento de captura tardia conforme contrato do produto."
+            ],
+            [
+              "Dois estornos integrais concorrentes",
+              "Cliente recebe o valor duas vezes.",
+              "Relação única de reversão do original mais identidade da solicitação; retorno/rejeição determinísticos sob concorrência."
+            ],
+            [
+              "Bruno gastou antes do pedido de estorno",
+              "Inverter entries violaria saldo protegido.",
+              "O laboratório rejeita quando necessário. Produto real precisa fluxo de recuperação, disputa, crédito autorizado ou perdas; não forçar saldo negativo escondido."
+            ],
+            [
+              "Hot account ou clearing global",
+              "Um agregado limita todo o throughput.",
+              "Medir distribuição; separar contas transitórias por unidade adequada e consolidar posteriormente, preservando invariantes e significado contábil."
+            ],
+            [
+              "Evento inválido bloqueia partição",
+              "Uma mensagem impede todo o grupo de contas da partição.",
+              "DLQ/quarentena com owner e razão; para ordem estrita, reconhecer que pular pode exigir pausar/reparar o agregado. Não esconder lacuna."
+            ],
+            [
+              "Backfill compete com autorização",
+              "Rebuild causa timeouts no serviço financeiro.",
+              "Quota, prioridade e infraestrutura separadas; checkpoint e cancelamento. Nunca enviar efeitos externos no replay de uma view."
+            ],
+            [
+              "Schema muda durante rolling deploy",
+              "Consumidores antigos interpretam dinheiro de modo diferente.",
+              "Expand-contract; schema version e compatibilidade; ausência não significa taxa zero ou moeda BRL implicitamente."
+            ],
+            [
+              "Restore volta a um ponto anterior",
+              "Serviço esquece operação que o parceiro já executou.",
+              "Reconciliar ledger restaurado com autoridades externas antes de repetir efeitos. Dedupe e journal precisam recuperação coerente."
+            ],
+            [
+              "Credencial vazada publica comando balanceado",
+              "Soma zero esconde transferência não autorizada.",
+              "Autorização por recurso, identidade de workload, trilha e regras de tipo de lançamento; invariantes numéricas não substituem segurança."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-functions",
+            "ledger-outbox",
+            "ledger-retry",
+            "ledger-kafka",
+            "ledger-dr"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Read-your-writes: protocolo proposto, não comportamento privado atribuído ao Nubank",
+          "paragraphs": [
+            "Uma resposta de commit pode carregar um token opaco com database/shard, ownership epoch, posição confirmada e identidade da operação. Para uma tela que precisa mostrar o efeito, a API pede à projeção prova de que alcançou esse ponto. Um projector só pode avançar seu watermark quando todas as mudanças relevantes anteriores estão aplicadas segundo o contrato; observar o evento com o maior número não prova ausência de buracos.",
+            "Se o prazo de espera acabar, três respostas são possíveis: ler da autoridade com admissão e autorização próprias; mostrar “processando atualização” com o resultado confirmado da operação; ou retornar indisponibilidade/frescor insuficiente. O que não vale é apresentar um saldo velho como prova de que a transferência falhou.",
+            "d/sync e db-after resolvem aspectos de coordenação dentro da API Datomic. Não sincronizam automaticamente Redis, DynamoDB de leitura ou consumidores Kafka. t lógico, entity ID da transação e txInstant são conceitos distintos; txInstant em milissegundos não é identidade exclusiva. Um token não deve misturar posições de databases diferentes. Em leitura que reúne vários shards, um vetor de posições ou outro contrato de snapshot será necessário; tirar o maior número entre dois t locais não cria uma linha do tempo global.",
+            "Assine/valide o token ou trate-o apenas como indicação não confiável: o cliente não pode pedir uma posição impossível e manter workers esperando indefinidamente. Limite prazo, versão e escopo do token. Após migração ou restore, lineage/epoch determina se a posição antiga ainda pode ser satisfeita ou precisa ser traduzida; essa mudança é parte do protocolo."
+          ],
+          "sourceIds": [
+            "ledger-datomic-api",
+            "ledger-datomic-sync",
+            "ledger-dynamo",
+            "ledger-datomic-best"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Estado de uma leitura com frescor mínimo",
+          "text": "commit_token = {ledger_id, shard_id, ownership_epoch, position, operation_id}\n\nread_view(account_id, min_token, deadline):\n    authorize(account_id)\n    validate_token_scope_and_lineage(min_token)\n    while time_left(deadline) permits bounded_read:\n        (view, watermark) = read_view_and_watermark_consistently()\n        if same_lineage(watermark, min_token) and watermark >= min_token.position:\n            return view  // versão da view corresponde ao watermark validado\n        if not time_left(deadline) permits bounded_wait: break\n        wait_for_progress_or_timeout(deadline)\n    if policy_allows_authoritative_fallback and admission_granted:\n        snapshot = read_authoritative_snapshot(min_token, deadline)\n        if same_database_and_epoch(snapshot, min_token) and snapshot.basis >= min_token.position:\n            return query(snapshot, account_id)\n    return freshness_not_yet_satisfied\n\n// Não validar watermark novo e depois devolver valor velho de outro cache.\n// \"contiguous\" importa: máximo visto != todos os eventos anteriores aplicados.\n// Em Datomic, usar sincronização/valor apropriado à API e à edição.\n// Esse é um protocolo de aplicação proposto, não uma API pronta do Nubank.",
+          "language": "text"
+        },
+        {
+          "type": "prose",
+          "title": "Capacity planning: derive, meça, depois escolha shards e máquinas",
+          "paragraphs": [
+            "Use λ para operações de negócio por segundo, k para média de entries por journal, d para datoms totais produzidos por operação, b para bytes serializados do evento, r para fator de replicação e T para retenção. A taxa de entries é λk; a de datoms é λd; payload lógico no log é λb por segundo. Essas contas dimensionam ordens de grandeza, mas não incluem índices, metadados, compressão, compactação, múltiplas cópias, overhead de protocolo ou custo de leitura.",
+            "Exemplo exclusivamente didático: λ=5.000 operações/s, k=4 entries/op, d=52 datoms/op e evento de 1.500 bytes. Isso implica 20.000 entries/s, 260.000 datoms/s e 7,5 MB/s de payload de eventos. Em tráfego constante, são 648 GB/dia de payload decimal e 4,536 TB em sete dias por cópia; com três cópias, 13,608 TB antes dos demais fatores. Não é medição nem capacidade publicada de Nubank, Datomic ou Kafka.",
+            "Se um experimento representar o caminho serial de uma unidade por tempo médio s=2 ms e uma operação por commit, μ≈1/s=500 commits/s seria uma aproximação inicial daquela unidade. Para 5.000 operações/s e utilização planejada de 60%, ceil(5000/(500×0,60))=17 unidades seria um piso matemático hipotético. Falhas, skew, batching, perfil transacional e limites reais podem mudar completamente o número. Uma conta quente pode continuar limitada mesmo com cem shards vazios.",
+            "Batching pode amortizar custo fixo, mas adiciona espera e amplia a falha de um lote. Deve preservar identidade de cada operação, invariantes agregadas e resultado individual. Não colocar várias funções que pressupõem ler umas às outras na mesma tx-data. O benchmark precisa incluir conflitos, aborts, retries e recuperação; throughput sem taxa de rejeição e sem p99 não informa o usuário.",
+            "Pela Lei de Little, em regime estável L=λW. A 5.000 operações/s com tempo médio total de 100 ms, há aproximadamente 500 operações em andamento. Isso inclui espera e serviço; aumentar concorrência indiscriminadamente pode elevar a fila em vez do throughput. Em um pico de 30.000/s por 60 s com capacidade efetiva de 10.000/s, acumulam-se 1,2 milhão de operações. Quando a chegada volta a 5.000/s, a drenagem ideal a 5.000/s líquidos leva 240 s, antes de skew e falhas. O contrato de aceitação precisa explicar essa espera."
+          ],
+          "sourceIds": [
+            "ledger-datomic-capacity",
+            "ledger-overload"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Baixo nível: onde a latência realmente aparece",
+          "headers": [
+            "Recurso",
+            "Sintoma",
+            "Investigação e compromisso"
+          ],
+          "rows": [
+            [
+              "CPU/serialização",
+              "Core ocupado sem saturação do banco.",
+              "Payload grande, normalização/hash, validação, compressão e conversões. Limitar tamanho e medir perfis; não remover validação financeira para ganhar benchmark."
+            ],
+            [
+              "Heap e GC JVM",
+              "Pausas e variação de p99.",
+              "Alocações, tamanho de lote, caches e pressão de memória. Heap maior pode mudar padrão de pausa; medir com workload real."
+            ],
+            [
+              "Cache de índices",
+              "Queries alternam entre rápidas e lentas.",
+              "Working set e acesso aos segmentos; cold start/failover esfria cache. Planejar warmup sem inundar storage."
+            ],
+            [
+              "Storage e persistência",
+              "Commit fica lento mesmo com CPU livre.",
+              "Latência do backend, IOPS/bandwidth, throttle, tamanho da transação e distribuição. Verificar o que o ack realmente promete."
+            ],
+            [
+              "Rede",
+              "RPC e replicação consomem orçamento.",
+              "RTT entre zonas/regiões, TLS, buffers, retransmissões e pools. Cross-region síncrono paga distância física."
+            ],
+            [
+              "Fila e scheduler",
+              "Serviço é rápido, mas usuário espera.",
+              "Medição separada de queue time e service time; oldest age, concorrência, partições e starvation."
+            ],
+            [
+              "Índices/projeções",
+              "Read model deixa de acompanhar.",
+              "Amplificação de escrita, chaves quentes, scans e evento fora de ordem. Projetor precisa throughput maior que a chegada para recuperar atraso."
+            ],
+            [
+              "Control plane e quotas",
+              "Recuperação não consegue criar recursos.",
+              "Capacidade sobrevivente, limites de cloud e dependências de provisionamento. Alta disponibilidade não deve depender apenas de criar máquinas depois da falha."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-cache",
+            "ledger-datomic-index",
+            "ledger-nu-shards"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "p99 é uma propriedade do caminho, não uma soma de slogans",
+          "paragraphs": [
+            "Meça gateway, publicação inbound, tempo na fila, transação core, publicação outbound e projeção separadamente, além dos tempos de negócio: aceitação, contabilização e liquidação. O percentil 99 de componentes não se soma automaticamente ao percentil 99 do caminho: correlação, fan-out, retries e filas mudam a distribuição. Um orçamento de 50 ms por componente pode orientar desenho, mas não prova o SLO de ponta a ponta.",
+            "Separe falha técnica, rejeição correta de negócio e resultado ainda pendente. InsufficientFunds pode ser resposta correta; timeout depois do commit é risco de ambiguidade; backlog crescente pode violar prazo de negócio mesmo com 100% das mensagens finalmente processadas. Use alertas de burn rate, idade máxima e invariantes financeiras, não apenas CPU e status HTTP.",
+            "No teste de capacidade, publique a forma da carga: distribuição de contas, percentual de contas quentes, quantidade de entries, moedas, proporção de estornos, tamanho do histórico e condição de cache. Faça também o teste com uma zona/nó indisponível e replay acontecendo. O desenho que só atende o pico com todos os componentes saudáveis não tem capacidade de recuperação demonstrada."
+          ],
+          "sourceIds": [
+            "ledger-slo",
+            "ledger-overload"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Testes que demonstram propriedades, não apenas caminhos felizes",
+          "headers": [
+            "Propriedade",
+            "Experimento significativo",
+            "Resultado esperado"
+          ],
+          "rows": [
+            [
+              "Conservação por moeda",
+              "Gerar journals válidos e inválidos com BRL/USD, incluindo numericamente zero mas moedas separadas desequilibradas.",
+              "Somente journals balanceados em cada moeda podem confirmar."
+            ],
+            [
+              "No overdraft",
+              "Executar N threads/processos disputando uma conta com fundos para apenas parte das operações.",
+              "Sucessos cabem no saldo; rejeições não deixam efeitos; saldo final coincide com histórico."
+            ],
+            [
+              "Débitos múltiplos no mesmo comando",
+              "Duas reduções individuais possíveis, mas soma maior que disponibilidade.",
+              "Comando inteiro rejeitado; nenhuma validação isolada permite burlar saldo."
+            ],
+            [
+              "Idempotência concorrente",
+              "Mesmo comando e chave chegando simultaneamente por várias conexões.",
+              "Um journal financeiro; todas as respostas de sucesso referenciam o mesmo resultado."
+            ],
+            [
+              "Conflito de identidade",
+              "Mesma chave com outra quantia, moeda, beneficiário ou semântica incluída no fingerprint.",
+              "Conflito explícito, nunca update silencioso ou segundo efeito."
+            ],
+            [
+              "Atomicidade no crash",
+              "Falhar antes/depois de persistir cada parte na implementação durável.",
+              "Ou nada confirma, ou todo o journal e dedupe/result/outbox estão recuperáveis."
+            ],
+            [
+              "Saída confiável",
+              "Crash após commit, após publish e antes de checkpoint.",
+              "Evento não desaparece; duplicata é esperada e efeito da projeção não se repete."
+            ],
+            [
+              "Ordem e gaps",
+              "Entregar evento 12 antes de 11; duplicar 10; pausar partição.",
+              "Projeção respeita contrato de delta/snapshot e não anuncia watermark contínuo falso."
+            ],
+            [
+              "Histórico imutável",
+              "Consultar saldo as-of antes e depois de estorno; tentar mutar estrutura retornada.",
+              "Resultado passado permanece; objeto exposto não altera estado interno."
+            ],
+            [
+              "Estorno concorrente",
+              "Duas reversões totais e retry da mesma reversão.",
+              "Uma compensação financeira; replay retorna resultado ou conflito conforme identidade."
+            ],
+            [
+              "Recuperação operacional",
+              "Restaurar backup, aplicar logs e reconciliar com parceiro em ambiente isolado.",
+              "RPO/RTO medidos; ausência de pagamento duplicado após retorno."
+            ],
+            [
+              "Evolução e replay",
+              "Código novo reprocessa eventos antigos, preservando respostas de domínio esperadas.",
+              "Schema compatível/upcast explícito; nenhuma chamada financeira externa no rebuild."
+            ]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Perguntas difíceis para treinar a defesa do desenho",
+          "items": [
+            "Você recebeu timeout. Qual fonte prova se houve commit e por quanto tempo essa prova permanece disponível?",
+            "Por que adicionar 20 consumidores não acelera uma conta que concentra 40% das operações?",
+            "Como uma transferência entre shards preserva conservação local sem fingir atomicidade global?",
+            "O que o usuário verá se o ledger confirmou e a projeção ficou dez segundos parada?",
+            "Por que uma operação balanceada ainda pode violar autorização ou contabilizar na conta errada?",
+            "Qual é a diferença entre reverter uma entry no domínio e retrair um datom no banco?",
+            "Se o Kafka expirar eventos antigos, de onde vem o backfill e como ele não derruba a produção?",
+            "Qual configuração e qual teste sustentam o RPO prometido? O backup inclui chaves e dependências necessárias?",
+            "Ao migrar para Azure ou on-prem, que semântica você redesenha e qual invariante deve permanecer idêntica?",
+            "Que parte do seu código é demonstração local e que evidência faltaria antes de colocar dinheiro real nele?"
+          ]
+        },
+        {
+          "type": "prose",
+          "title": "Caso 1 · AccountOpened precisa preceder CreditPosted",
+          "paragraphs": [
+            "Primeiro, defina a causa: o crédito pressupõe que a conta existe, tem moeda definida e está autorizada a receber aquele lançamento. Se ambos os eventos pertencem à mesma história de conta, o produtor autoritativo atribui uma sequência monotônica e publica AccountOpened antes de CreditPosted. Com o mesmo tópico, a mesma chave e o mesmo mapeamento de partição, Kafka preserva a ordem dos registros daquela partição; ainda é necessário que o produtor/relay publique na ordem causal e que o consumidor não conclua processamento paralelo fora dela.",
+            "Mesma chave em tópicos diferentes não fornece ordem entre tópicos. Dois produtores independentes também não ganham causalidade só por usar account_id. Mudança de número de partições, migração de tópico ou alteração de roteador pode mudar a distribuição. Uma transferência entre duas contas tem duas histórias: ordenar pela conta de origem não prova que o destino já foi criado. A solução vem de uma autoridade transacional que valida as duas contas ou de um workflow que depende explicitamente da confirmação de abertura.",
+            "O consumidor mantém aggregate_version esperado e inbox durável. Ao receber CreditPosted v2 sem AccountOpened v1, não cria uma conta fictícia nem descarta o crédito como erro definitivo. Pode estacionar o evento por agregado, buscar a dependência na autoridade ou aguardar/reprocessar com backoff limitado. O checkpoint do transporte só pode avançar sobre essa mensagem se a pendência já estiver duravelmente registrada e recuperável. Do contrário, um crash transforma a espera em perda.",
+            "Depois de aplicar v1, o consumidor libera v2, atualiza visão e dedupe atomicamente e avança o progresso contíguo. Alertas de idade da pendência revelam evento realmente ausente. Se a conta nunca deveria existir ou o evento viola contrato, quarentena com evidência e owner substitui retry infinito. O protocolo de gaps faz parte do contrato de recuperação, não de uma tentativa de adivinhar ordem por timestamp."
+          ],
+          "sourceIds": [
+            "ledger-kafka",
+            "ledger-outbox"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Exemplo causal com inbox por agregado",
+          "text": "AccountOpened {account_id:A, aggregate_version:1, event_id:e1}\nCreditPosted  {account_id:A, aggregate_version:2, event_id:e2, delta:+15000}\n\nconsume(event):\n    begin destination_transaction\n    try:\n        expected = aggregate_state[event.account_id].version + 1\n        if inbox[event.event_id].applied:\n            verify_same_event_identity_and_payload(event)\n        elif event.version > expected:\n            persist_pending_inbox(event)  // recuperável mesmo após crash\n        elif event.version < expected:\n            require_known_duplicate_or_raise_history_conflict(event)\n        else:\n            validate_transition_and_apply(event)\n            mark_inbox_applied_and_advance_aggregate_version(event)\n        commit\n    catch error:\n        rollback\n        retry_or_quarantine_durably_according_to_error(error, event)\n        return  // sem ack até tratamento durável estar garantido\n    acknowledge_transport()\n\n// Worker independente consulta pending_inbox durável e recupera gaps.\n// Não depender de um agendamento volátil entre commit e crash.\n// Se uma quarentena for usada, publicar/gravar nela antes de confirmar a origem.\n// v2 não transforma uma conta ausente em uma conta autorizada.",
+          "language": "text"
+        },
+        {
+          "type": "prose",
+          "title": "Caso 2 · TED/Pix aprovado internamente e rejeitado externamente",
+          "paragraphs": [
+            "O cenário é uma hipótese de entrevista, não descrição do processamento privado Nubank ou substituto da documentação do arranjo de pagamento. Aprovação interna significa que identidade, regras e fundos passaram pela autoridade local. A liquidação externa exige outra evidência. Uma máquina de estados útil é PENDING_RESERVED → SENT → SETTLED, com ramo de rejeição definitiva para REJECTED_COMPENSATING → REJECTED_COMPENSATED e ramo de timeout para UNKNOWN → RECONCILING. O nome final só muda após confirmação durável do resultado e da compensação correspondente.",
+            "Uma forma explícita de representar reserva em subcontas é postar J-reserve: disponível-A −15000 e reservado-A +15000. Com R$1.000 iniciais, o cliente passa a ter R$850 disponíveis e R$150 reservados; a obrigação total continua R$1.000. Se o destino rejeita de forma definitiva, J-release cria reservado-A −15000 e disponível-A +15000, referenciando a reserva. O journal de reserva continua existindo. Essa representação é uma opção; outra é uma tabela/entidade de holds transacional, mantendo saldo contábil separado de disponibilidade.",
+            "Se há liquidação externa confirmada, uma representação simplificada posta reservado-A −15000 e ativo-de-liquidação +15000 na convenção crédito−débito; o crédito reduz o saldo natural devedor daquele ativo. O plano real pode exigir contas de obrigação, taxas, liquidação e múltiplos passos. Se um desenho já havia contabilizado em uma conta transitória de obrigação antes da resposta externa, a rejeição gera novas entries que invertem/compensam o lançamento apropriado e liberam a reserva, com referências à causa. Nunca editar a entry original para fazê-la desaparecer.",
+            "Timeout depois de SENT não é rejeição: o parceiro pode ter liquidado. Manter estado desconhecido, consultar por referência estável e reconciliar evita devolver disponibilidade e ainda reconhecer um pagamento pago. Retries usam a mesma identidade no parceiro quando o contrato permite. A compensação também é idempotente; duas rejeições ou dois callbacks não devolvem R$300 por um pagamento de R$150. Se compensar falhar, a operação continua REJECTED_COMPENSATING e exige retry/ação operacional, em vez de exibir dinheiro devolvido antes do commit."
+          ],
+          "sourceIds": [
+            "ledger-ledger-model",
+            "ledger-retry",
+            "ledger-outbox"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Baseline de infraestrutura para um experimento, não benchmark ou receita Nubank",
+          "headers": [
+            "Peça",
+            "Hipótese inicial de laboratório/carga",
+            "O que validar antes de dimensionar produção"
+          ],
+          "rows": [
+            [
+              "API/core workers",
+              "2–3 réplicas, por exemplo 2–4 vCPU e 4–8 GiB cada; requests/limits e pools explícitos.",
+              "Perfil CPU/heap, GC, serialização, taxa de rejeição e p99 com uma réplica/zone indisponível. Números são ponto de partida ajustável."
+            ],
+            [
+              "Datomic Pro por unidade",
+              "Exemplo inicial 4–8 vCPU e 16–32 GiB para processos transacionais/consulta conforme papel; ajustar heap e cache ao working set.",
+              "Seguir suporte/capacidade/HA da edição. Não inferir throughput desses recursos nem somar capacidade de writers como se cada um aceitasse escrita independente no mesmo database."
+            ],
+            [
+              "Kafka experimental",
+              "3 brokers em domínios de falha; replication.factor=3, min.insync.replicas=2, producer acks=all e idempotence habilitada; discos persistentes.",
+              "Com ISR insuficiente a escrita deve falhar; evitar eleição não limpa se ameaça a durabilidade. Dimensionar partições, rede, disco, retenção e recuperação. EOS Kafka não inclui automaticamente Datomic."
+            ],
+            [
+              "Projectors/read stores",
+              "2–3 workers inicialmente, concorrência limitada por partições e capacidade do destino; cache com memória/eviction definidos.",
+              "Throughput de catch-up maior que chegada, versão/dedupe atômicas, custo/limites do destino e p99 em cold cache. Banco gerenciado é dimensionado também por IOPS/throughput/quota, não só RAM do worker."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-capacity",
+            "ledger-kafka",
+            "ledger-overload"
+          ]
+        }
+      ],
+      "sourceIds": [
+        "ledger-datomic-functions",
+        "ledger-outbox",
+        "ledger-retry",
+        "ledger-kafka",
+        "ledger-dr",
+        "ledger-datomic-api",
+        "ledger-datomic-sync",
+        "ledger-dynamo",
+        "ledger-datomic-capacity",
+        "ledger-overload",
+        "ledger-datomic-cache",
+        "ledger-datomic-index",
+        "ledger-nu-shards",
+        "ledger-slo",
+        "ledger-ledger-model",
+        "ledger-datomic-best"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "ledger-nu-shards",
+      "title": "Nubank — Managing Cloud Limits",
+      "url": "https://building.nu.com/managing-cloud-limits/",
+      "type": "Nubank oficial",
+      "summary": "Evidência pública de sharding de dados/serviços/Kafka, contas AWS e contenção de falhas."
+    },
+    {
+      "id": "ledger-nu-history",
+      "title": "Architecting a Modern Financial Institution",
+      "url": "https://www.infoq.com/presentations/nubank-architecture/",
+      "type": "Palestra de engenheiros Nubank",
+      "summary": "Palestra histórica de arquitetos Nubank; não representa inventário atual completo."
+    },
+    {
+      "id": "ledger-datomic-processing",
+      "title": "Datomic — Processing Transactions",
+      "url": "https://docs.datomic.com/transactions/transaction-processing.html",
+      "type": "Documentação oficial",
+      "summary": "Processamento de transações e aplicação de dados."
+    },
+    {
+      "id": "ledger-datomic-schema",
+      "title": "Datomic — Schema Reference",
+      "url": "https://docs.datomic.com/schema/schema-reference.html",
+      "type": "Documentação oficial",
+      "summary": "Tipos, cardinalidade, unicidade e particularidades de esquema."
+    },
+    {
+      "id": "ledger-datomic-data",
+      "title": "Datomic — Transaction Data",
+      "url": "https://docs.datomic.com/transactions/transaction-data-reference.html",
+      "type": "Documentação oficial",
+      "summary": "Assert/retract, formas de transação e expansão funcional."
+    },
+    {
+      "id": "ledger-datomic-functions",
+      "title": "Datomic — Transaction Functions",
+      "url": "https://docs.datomic.com/transactions/transaction-functions.html",
+      "type": "Documentação oficial",
+      "summary": "Validação e expansão de transações a partir de db-before."
+    },
+    {
+      "id": "ledger-datomic-api",
+      "title": "Datomic — Client API",
+      "url": "https://docs.datomic.com/client-api/datomic.client.api.html",
+      "type": "Documentação oficial",
+      "summary": "db-before/db-after, sync, consultas e tx-range; conferir edição/API usada."
+    },
+    {
+      "id": "ledger-datomic-storage",
+      "title": "Datomic Pro — Storage Services",
+      "url": "https://docs.datomic.com/operation/storage.html",
+      "type": "Documentação oficial",
+      "summary": "Backends suportados e configuração; DynamoDB Global Tables não é storage suportado."
+    },
+    {
+      "id": "ledger-datomic-cloud",
+      "title": "Datomic Cloud Architecture",
+      "url": "https://docs.datomic.com/operation/architecture.html",
+      "type": "Documentação oficial",
+      "summary": "Arquitetura específica da edição Cloud e camadas AWS."
+    },
+    {
+      "id": "ledger-datomic-cache",
+      "title": "Datomic — Memory and Caching",
+      "url": "https://docs.datomic.com/operation/caching.html",
+      "type": "Documentação oficial",
+      "summary": "Memória de índices recentes e cache de dados imutáveis."
+    },
+    {
+      "id": "ledger-datomic-capacity",
+      "title": "Datomic Pro — Capacity Planning",
+      "url": "https://docs.datomic.com/operation/capacity.html",
+      "type": "Documentação oficial",
+      "summary": "Planejamento deve considerar entidades/datoms, escrita, memória e workload."
+    },
+    {
+      "id": "ledger-datomic-sync",
+      "title": "Datomic — Client Synchronization",
+      "url": "https://docs.datomic.com/transactions/client-synchronization.html",
+      "type": "Documentação oficial",
+      "summary": "Coordenação entre clientes e valores de banco; não é contrato da projeção externa."
+    },
+    {
+      "id": "ledger-kafka",
+      "title": "Apache Kafka — Design",
+      "url": "https://kafka.apache.org/41/design/design/",
+      "type": "Documentação oficial",
+      "summary": "Logs, partições, grupos, replicação e fronteira de semânticas de processamento."
+    },
+    {
+      "id": "ledger-outbox",
+      "title": "Transactional Outbox — Chris Richardson",
+      "url": "https://microservices.io/patterns/data/transactional-outbox",
+      "type": "Autor do padrão",
+      "summary": "Intenção de publicar atômica com a escrita; relay admite duplicatas."
+    },
+    {
+      "id": "ledger-dynamo",
+      "title": "DynamoDB — Read Consistency",
+      "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html",
+      "type": "Documentação oficial",
+      "summary": "Consistência varia entre tabela, índices e configuração."
+    },
+    {
+      "id": "ledger-ledger-model",
+      "title": "TigerBeetle — Data Modeling",
+      "url": "https://docs.tigerbeetle.com/coding/data-modeling/",
+      "type": "Documentação oficial",
+      "summary": "Contas e transferências financeiras; referência conceitual, não dependência desta implementação."
+    },
+    {
+      "id": "ledger-retry",
+      "title": "AWS Builders Library — Timeouts, retries and jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "type": "Documentação oficial",
+      "summary": "Timeout é ambíguo; retries precisam limite e semântica segura."
+    },
+    {
+      "id": "ledger-overload",
+      "title": "Google SRE — Handling Overload",
+      "url": "https://sre.google/sre-book/handling-overload/",
+      "type": "Documentação oficial",
+      "summary": "Limites de concorrência, admissão e falhas em cascata."
+    },
+    {
+      "id": "ledger-dr",
+      "title": "AWS Well Architected — Disaster Recovery",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/plan-for-disaster-recovery-dr.html",
+      "type": "Documentação oficial",
+      "summary": "RPO/RTO, estratégias e validação da recuperação."
+    },
+    {
+      "id": "ledger-slo",
+      "title": "Google SRE — Service Level Objectives",
+      "url": "https://sre.google/sre-book/service-level-objectives/",
+      "type": "Documentação oficial",
+      "summary": "SLIs e objetivos para experiência observável."
+    },
+    {
+      "id": "ledger-datomic-model",
+      "title": "Datomic — Data Model",
+      "url": "https://docs.datomic.com/data-model.html",
+      "type": "Documentação oficial",
+      "summary": "Fatos, entidades e valores de banco no tempo."
+    },
+    {
+      "id": "ledger-datomic-acid",
+      "title": "Datomic — ACID",
+      "url": "https://docs.datomic.com/transactions/acid.html",
+      "type": "Documentação oficial",
+      "summary": "Garantias transacionais dentro de um database."
+    },
+    {
+      "id": "ledger-datomic-tx-model",
+      "title": "Datomic — Transaction Model",
+      "url": "https://docs.datomic.com/transactions/model.html",
+      "type": "Documentação oficial",
+      "summary": "Transação como conjunto de mudanças aplicado atomicamente."
+    },
+    {
+      "id": "ledger-datomic-time",
+      "title": "Datomic — Database Filters",
+      "url": "https://docs.datomic.com/reference/filters.html",
+      "type": "Documentação oficial",
+      "summary": "as-of, since e history para consultas temporais."
+    },
+    {
+      "id": "ledger-datomic-query",
+      "title": "Datomic — Query Reference",
+      "url": "https://docs.datomic.com/query/query-data-reference.html",
+      "type": "Documentação oficial",
+      "summary": "Datalog, agregação e semântica de conjuntos/with."
+    },
+    {
+      "id": "ledger-datomic-index",
+      "title": "Datomic — Index Model",
+      "url": "https://docs.datomic.com/indexes/index-model.html",
+      "type": "Documentação oficial",
+      "summary": "Índices e segmentos imutáveis; distingue accumulate-only de layout append-only."
+    },
+    {
+      "id": "ledger-datomic-compose",
+      "title": "Datomic — Composing Transactions, by Example",
+      "url": "https://docs.datomic.com/tech-notes/composing-transactions-by-example.html",
+      "type": "Documentação oficial",
+      "summary": "Composição de transações e por que validar ações isoladas pode não proteger o conjunto."
+    },
+    {
+      "id": "ledger-datomic-identity",
+      "title": "Datomic — Identity and Uniqueness",
+      "url": "https://docs.datomic.com/schema/identity.html",
+      "type": "Documentação oficial",
+      "summary": "Diferença entre unique identity/upsert e unique value/rejeição."
+    },
+    {
+      "id": "ledger-datomic-best",
+      "title": "Datomic — Best Practices",
+      "url": "https://docs.datomic.com/reference/best.html",
+      "type": "Documentação oficial",
+      "summary": "Uso de valores consistentes e distinção entre t lógico, tx entity ID e txInstant."
+    },
+    {
+      "id": "ledger-nu-evergreen",
+      "title": "Nubank — A digital pine forest: the evergreen cache",
+      "url": "https://building.nu.com/the-evergreen-cache/",
+      "type": "Nubank oficial",
+      "summary": "Relato histórico de 2020 sobre cache de saldo versionado por conta; não é especificação atual completa do ledger."
+    }
+  ],
+  "codeFiles": [
+    {
+      "name": "ledger.py",
+      "language": "Python",
+      "text": "\"\"\"Ledger didático em memória: uma instância, um processo, threads coordenadas.\n\nNão é uma implementação de produção nem um emulador do Datomic.\nA API expõe fatos imutáveis; cada commit troca um snapshot sob RLock.\nSinais são operacionais: +delta aumenta saldo; -delta reduz saldo.\n\"\"\"\nfrom __future__ import annotations\n\nfrom collections import defaultdict\nfrom dataclasses import dataclass, replace\nfrom datetime import datetime, timezone\nfrom hashlib import sha256\nimport json\nfrom threading import RLock\nfrom types import MappingProxyType\nfrom typing import Annotated, Literal, Mapping\n\nfrom pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator\n\n\nMAX_CENTS = 2**63 - 1\n# Apenas moedas com duas casas decimais neste exercício. Não é um catálogo ISO.\nCurrency = Literal[\"BRL\", \"USD\", \"EUR\"]\nIdentifier = Annotated[\n    str, Field(strict=True, min_length=1, max_length=64,\n               pattern=r\"^[A-Za-z0-9][A-Za-z0-9._:-]*$\")\n]\nIdempotencyKey = Annotated[\n    str, Field(strict=True, min_length=1, max_length=128,\n               pattern=r\"^[A-Za-z0-9][A-Za-z0-9._:-]*$\")\n]\nCents = Annotated[int, Field(strict=True, ge=-MAX_CENTS, le=MAX_CENTS)]\nTxId = Annotated[int, Field(strict=True, ge=1)]\nDescription = Annotated[str, Field(strict=True, max_length=240)]\n\n\nclass ImmutableModel(BaseModel):\n    model_config = ConfigDict(frozen=True, strict=True, extra=\"forbid\")\n\n\nclass Account(ImmutableModel):\n    account_id: Identifier\n    currency: Currency\n    # customer é uma conta operacional protegida, não \"debit-normal\" contábil.\n    kind: Literal[\"customer\", \"clearing\"] = \"customer\"\n\n\nclass Posting(ImmutableModel):\n    account_id: Identifier\n    currency: Currency\n    delta_cents: Cents\n\n    @field_validator(\"delta_cents\")\n    @classmethod\n    def nonzero(cls, value: int) -> int:\n        if value == 0:\n            raise ValueError(\"Um posting não pode ter valor zero.\")\n        return value\n\n\ndef _check_balanced(postings: tuple[Posting, ...]) -> None:\n    totals: dict[str, int] = defaultdict(int)\n    accounts: dict[str, set[str]] = defaultdict(set)\n    for posting in postings:\n        totals[posting.currency] += posting.delta_cents\n        accounts[posting.currency].add(posting.account_id)\n    for currency, total in totals.items():\n        if total != 0:\n            raise ValueError(f\"Postings não fecham em {currency}: delta={total}.\")\n        if len(accounts[currency]) < 2:\n            raise ValueError(f\"Exija ao menos duas contas distintas em {currency}.\")\n\n\nclass PostRequest(ImmutableModel):\n    idempotency_key: IdempotencyKey\n    postings: tuple[Posting, ...] = Field(min_length=2, max_length=1000)\n    description: Description = \"\"\n\n    @model_validator(mode=\"after\")\n    def balanced_by_currency(self):\n        _check_balanced(self.postings)\n        return self\n\n\nclass ReverseRequest(ImmutableModel):\n    idempotency_key: IdempotencyKey\n    original_tx_id: TxId\n    description: Description = \"Estorno integral\"\n\n\nclass Transaction(PostRequest):\n    tx_id: TxId\n    request_hash: Annotated[str, Field(pattern=r\"^[a-f0-9]{64}$\")]\n    created_at: datetime\n    reversal_of: TxId | None = None\n\n    @field_validator(\"created_at\")\n    @classmethod\n    def aware_time(cls, value: datetime) -> datetime:\n        if value.tzinfo is None or value.utcoffset() is None:\n            raise ValueError(\"created_at precisa de timezone.\")\n        return value\n\n\nclass LedgerError(Exception):\n    \"\"\"Rejeição de domínio; nenhum commit parcial deve ser observável.\"\"\"\n\n\nclass AccountConflict(LedgerError):\n    pass\n\n\nclass UnknownAccount(LedgerError):\n    pass\n\n\nclass CurrencyMismatch(LedgerError):\n    pass\n\n\nclass InsufficientFunds(LedgerError):\n    pass\n\n\nclass BalanceOverflow(LedgerError):\n    pass\n\n\nclass InvariantViolation(LedgerError):\n    pass\n\n\nclass IdempotencyConflict(LedgerError):\n    pass\n\n\nclass UnknownTransaction(LedgerError):\n    pass\n\n\nclass AlreadyReversed(LedgerError):\n    pass\n\n\nclass InvalidReversal(LedgerError):\n    pass\n\n\nclass InvalidCutoff(LedgerError):\n    pass\n\n\n@dataclass(frozen=True)\nclass _DedupEntry:\n    request_hash: str\n    result: Transaction\n\n\n@dataclass(frozen=True)\nclass _State:\n    accounts: Mapping[str, Account]\n    balances: Mapping[str, int]\n    journal: tuple[Transaction, ...]\n    dedup: Mapping[str, _DedupEntry]\n    reversed_by: Mapping[int, int]\n\n\ndef _empty_state() -> _State:\n    return _State(\n        accounts=MappingProxyType({}), balances=MappingProxyType({}),\n        journal=(), dedup=MappingProxyType({}), reversed_by=MappingProxyType({}),\n    )\n\n\ndef _request_hash(request: PostRequest | ReverseRequest) -> str:\n    \"\"\"Hash semântico versionado; a chave identifica intenção, não entra no hash.\n\n    Ordenação de postings não muda o efeito e é normalizada. Multiplicidade,\n    valores, moedas e descrição continuam fazendo parte do contrato.\n    \"\"\"\n    payload = request.model_dump(mode=\"json\", exclude={\"idempotency_key\"})\n    if isinstance(request, ReverseRequest):\n        operation = \"reverse\"\n    else:\n        operation = \"post\"\n        payload[\"postings\"] = sorted(\n            payload[\"postings\"],\n            key=lambda p: (p[\"account_id\"], p[\"currency\"], p[\"delta_cents\"]),\n        )\n    encoded = json.dumps(\n        {\"schema\": 1, \"operation\": operation, \"request\": payload},\n        sort_keys=True, ensure_ascii=False, separators=(\",\", \":\"), allow_nan=False,\n    ).encode(\"utf-8\")\n    return sha256(encoded).hexdigest()\n\n\nclass Ledger:\n    \"\"\"Escritor serializado por instância; sem persistência e sem rede.\n\n    Todos os métodos públicos usam o mesmo lock. Não há I/O nem callbacks de\n    aplicação dentro dele. O ponto de commit é a troca única de self._state.\n    \"\"\"\n\n    def __init__(self) -> None:\n        self._lock = RLock()\n        self._state = _empty_state()\n\n    def register_account(self, account: Account) -> Account:\n        if not isinstance(account, Account):\n            raise TypeError(\"Passe um Account validado.\")\n        # Revalidar a partir de dados evita confiar em model_copy/model_construct.\n        account = Account.model_validate(account.model_dump(mode=\"python\"))\n        with self._lock:\n            state = self._state\n            existing = state.accounts.get(account.account_id)\n            if existing is not None:\n                if existing != account:\n                    raise AccountConflict(\"ID já cadastrado com outros atributos.\")\n                return existing\n            accounts = dict(state.accounts)\n            balances = dict(state.balances)\n            accounts[account.account_id] = account\n            balances[account.account_id] = 0\n            self._state = replace(\n                state, accounts=MappingProxyType(accounts),\n                balances=MappingProxyType(balances),\n            )\n            return account\n\n    def post(self, request: PostRequest) -> Transaction:\n        if not isinstance(request, PostRequest) or isinstance(request, Transaction):\n            raise TypeError(\"Passe um PostRequest, não uma Transaction existente.\")\n        request = PostRequest.model_validate(request.model_dump(mode=\"python\"))\n        fingerprint = _request_hash(request)\n        with self._lock:\n            state = self._state\n            duplicate = self._duplicate(state, request.idempotency_key, fingerprint)\n            if duplicate is not None:\n                return duplicate\n            return self._append(\n                state=state, key=request.idempotency_key,\n                fingerprint=fingerprint, postings=request.postings,\n                description=request.description, reversal_of=None,\n            )\n\n    def reverse(self, request: ReverseRequest) -> Transaction:\n        if not isinstance(request, ReverseRequest):\n            raise TypeError(\"Passe um ReverseRequest validado.\")\n        request = ReverseRequest.model_validate(request.model_dump(mode=\"python\"))\n        fingerprint = _request_hash(request)\n        with self._lock:\n            state = self._state\n            duplicate = self._duplicate(state, request.idempotency_key, fingerprint)\n            if duplicate is not None:\n                return duplicate\n            if request.original_tx_id > len(state.journal):\n                raise UnknownTransaction(f\"Tx inexistente: {request.original_tx_id}.\")\n            original = state.journal[request.original_tx_id - 1]\n            if original.reversal_of is not None:\n                raise InvalidReversal(\"Este exercício não permite estornar um estorno.\")\n            if original.tx_id in state.reversed_by:\n                raise AlreadyReversed(\n                    f\"Tx {original.tx_id} já estornada por {state.reversed_by[original.tx_id]}.\"\n                )\n            inverse = tuple(\n                Posting(account_id=p.account_id, currency=p.currency,\n                        delta_cents=-p.delta_cents)\n                for p in original.postings\n            )\n            return self._append(\n                state=state, key=request.idempotency_key,\n                fingerprint=fingerprint, postings=inverse,\n                description=request.description, reversal_of=original.tx_id,\n            )\n\n    @staticmethod\n    def _duplicate(state: _State, key: str, fingerprint: str) -> Transaction | None:\n        entry = state.dedup.get(key)\n        if entry is None:\n            return None\n        if entry.request_hash != fingerprint:\n            raise IdempotencyConflict(\"Chave já usada com outra intenção/payload.\")\n        return entry.result\n\n    def _append(\n        self, *, state: _State, key: str, fingerprint: str,\n        postings: tuple[Posting, ...], description: str, reversal_of: int | None,\n    ) -> Transaction:\n        \"\"\"Chamado somente sob self._lock; prepara tudo antes da troca de estado.\"\"\"\n        _check_balanced(postings)\n        deltas: dict[str, int] = defaultdict(int)\n        for posting in postings:\n            account = state.accounts.get(posting.account_id)\n            if account is None:\n                raise UnknownAccount(f\"Conta não registrada: {posting.account_id}.\")\n            if account.currency != posting.currency:\n                raise CurrencyMismatch(\n                    f\"Conta {account.account_id} é {account.currency}, não {posting.currency}.\"\n                )\n            deltas[posting.account_id] += posting.delta_cents\n\n        # Caminho didático: reconstituir saldos a partir de todos os fatos,\n        # dentro do lock. O mapa de saldo é projeção, não prova independente.\n        replayed = {account_id: 0 for account_id in deltas}\n        for prior_tx in state.journal:\n            for prior_posting in prior_tx.postings:\n                if prior_posting.account_id in replayed:\n                    replayed[prior_posting.account_id] += prior_posting.delta_cents\n        for account_id, historical_balance in replayed.items():\n            if state.balances[account_id] != historical_balance:\n                raise InvariantViolation(\n                    f\"Projeção de saldo diverge do journal em {account_id}.\"\n                )\n\n        balances = dict(state.balances)\n        # Validação sobre o delta agregado da transação: não há saldo parcial visível.\n        for account_id, delta in deltas.items():\n            resulting = replayed[account_id] + delta\n            if not -MAX_CENTS <= resulting <= MAX_CENTS:\n                raise BalanceOverflow(f\"Saldo fora do intervalo em {account_id}.\")\n            if state.accounts[account_id].kind == \"customer\" and resulting < 0:\n                raise InsufficientFunds(f\"Saldo insuficiente em {account_id}.\")\n            balances[account_id] = resulting\n\n        tx = Transaction(\n            tx_id=len(state.journal) + 1, idempotency_key=key,\n            request_hash=fingerprint, created_at=datetime.now(timezone.utc),\n            postings=postings, description=description, reversal_of=reversal_of,\n        )\n        dedup = dict(state.dedup)\n        dedup[key] = _DedupEntry(fingerprint, tx)\n        reversed_by = dict(state.reversed_by)\n        if reversal_of is not None:\n            reversed_by[reversal_of] = tx.tx_id\n        next_state = _State(\n            accounts=state.accounts, balances=MappingProxyType(balances),\n            journal=state.journal + (tx,), dedup=MappingProxyType(dedup),\n            reversed_by=MappingProxyType(reversed_by),\n        )\n        self._state = next_state  # Linearização local: um snapshot completo substitui outro.\n        return tx\n\n    def balance(self, account_id: str, *, as_of_tx: int | None = None) -> int:\n        \"\"\"Saldo inclusive até tx_id; zero significa antes de qualquer posting.\n\n        O corte é ordem de commit local, não data efetiva contábil ou tempo real.\n        \"\"\"\n        if type(account_id) is not str:\n            raise TypeError(\"account_id precisa ser str.\")\n        with self._lock:\n            state = self._state\n            if account_id not in state.accounts:\n                raise UnknownAccount(f\"Conta não registrada: {account_id}.\")\n            if as_of_tx is None:\n                return state.balances[account_id]\n            if type(as_of_tx) is not int or not 0 <= as_of_tx <= len(state.journal):\n                raise InvalidCutoff(\"as_of_tx deve ser inteiro entre zero e a última tx.\")\n            return sum(\n                p.delta_cents\n                for tx in state.journal[:as_of_tx]\n                for p in tx.postings\n                if p.account_id == account_id\n            )\n\n    @property\n    def journal(self) -> tuple[Transaction, ...]:\n        \"\"\"Snapshot de objetos frozen e tuplas; nenhuma coleção mutável é exposta.\"\"\"\n        with self._lock:\n            return self._state.journal\n\n    @property\n    def accounts(self) -> tuple[Account, ...]:\n        with self._lock:\n            return tuple(self._state.accounts.values())\n"
+    },
+    {
+      "name": "test_ledger.py",
+      "language": "Python",
+      "text": "\"\"\"Testes de invariantes, falhas e concorrência; execute com unittest (stdlib).\"\"\"\nfrom concurrent.futures import ThreadPoolExecutor\nfrom dataclasses import replace\nfrom decimal import Decimal\nimport random\nfrom threading import Barrier\nfrom types import MappingProxyType\nimport unittest\n\nfrom pydantic import ValidationError\n\nfrom ledger import (\n    Account, AccountConflict, AlreadyReversed, BalanceOverflow, CurrencyMismatch,\n    IdempotencyConflict, InsufficientFunds, InvalidCutoff, InvalidReversal,\n    InvariantViolation,\n    Ledger, MAX_CENTS, Posting, PostRequest, ReverseRequest, UnknownAccount,\n    UnknownTransaction,\n)\n\n\ndef posting(account: str, cents: int, currency: str = \"BRL\") -> Posting:\n    return Posting(account_id=account, currency=currency, delta_cents=cents)\n\n\ndef transfer(key: str, source: str, target: str, cents: int) -> PostRequest:\n    return PostRequest(\n        idempotency_key=key,\n        postings=(posting(source, -cents), posting(target, cents)),\n        description=\"Transferência didática\",\n    )\n\n\nclass LedgerTests(unittest.TestCase):\n    def setUp(self):\n        self.ledger = Ledger()\n        for account_id in (\"alice\", \"bob\", \"carol\"):\n            self.ledger.register_account(Account(account_id=account_id, currency=\"BRL\"))\n        self.ledger.register_account(\n            Account(account_id=\"clearing\", currency=\"BRL\", kind=\"clearing\")\n        )\n        self.opening = self.ledger.post(transfer(\"fund-alice\", \"clearing\", \"alice\", 10000))\n\n    def assert_conserved(self):\n        for tx in self.ledger.journal:\n            currencies = {p.currency for p in tx.postings}\n            for currency in currencies:\n                self.assertEqual(sum(p.delta_cents for p in tx.postings if p.currency == currency), 0)\n        for account in self.ledger.accounts:\n            replay = sum(\n                p.delta_cents for tx in self.ledger.journal for p in tx.postings\n                if p.account_id == account.account_id\n            )\n            self.assertEqual(self.ledger.balance(account.account_id), replay)\n            if account.kind == \"customer\":\n                self.assertGreaterEqual(replay, 0)\n\n    def test_money_rejects_coercion_bool_zero_and_out_of_range(self):\n        for value in (True, False, \"100\", 100.0, Decimal(\"100\"), 0, MAX_CENTS + 1, -MAX_CENTS - 1):\n            with self.subTest(value=value), self.assertRaises(ValidationError):\n                Posting(account_id=\"alice\", currency=\"BRL\", delta_cents=value)\n\n    def test_currency_is_explicit_whitelist_not_string_coercion(self):\n        for currency in (\"brl\", \"BRL \", \"JPY\", b\"BRL\", 986):\n            with self.subTest(currency=currency), self.assertRaises(ValidationError):\n                Posting(account_id=\"alice\", currency=currency, delta_cents=1)\n\n    def test_balance_per_currency_not_only_grand_total(self):\n        with self.assertRaises(ValidationError):\n            PostRequest(idempotency_key=\"bad-fx\", postings=(\n                posting(\"alice\", -100, \"BRL\"), posting(\"bob-usd\", 100, \"USD\"),\n            ))\n        with self.assertRaises(ValidationError):\n            PostRequest(idempotency_key=\"one\", postings=(posting(\"alice\", 100),))\n        with self.assertRaises(ValidationError):\n            PostRequest(idempotency_key=\"self\", postings=(posting(\"alice\", -100), posting(\"alice\", 100)))\n\n    def test_registration_is_idempotent_but_metadata_cannot_change(self):\n        same = Account(account_id=\"alice\", currency=\"BRL\")\n        self.assertEqual(self.ledger.register_account(same), same)\n        with self.assertRaises(AccountConflict):\n            self.ledger.register_account(Account(account_id=\"alice\", currency=\"USD\"))\n        with self.assertRaises(AccountConflict):\n            self.ledger.register_account(Account(account_id=\"alice\", currency=\"BRL\", kind=\"clearing\"))\n\n    def test_unknown_account_and_currency_mismatch_leave_no_commit(self):\n        snapshot = self.ledger.journal\n        with self.assertRaises(UnknownAccount):\n            self.ledger.post(transfer(\"unknown\", \"alice\", \"missing\", 1))\n        self.ledger.register_account(Account(account_id=\"usd\", currency=\"USD\", kind=\"clearing\"))\n        with self.assertRaises(CurrencyMismatch):\n            self.ledger.post(transfer(\"wrong-currency\", \"alice\", \"usd\", 1))\n        self.assertIs(self.ledger.journal, snapshot)\n        self.assertEqual(self.ledger.balance(\"alice\"), 10000)\n\n    def test_same_intent_returns_original_result_after_lost_response(self):\n        request = transfer(\"pay-1\", \"alice\", \"bob\", 1500)\n        first = self.ledger.post(request)\n        retry = self.ledger.post(request)\n        self.assertIs(retry, first)\n        self.assertEqual(retry.created_at, first.created_at)\n        self.assertEqual(retry.request_hash, first.request_hash)\n        self.assertEqual(len(self.ledger.journal), 2)\n        self.assertEqual(self.ledger.balance(\"alice\"), 8500)\n        self.assertEqual(self.ledger.balance(\"bob\"), 1500)\n\n    def test_canonical_hash_ignores_posting_order_but_not_intent(self):\n        request = transfer(\"pay-order\", \"alice\", \"bob\", 1500)\n        first = self.ledger.post(request)\n        reordered = request.model_copy(update={\"postings\": tuple(reversed(request.postings))})\n        self.assertIs(self.ledger.post(reordered), first)\n        with self.assertRaises(IdempotencyConflict):\n            self.ledger.post(transfer(\"pay-order\", \"alice\", \"bob\", 1600))\n        with self.assertRaises(IdempotencyConflict):\n            self.ledger.post(request.model_copy(update={\"description\": \"Outro motivo\"}))\n        self.assertEqual(len(self.ledger.journal), 2)\n\n    def test_identical_payload_with_new_key_is_a_new_intention(self):\n        first = self.ledger.post(transfer(\"purchase-1\", \"alice\", \"bob\", 100))\n        second = self.ledger.post(transfer(\"purchase-2\", \"alice\", \"bob\", 100))\n        self.assertNotEqual(first.tx_id, second.tx_id)\n        self.assertEqual(self.ledger.balance(\"bob\"), 200)\n\n    def test_rejected_request_does_not_consume_sequence_or_idempotency_key(self):\n        request = transfer(\"wait-for-funds\", \"bob\", \"carol\", 200)\n        before = self.ledger.journal\n        with self.assertRaises(InsufficientFunds):\n            self.ledger.post(request)\n        self.assertIs(self.ledger.journal, before)\n        self.ledger.post(transfer(\"top-up-bob\", \"alice\", \"bob\", 200))\n        result = self.ledger.post(request)\n        self.assertEqual(result.tx_id, 3)\n        self.assertEqual(self.ledger.balance(\"bob\"), 0)\n        self.assertEqual(self.ledger.balance(\"carol\"), 200)\n\n    def test_multiple_postings_use_net_delta_at_atomic_commit(self):\n        tx = self.ledger.post(PostRequest(idempotency_key=\"net-delta\", postings=(\n            posting(\"bob\", -500), posting(\"bob\", 700), posting(\"alice\", -200),\n        )))\n        self.assertEqual(self.ledger.balance(\"bob\"), 200)\n        self.assertEqual(len(tx.postings), 3)\n        self.assert_conserved()\n\n    def test_commit_replays_facts_and_rejects_divergent_balance_projection(self):\n        # Injeção de defeito interno: a API pública não permite essa alteração.\n        state = self.ledger._state\n        incorrect = dict(state.balances)\n        incorrect[\"alice\"] += 5000\n        self.ledger._state = replace(state, balances=MappingProxyType(incorrect))\n        before = self.ledger.journal\n        with self.assertRaises(InvariantViolation):\n            self.ledger.post(transfer(\"do-not-trust-cache\", \"alice\", \"bob\", 12000))\n        self.assertIs(self.ledger.journal, before)\n        self.assertEqual(self.ledger.balance(\"alice\", as_of_tx=1), 10000)\n\n    def test_multicurrency_batch_balances_each_currency(self):\n        self.ledger.register_account(Account(account_id=\"bob-usd\", currency=\"USD\"))\n        self.ledger.register_account(Account(account_id=\"clearing-usd\", currency=\"USD\", kind=\"clearing\"))\n        self.ledger.post(PostRequest(idempotency_key=\"fx-example\", postings=(\n            posting(\"alice\", -1000), posting(\"clearing\", 1000),\n            posting(\"bob-usd\", 200, \"USD\"), posting(\"clearing-usd\", -200, \"USD\"),\n        )))\n        self.assertEqual(self.ledger.balance(\"alice\"), 9000)\n        self.assertEqual(self.ledger.balance(\"bob-usd\"), 200)\n        self.assert_conserved()\n\n    def test_frozen_transactions_postings_and_old_snapshot_survive_reversal(self):\n        tx = self.ledger.post(transfer(\"immutable\", \"alice\", \"bob\", 1500))\n        snapshot = self.ledger.journal\n        original_bytes = tx.model_dump_json()\n        with self.assertRaises(ValidationError):\n            tx.description = \"Alterado\"\n        with self.assertRaises(ValidationError):\n            tx.postings[0].delta_cents = -999\n        with self.assertRaises(TypeError):\n            tx.postings[0] = posting(\"alice\", -999)\n        reversal = self.ledger.reverse(ReverseRequest(idempotency_key=\"undo\", original_tx_id=tx.tx_id))\n        self.assertEqual(reversal.reversal_of, tx.tx_id)\n        self.assertEqual(tx.model_dump_json(), original_bytes)\n        self.assertEqual(len(snapshot), 2)\n        self.assertEqual(len(self.ledger.journal), 3)\n        self.assertEqual(self.ledger.balance(\"alice\"), 10000)\n        self.assertEqual(self.ledger.balance(\"bob\"), 0)\n\n    def test_as_of_tx_is_inclusive_and_does_not_follow_future_reversals(self):\n        tx = self.ledger.post(transfer(\"historic\", \"alice\", \"bob\", 1500))\n        self.ledger.reverse(ReverseRequest(idempotency_key=\"historic-undo\", original_tx_id=tx.tx_id))\n        self.assertEqual(self.ledger.balance(\"alice\", as_of_tx=0), 0)\n        self.assertEqual(self.ledger.balance(\"alice\", as_of_tx=1), 10000)\n        self.assertEqual(self.ledger.balance(\"alice\", as_of_tx=2), 8500)\n        self.assertEqual(self.ledger.balance(\"alice\", as_of_tx=3), 10000)\n        for cutoff in (-1, 4, True, \"2\", 2.0):\n            with self.subTest(cutoff=cutoff), self.assertRaises(InvalidCutoff):\n                self.ledger.balance(\"alice\", as_of_tx=cutoff)\n        with self.assertRaises(UnknownAccount):\n            self.ledger.balance(\"missing\", as_of_tx=0)\n\n    def test_reversal_retries_and_duplicate_reversal_are_distinct(self):\n        tx = self.ledger.post(transfer(\"original\", \"alice\", \"bob\", 1000))\n        request = ReverseRequest(idempotency_key=\"reverse-1\", original_tx_id=tx.tx_id)\n        reversal = self.ledger.reverse(request)\n        self.assertIs(self.ledger.reverse(request), reversal)\n        with self.assertRaises(AlreadyReversed):\n            self.ledger.reverse(ReverseRequest(idempotency_key=\"reverse-2\", original_tx_id=tx.tx_id))\n        with self.assertRaises(InvalidReversal):\n            self.ledger.reverse(ReverseRequest(idempotency_key=\"reverse-reversal\", original_tx_id=reversal.tx_id))\n        with self.assertRaises(UnknownTransaction):\n            self.ledger.reverse(ReverseRequest(idempotency_key=\"missing-tx\", original_tx_id=999))\n        with self.assertRaises(IdempotencyConflict):\n            self.ledger.reverse(ReverseRequest(idempotency_key=\"original\", original_tx_id=tx.tx_id))\n\n    def test_reversal_cannot_overdraw_recipient_and_rejection_is_atomic(self):\n        tx = self.ledger.post(transfer(\"to-bob\", \"alice\", \"bob\", 1500))\n        self.ledger.post(transfer(\"bob-spends\", \"bob\", \"carol\", 1500))\n        before = self.ledger.journal\n        request = ReverseRequest(idempotency_key=\"refund-after-spend\", original_tx_id=tx.tx_id)\n        with self.assertRaises(InsufficientFunds):\n            self.ledger.reverse(request)\n        self.assertIs(self.ledger.journal, before)\n        self.assertEqual(self.ledger.balance(\"alice\"), 8500)\n        self.ledger.post(transfer(\"recover-from-carol\", \"carol\", \"bob\", 1500))\n        self.ledger.reverse(request)  # Rejeição anterior não marcou original como estornada.\n        self.assertEqual(self.ledger.balance(\"alice\"), 10000)\n        self.assert_conserved()\n\n    def test_balance_overflow_is_rejected_without_partial_commit(self):\n        ledger = Ledger()\n        ledger.register_account(Account(account_id=\"customer\", currency=\"BRL\"))\n        ledger.register_account(Account(account_id=\"clearing\", currency=\"BRL\", kind=\"clearing\"))\n        ledger.post(transfer(\"maximum\", \"clearing\", \"customer\", MAX_CENTS))\n        snapshot = ledger.journal\n        with self.assertRaises(BalanceOverflow):\n            ledger.post(transfer(\"overflow\", \"clearing\", \"customer\", 1))\n        self.assertIs(ledger.journal, snapshot)\n        self.assertEqual(ledger.balance(\"customer\"), MAX_CENTS)\n\n    def test_revalidation_blocks_unvalidated_model_copy(self):\n        request = transfer(\"forged\", \"alice\", \"bob\", 100)\n        invalid = request.model_copy(update={\"postings\": (posting(\"alice\", -100),)})\n        with self.assertRaises(ValidationError):\n            self.ledger.post(invalid)\n        invalid_account = Account(account_id=\"new\", currency=\"BRL\").model_copy(update={\"currency\": \"JPY\"})\n        with self.assertRaises(ValidationError):\n            self.ledger.register_account(invalid_account)\n        self.assertEqual(len(self.ledger.journal), 1)\n\n    def test_concurrent_duplicate_requests_commit_once(self):\n        workers = 24\n        start = Barrier(workers)\n        request = transfer(\"same-concurrent-intent\", \"alice\", \"bob\", 1000)\n\n        def run(_):\n            start.wait(timeout=10)\n            return self.ledger.post(request)\n\n        with ThreadPoolExecutor(max_workers=workers) as pool:\n            results = list(pool.map(run, range(workers)))\n        self.assertTrue(all(tx is results[0] for tx in results))\n        self.assertEqual(len(self.ledger.journal), 2)\n        self.assertEqual(self.ledger.balance(\"alice\"), 9000)\n        self.assertEqual(self.ledger.balance(\"bob\"), 1000)\n        self.assert_conserved()\n\n    def test_concurrent_distinct_requests_cannot_overspend(self):\n        workers = 20\n        start = Barrier(workers)\n\n        def run(index):\n            request = transfer(f\"competing-{index}\", \"alice\", \"bob\", 1000)\n            start.wait(timeout=10)\n            try:\n                return self.ledger.post(request)\n            except InsufficientFunds:\n                return None\n\n        with ThreadPoolExecutor(max_workers=workers) as pool:\n            results = list(pool.map(run, range(workers)))\n        successful = [tx for tx in results if tx is not None]\n        self.assertEqual(len(successful), 10)\n        self.assertEqual(len(self.ledger.journal), 11)\n        self.assertEqual([tx.tx_id for tx in self.ledger.journal], list(range(1, 12)))\n        self.assertEqual(self.ledger.balance(\"alice\"), 0)\n        self.assertEqual(self.ledger.balance(\"bob\"), 10000)\n        self.assert_conserved()\n\n    def test_concurrent_conflicting_payloads_same_key_have_one_winner(self):\n        start = Barrier(2)\n\n        def run(cents):\n            start.wait(timeout=10)\n            try:\n                return self.ledger.post(transfer(\"contested-key\", \"alice\", \"bob\", cents))\n            except IdempotencyConflict:\n                return None\n\n        with ThreadPoolExecutor(max_workers=2) as pool:\n            results = list(pool.map(run, [1000, 2000]))\n        winners = [tx for tx in results if tx is not None]\n        self.assertEqual(len(winners), 1)\n        self.assertEqual(len(self.ledger.journal), 2)\n        self.assertIn(self.ledger.balance(\"bob\"), [1000, 2000])\n        self.assert_conserved()\n\n    def test_concurrent_reversals_with_distinct_keys_reverse_once(self):\n        tx = self.ledger.post(transfer(\"to-reverse\", \"alice\", \"bob\", 1500))\n        start = Barrier(8)\n\n        def run(index):\n            start.wait(timeout=10)\n            try:\n                return self.ledger.reverse(ReverseRequest(idempotency_key=f\"rev-{index}\", original_tx_id=tx.tx_id))\n            except AlreadyReversed:\n                return None\n\n        with ThreadPoolExecutor(max_workers=8) as pool:\n            results = list(pool.map(run, range(8)))\n        self.assertEqual(sum(tx is not None for tx in results), 1)\n        self.assertEqual(len(self.ledger.journal), 3)\n        self.assertEqual(self.ledger.balance(\"alice\"), 10000)\n        self.assert_conserved()\n\n    def test_random_history_matches_replay_and_retained_snapshots(self):\n        # Gerador determinístico sem dependência extra. Não substitui model checking.\n        rng = random.Random(42)\n        saved_snapshots = []\n        for step in range(150):\n            source, target = rng.sample([\"alice\", \"bob\", \"carol\"], 2)\n            amount = rng.randint(1, 2000)\n            request = transfer(f\"random-{step}\", source, target, amount)\n            before = self.ledger.journal\n            try:\n                tx = self.ledger.post(request)\n                self.assertIs(self.ledger.post(request), tx)\n            except InsufficientFunds:\n                self.assertIs(self.ledger.journal, before)\n            saved_snapshots.append((self.ledger.journal, tuple(self.ledger.balance(a) for a in [\"alice\", \"bob\", \"carol\"])))\n            self.assert_conserved()\n        for snapshot, expected in saved_snapshots[::11]:\n            actual = tuple(self.ledger.balance(a, as_of_tx=len(snapshot)) for a in [\"alice\", \"bob\", \"carol\"])\n            self.assertEqual(actual, expected)\n\n\nif __name__ == \"__main__\":\n    unittest.main(verbosity=2)\n"
+    },
+    {
+      "name": "demo.py",
+      "language": "Python",
+      "text": "\"\"\"Exemplo alinhado ao laboratório: Alice R$1.000, Bruno R$200, envio R$150.\"\"\"\nfrom ledger import Account, Ledger, Posting, PostRequest, ReverseRequest\n\n\ndef main() -> None:\n    ledger = Ledger()\n    ledger.register_account(Account(account_id=\"alice\", currency=\"BRL\"))\n    ledger.register_account(Account(account_id=\"bruno\", currency=\"BRL\"))\n    ledger.register_account(Account(account_id=\"clearing\", currency=\"BRL\", kind=\"clearing\"))\n\n    # Abertura didática: a contrapartida não é dinheiro criado sem origem.\n    # Num sistema real, ela representa um fato externo previamente validado.\n    opening = ledger.post(PostRequest(\n        idempotency_key=\"opening-1\",\n        postings=(\n            Posting(account_id=\"alice\", currency=\"BRL\", delta_cents=100000),\n            Posting(account_id=\"bruno\", currency=\"BRL\", delta_cents=20000),\n            Posting(account_id=\"clearing\", currency=\"BRL\", delta_cents=-120000),\n        ),\n        description=\"Saldos iniciais do exercício\",\n    ))\n    request = PostRequest(\n        idempotency_key=\"transfer-150\",\n        postings=(\n            Posting(account_id=\"alice\", currency=\"BRL\", delta_cents=-15000),\n            Posting(account_id=\"bruno\", currency=\"BRL\", delta_cents=15000),\n        ),\n        description=\"Alice transfere R$150 para Bruno\",\n    )\n    transfer = ledger.post(request)\n    retry = ledger.post(request)\n    assert retry is transfer  # Mesma tx, mesmo horário e mesmo resultado.\n    assert ledger.balance(\"alice\") == 85000\n    assert ledger.balance(\"bruno\") == 35000\n\n    reversal = ledger.reverse(ReverseRequest(\n        idempotency_key=\"reversal-150\", original_tx_id=transfer.tx_id,\n    ))\n    assert reversal.reversal_of == transfer.tx_id\n    assert ledger.balance(\"alice\") == 100000\n    assert ledger.balance(\"bruno\") == 20000\n    assert ledger.balance(\"alice\", as_of_tx=opening.tx_id) == 100000\n    assert ledger.balance(\"alice\", as_of_tx=transfer.tx_id) == 85000\n    assert len(ledger.journal) == 3  # O retry não acrescenta evento; o estorno sim.\n\n    for tx in ledger.journal:\n        print(tx.model_dump_json(indent=2))\n    print(\"Saldo atual Alice:\", ledger.balance(\"alice\"), \"centavos\")\n    print(\"Saldo histórico Alice na tx 2:\", ledger.balance(\"alice\", as_of_tx=2), \"centavos\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+    },
+    {
+      "name": "requirements.txt",
+      "language": "texto",
+      "text": "# Versão usada na execução e nos testes deste exemplo (Python 3.10.11).\npydantic==2.6.4\n"
+    },
+    {
+      "name": "README.md",
+      "language": "Markdown",
+      "text": "# Ledger executável: fatos imutáveis e invariantes\n\nEste é um **exercício em memória**, em Python 3.10+ e Pydantic v2. Mostra partidas balanceadas, idempotência, concorrência local, histórico e estorno. Não é um ledger de produção, uma implementação do Datomic ou código oficial do Nubank.\n\n## Executar\n\nVersões verificadas: Python 3.10.11 e Pydantic 2.6.4. A única dependência direta está fixada em `requirements.txt`; os testes usam `unittest`, da biblioteca padrão.\n\nA partir da raiz do repositório:\n\n```sh\npython3 -m venv examples/ledger/.venv\nexamples/ledger/.venv/bin/python -m pip install -r examples/ledger/requirements.txt\nexamples/ledger/.venv/bin/python examples/ledger/demo.py\nexamples/ledger/.venv/bin/python -m unittest discover -s examples/ledger -p 'test_*.py' -v\n```\n\nSe Pydantic 2.6.4 já estiver no ambiente, os dois últimos comandos podem usar `python3`. O demo abre Alice com R$1.000 e Bruno com R$200, transfere R$150, repete a requisição e depois estorna. O journal termina com três transações: abertura, transferência e estorno.\n\n## API e convenção de sinais\n\n`Account(kind=\"customer\")` representa saldo operacional protegido contra ficar negativo. `kind=\"clearing\"` representa uma contrapartida didática, que pode ter saldo assinado. A criação de uma conta não cria saldo; todo saldo vem de postings balanceados.\n\n`delta_cents > 0` aumenta o saldo operacional; `delta_cents < 0` reduz. Isso **não define débito/crédito contábil universal**: contas de clientes são tipicamente passivos da instituição. Na transferência entre clientes, reduzir o direito de Alice corresponde ao débito do passivo de Alice; aumentar o direito de Bruno corresponde ao crédito do passivo de Bruno. A conta clearing do exemplo não substitui um plano de contas formal.\n\nDepois da abertura do [demo.py](demo.py):\n\n```python\nrequest = PostRequest(\n    idempotency_key=\"transfer-150\",\n    postings=(\n        Posting(account_id=\"alice\", currency=\"BRL\", delta_cents=-15000),\n        Posting(account_id=\"bruno\", currency=\"BRL\", delta_cents=15000),\n    ),\n    description=\"Alice transfere R$150 para Bruno\",\n)\ntx = ledger.post(request)                     # tx_id 2\nassert ledger.post(request) is tx             # retry do commit aceito\nassert ledger.balance(\"alice\") == 85000\nassert ledger.balance(\"alice\", as_of_tx=1) == 100000\n\nundo = ledger.reverse(ReverseRequest(\n    idempotency_key=\"reversal-150\", original_tx_id=tx.tx_id,\n))\nassert undo.reversal_of == 2                  # nova tx_id 3\nassert ledger.balance(\"alice\") == 100000\nassert ledger.balance(\"alice\", as_of_tx=2) == 85000\n```\n\nO corte `as_of_tx` é inclusivo e representa **ordem de commit local**, não data efetiva financeira nem tempo de ocorrência no mundo real. Zero representa o estado antes de qualquer posting. As consultas usam o cadastro atual de contas; não há histórico separado de cadastro.\n\n## O que o código garante dentro de uma instância\n\n- Entre 2 e 1.000 postings por transação, todos não nulos. Valores são inteiros estritos; `float`, `bool`, strings numéricas e `Decimal` são rejeitados. O intervalo é simétrico de `-(2**63-1)` a `2**63-1`, para que inverter um lançamento seja representável.\n- Apenas BRL, USD e EUR, todas com duas casas decimais neste exercício. Uma conta tem moeda fixa. O modelo não tenta representar moedas com outras escalas ou quantidades fracionárias de ativos.\n- Soma zero **por moeda**, com ao menos duas contas distintas em cada moeda. Somar BRL e USD para obter zero é inválido. Isso valida balanceamento, não prova que o fato econômico, beneficiário ou taxa de câmbio está correto.\n- Todas as contas precisam existir. O saldo final agregado de cada conta `customer` deve ser não negativo. Múltiplos postings da mesma conta são avaliados como uma unidade atômica; não existe saldo intermediário visível.\n- A mesma chave de um commit aceito, com a mesma intenção canônica, retorna a transação original. Alterar valores, contas, moeda ou descrição gera `IdempotencyConflict`. A ordem dos postings é normalizada no hash; sua multiplicidade é preservada. Uma chave nova representa uma intenção nova, mesmo com payload idêntico.\n- A chave usa um namespace global desta instância, compartilhado por `post` e `reverse`. O hash inclui versão de esquema e tipo de operação. Hash não autentica uma requisição nem torna o journal resistente a adulteração por um administrador do processo.\n- **Rejeições anteriores ao commit não reservam chave nem tx_id.** Por exemplo, um débito rejeitado por saldo insuficiente pode ser aceito após entrada de fundos. O contrato implementa idempotência de commits aceitos; não faz cache de toda resposta de erro. Persistir resultados de rejeição exigiria outro contrato explícito.\n- Estorno integral é uma nova transação com sinais inversos e `reversal_of`. O original continua idêntico. O método `reverse` permite um único estorno por original e rejeita estorno de estorno. Não implementa estorno parcial. Se o destinatário já gastou os fundos, o estorno que o deixaria negativo é rejeitado e exige outra decisão de negócio.\n\n## Onde está a atomicidade\n\nO mesmo `RLock` abrange consulta de idempotência, **agregação do histórico de fatos das contas afetadas**, validação e construção do próximo estado. O caminho didático percorre o journal e soma os postings antes de permitir o débito. Também compara esse saldo reconstituído com o mapa materializado: divergência gera `InvariantViolation` e impede o commit. Todos os dicionários modificados são copiados; mapas internos usam `MappingProxyType`, journal/postings são tuplas, e os modelos públicos são `frozen`. O commit é uma única troca de `self._state`, depois de preparar todo o próximo snapshot. Uma rejeição de validação ou domínio não publica metade da transação.\n\nA API revalida modelos recebidos a partir dos dados, porque `model_copy(update=...)` e `model_construct(...)` podem produzir modelos sem a validação normal. A imutabilidade protege o uso normal da API; código Python com acesso arbitrário à memória/introspecção não é um adversário isolado por esse mecanismo.\n\n## Limites e custo do exercício\n\n| Tema | Este exemplo | O que faltaria em um serviço real |\n|---|---|---|\n| Concorrência | Uma instância e threads que usam seu lock | Coordenação entre processos/réplicas, transação no armazenamento, autoridade de escrita e fencing quando necessário |\n| Durabilidade | Tudo está em RAM; encerrar o processo perde journal e chaves | Persistência durável, recuperação, backup testado, políticas de retenção e disponibilidade |\n| Integrações | Nenhuma chamada externa dentro do commit | Outbox/inbox, identidade estável, reconciliação e tratamento de resultados incertos |\n| Segurança | API interna confiável, sem autenticação | Autorização por conta/ação, limites, revisão de comandos, trilha de acesso e proteção de dados |\n| Contabilidade | Postings assinados e soma zero por moeda | Plano de contas, ativos/passivos, reservas, juros, tarifas, datas efetivas e reconciliação com fatos externos |\n| Temporalidade | Replay até um tx_id local | Semântica explícita de tempo de negócio, correções retroativas e modelo bitemporal quando necessário |\n\nO lock não é uma eleição de líder, um lock distribuído ou um transactor do Datomic. Duas instâncias têm estados independentes. O `as_of_tx` aqui é uma soma sobre journal; não implementa os índices, datoms, Datalog, histórico de assertions/retractions ou filtros de database value do Datomic. A analogia útil é tomar decisões sobre um estado consistente e produzir novos fatos; as garantias operacionais são diferentes.\n\nCom A contas, T commits, P postings no comando e H postings já registrados, o hash custa O(P log P) pela ordenação. A validação de saldo percorre H fatos; cópias de mapas/journal acrescentam custo aproximado O(A + T), totalizando O(H + A + T + P log P), além dos bytes serializados. Saldo atual consulta mapa em O(1) esperado; saldo histórico percorre postings até o corte. Esse replay dentro do caminho de escrita favorece o entendimento, não alto throughput. Uma implementação real pode usar checkpoint verificado mais fatos posteriores, ou saldo autoritativo mantido atomicamente com o journal, com reconciliação e regra de versão; confiar em um cache eventual não oferece a mesma garantia. Não há números de benchmark nem promessa de latência.\n\n## Testes e referências\n\nOs 23 testes cobrem tipos estritos, moedas, balanceamento, cadastro, rejeição sem efeito parcial, hash, repetição de intenção, histórico, imutabilidade, overflow e estorno. Uma injeção de defeito na projeção prova que o commit detecta divergência ao agregar fatos. Testes concorrentes lançam 24 duplicatas da mesma intenção, 20 débitos que disputam o mesmo saldo, duas versões da mesma chave e oito tentativas de estorno. Um histórico pseudoaleatório determinístico compara saldos materializados com replay e snapshots antigos.\n\nReferências consultadas:\n\n- [Pydantic 2.6 — Strict mode](https://docs.pydantic.dev/2.6/concepts/strict_mode/).\n- [Pydantic 2.6 — Models e faux immutability](https://docs.pydantic.dev/2.6/concepts/models/).\n- [Python — RLock](https://docs.python.org/3.10/library/threading.html#rlock-objects).\n- [Datomic — Transaction Functions](https://docs.datomic.com/transactions/transaction-functions.html).\n- [Datomic — Database Filters](https://docs.datomic.com/reference/filters.html).\n"
+    }
+  ]
+}

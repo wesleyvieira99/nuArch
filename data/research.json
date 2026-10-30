@@ -1,0 +1,955 @@
+{
+  "sources": [
+    {
+      "id": "supplied-arch",
+      "title": "Guia de Arquitetura fornecido pelo candidato",
+      "url": null,
+      "type": "material fornecido",
+      "date": null,
+      "summary": "Arch_NubankPT.pdf. Orientação específica para esta etapa: 60 minutos, colaboração no Miro, raciocínio e justificativas. O arquivo original não é republicado."
+    },
+    {
+      "id": "supplied-prep",
+      "title": "Material de preparação fornecido pelo candidato",
+      "url": null,
+      "type": "material fornecido",
+      "date": null,
+      "summary": "Arch_CandidatePrepMaterial_PT (1).pdf. Incentiva esclarecer problemas, pensar em voz alta, justificar alternativas e receber contrapontos. Exemplos técnicos devem ser avaliados criticamente."
+    },
+    {
+      "id": "supplied-invite",
+      "title": "Convite de entrevista fornecido pelo candidato",
+      "url": null,
+      "type": "material fornecido",
+      "date": "2026-11-03",
+      "summary": "A imagem fornecida informa entrevista de 60 minutos e os cargos dos entrevistadores. Email, link de reunião e imagem original não são publicados."
+    },
+    {
+      "id": "nu-hiring",
+      "title": "What is the hiring process like for Software Engineers at Nubank?",
+      "url": "https://building.nu.com/what-is-the-interview-process-like-for-software-engineers-at-nubank/",
+      "type": "oficial Nubank",
+      "date": "2023-11-07",
+      "summary": "Guia oficial associa arquitetura a sistemas escaláveis e resilientes, valorizando comunicação, colaboração e análise de trade-offs. A ordem das etapas pode variar por processo."
+    },
+    {
+      "id": "nu-principles",
+      "title": "Nubank’s Engineering Principles: interview with Edward Wible",
+      "url": "https://building.nu.com/nubanks-engineering-principles-interview-with-ed-wible/",
+      "type": "oficial Nubank",
+      "date": "2022-05-26",
+      "summary": "Princípios de engenharia conectam plataformas compartilhadas, confiança do cliente e dados às decisões técnicas. Útil para justificar escolhas também pelo impacto organizacional."
+    },
+    {
+      "id": "nu-canonicity",
+      "title": "The value of canonicity",
+      "url": "https://building.nu.com/the-value-of-canonicity/",
+      "type": "oficial Nubank",
+      "date": "2020-10-30",
+      "summary": "Explica o valor organizacional de uma stack padronizada: Clojure, Kafka e Datomic em muitos serviços. É um argumento sobre custo cognitivo, colaboração e manutenção."
+    },
+    {
+      "id": "nu-stack",
+      "title": "Inside Nubank’s engineering: Discover the technical backstage powering our innovation",
+      "url": "https://building.nu.com/engineering-behind-the-scenes-innovation-nubank/",
+      "type": "oficial Nubank",
+      "date": "2025-07-21",
+      "summary": "Panorama de entrega contínua, imutabilidade, Kafka, Datomic, Clojure e plataformas de dados. Descreve canários, feature flags e rollouts graduais."
+    },
+    {
+      "id": "nu-latency",
+      "title": "How we reduced critical path latency by 76% at Nubank",
+      "url": "https://building.nu.com/how-we-reduced-critical-path-latency-by-76-at-nubank/",
+      "type": "oficial Nubank",
+      "date": "2026-01-12",
+      "summary": "Caso da Payment Conditions API: menor profundidade de chamadas seguida de agregação por eventos e leitura materializada. O artigo relata P90 de cerca de 1200 ms para 280 ms."
+    },
+    {
+      "id": "nu-evergreen",
+      "title": "A digital pine forest: the evergreen cache",
+      "url": "https://building.nu.com/the-evergreen-cache/",
+      "type": "oficial Nubank",
+      "date": "2020-02-11",
+      "summary": "Caso histórico de saldo com event sourcing: reduzir custo de leitura e memória usando valores imutáveis e referências de versão, sem invalidar contas não relacionadas."
+    },
+    {
+      "id": "nu-cloud",
+      "title": "Managing Cloud Limits",
+      "url": "https://building.nu.com/managing-cloud-limits/",
+      "type": "oficial Nubank",
+      "date": "2025-04-09",
+      "summary": "Evolução para múltiplas contas AWS e unidades de sharding envolvendo serviços e mensageria. Quotas de nuvem, isolamento e previsão de capacidade são limitações concretas."
+    },
+    {
+      "id": "nu-fraud",
+      "title": "Scaling fraud defense: How Nubank evolved its risk analysis platform",
+      "url": "https://building.nu.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/",
+      "type": "oficial Nubank",
+      "date": "2025-07-23",
+      "summary": "Defense Platform combina detecção e ação; regras e modelos têm custos diferentes. O artigo descreve alta escala, Clojure, Datomic, Kafka e observabilidade."
+    },
+    {
+      "id": "nu-db-ownership",
+      "title": "How Nubank distributes infrastructure ownership to operate more than 21 thousand databases with a lean team",
+      "url": "https://building.nu.com/how-nubank-distributes-infrastructure-ownership-to-operate-more-than-21-thousand-databases-with-a-lean-team/",
+      "type": "oficial Nubank",
+      "date": "2026-07-01",
+      "summary": "Caso de provisionamento declarativo com ownership obrigatório, alocação automatizada e inventário contínuo. Escalar bancos também exige governança e gestão de ciclo de vida."
+    },
+    {
+      "id": "nu-chat",
+      "title": "From feature to platform: how Nubank reinvented its conversation architecture",
+      "url": "https://building.nu.com/from-feature-to-platform-how-nubank-reinvented-its-conversation-architecture/",
+      "type": "oficial Nubank",
+      "date": "2026-06-24",
+      "summary": "Evolução do chat-client acoplado para uma plataforma de conversação com agentes, contratos comuns, sessões persistidas e migração gradual."
+    },
+    {
+      "id": "nu-contracts",
+      "title": "Why We Killed Our End-to-End Test Suite",
+      "url": "https://building.nu.com/why-we-killed-our-end-to-end-test-suite/",
+      "type": "oficial Nubank",
+      "date": "2021-09-24",
+      "summary": "Relato histórico de troca de uma suíte global lenta por verificação de contratos e testes de aceitação de fluxos críticos. Contratos de esquema não garantem comportamento distribuído."
+    },
+    {
+      "id": "nu-feature1",
+      "title": "Feature stores for real-time ML: Why and when to centralize feature logic",
+      "url": "https://building.nu.com/feature-stores-for-real-time-ml-why-and-when-to-centralize-feature-logic/",
+      "type": "oficial Nubank",
+      "date": "2026-06-10",
+      "summary": "Compara obtenção de features por chamadas diretas e por streaming. Centralização reduz divergências entre treino e inferência, mas impõe custos de plataforma e adoção."
+    },
+    {
+      "id": "nu-feature2",
+      "title": "Feature stores for real-time ML: Part 2 – Lessons learned from production",
+      "url": "https://building.nu.com/feature-stores-for-real-time-ml-part-2-lessons-learned-from-production/",
+      "type": "oficial Nubank",
+      "date": "2026-06-18",
+      "summary": "Lições de produção: versionamento, contratos, dados fora de ordem, atrasos silenciosos e monitoramento de training-serving skew; combina componentes abertos e gerenciados."
+    },
+    {
+      "id": "nu-feature3",
+      "title": "Feature stores in real-time ML, part 3: Examples from Nubank",
+      "url": "https://building.nu.com/feature-stores-in-real-time-ml-part-3-examples-from-nubank/",
+      "type": "oficial Nubank",
+      "date": "2026-10-14",
+      "summary": "Terceira parte da série oficial, com arquiteturas de feature stores em cenários reais. Leitura complementar avançada publicada antes da entrevista."
+    },
+    {
+      "id": "nu-analytics",
+      "title": "Nubank Data Analysts are now called Analytics Engineers",
+      "url": "https://building.nu.com/nubank-data-analysts-are-now-called-analytics-engineers/",
+      "type": "oficial Nubank",
+      "date": "2020",
+      "summary": "Relato histórico da separação de cargas analíticas e transacionais e de uma plataforma de dados self-service com extração genérica baseada em Datomic."
+    },
+    {
+      "id": "nu-datomic",
+      "title": "Datomic is now available free of licensing fees",
+      "url": "https://building.nu.com/datomic-is-available-free-of-licensing-fees/",
+      "type": "oficial Nubank",
+      "date": "2023-04-27",
+      "summary": "Descreve o papel de Datomic, datoms, histórico e ACID. Distingue disponibilização dos binários de abertura do código-fonte."
+    },
+    {
+      "id": "nu-growth",
+      "title": "10 years of engineering at Nubank: Lessons from scaling to 122+ million customers",
+      "url": "https://building.nu.com/engineering-lessons-from-scaling-million-customers/",
+      "type": "oficial Nubank",
+      "date": "2025",
+      "summary": "Entrevista sobre evolução arquitetural, sharding, plataformas e internacionalização. As cifras descrevem o período publicado, não uma contagem atual garantida."
+    },
+    {
+      "id": "nu-ops",
+      "title": "Engineering operational excellence, a case of continuous improvement",
+      "url": "https://building.nu.com/engineering-operational-excellence-case-continuous-improvement/",
+      "type": "oficial Nubank",
+      "date": "2023-05-03",
+      "summary": "Discute operação de serviços, parceiros, tarefas assíncronas e melhoria contínua. A arquitetura precisa incluir como será operada e depurada."
+    },
+    {
+      "id": "nu-functional",
+      "title": "Demystifying functional programming (in a real company)",
+      "url": "https://medium.com/building-nubank/demystifying-functional-programming-in-a-real-company-e954a2591504",
+      "type": "Medium — autor Nubank",
+      "date": "2018-05-15",
+      "summary": "Caio Augusto Araujo Oliveira explica estruturas persistentes, funções puras e separação de efeitos; menciona arquitetura hexagonal como prática da época."
+    },
+    {
+      "id": "nu-medium-hiring",
+      "title": "What is the interview process like for software engineers at Nubank? — edição histórica",
+      "url": "https://medium.com/building-nubank/what-is-the-interview-process-like-for-software-engineers-at-nubank-42dab12d0404",
+      "type": "Medium — publicação Nubank",
+      "date": "2019",
+      "summary": "Versão histórica descreve exercício colaborativo de arquitetura e recomenda estudar conteúdos técnicos além de Clojure. Não usar a logística antiga como agenda atual."
+    },
+    {
+      "id": "nu-qcon",
+      "title": "Architecting a Modern Financial Institution",
+      "url": "https://www.infoq.com/presentations/nubank-architecture/",
+      "type": "palestra — autores Nubank",
+      "date": "2017",
+      "summary": "Vídeo com transcrição de Edward Wible e Rafael Ferreira: autorização, Kafka, contabilidade de partidas dobradas, Datomic e sharding. Retrato histórico, não diagrama atual de produção."
+    },
+    {
+      "id": "nu-podcast",
+      "title": "Lucas Cavalcanti on Using Clojure, Microservices, Hexagonal Architecture and Public Cloud at Nubank",
+      "url": "https://www.infoq.com/podcasts/lucas-cavalcanti-nubank-fintech-clojure/",
+      "type": "podcast — entrevistado Nubank",
+      "date": "2021-08-16",
+      "summary": "Entrevista com Lucas Cavalcanti sobre decisões iniciais, imutabilidade, arquitetura hexagonal e evolução na nuvem pública."
+    },
+    {
+      "id": "nu-data-talk",
+      "title": "Data — The Land DevOps Forgot",
+      "url": "https://videos.itrevolution.com/watch/1002128132/?playlist=kK8YiUNqI6D8QxtG0Jgm",
+      "type": "palestra — autor Nubank",
+      "date": null,
+      "summary": "Michael Nygard discute monólito analítico, Data Mesh, plataforma self-service e observabilidade. Página disponibiliza capítulos e transcrição."
+    },
+    {
+      "id": "report-chargeback-2026",
+      "title": "Que tipo de perguntas o Nubank faz na etapa de System Design?",
+      "url": "https://www.reddit.com/r/brdev/comments/1ux8mai/que_tipo_de_perguntas_o_nubank_faz_na_etapa_de/",
+      "type": "relato público não verificado",
+      "date": "2026-07-15",
+      "summary": "Comentário de candidato descreve chargebacks em CSV, limite de quatro envios diários, proibição de duplicar um pedido entre arquivos e servidor dentro do parceiro."
+    },
+    {
+      "id": "report-system-2025",
+      "title": "System Design Nubank",
+      "url": "https://www.reddit.com/r/brdev/comments/1obuw11/system_design_nubank/",
+      "type": "relato público não verificado",
+      "date": "2025-10-20",
+      "summary": "Candidatos descrevem estorno/chargeback, Miro, perguntas durante o desenho e mudança de cenários. Experiências individuais variam; não é rubrica oficial."
+    },
+    {
+      "id": "report-auth-2025",
+      "title": "Nubank system design",
+      "url": "https://www.reddit.com/r/brdev/comments/1hvnq0o/nubank_system_design/",
+      "type": "relato público não verificado",
+      "date": "2025-01-07",
+      "summary": "Um comentarista afirma ter desenhado uma integração segura com autorizador externo da Mastercard. A identidade e a experiência não foram validadas."
+    },
+    {
+      "id": "report-chargeback-sep",
+      "title": "Nubank Senior SWE System Design Interview Sep 2026",
+      "url": "https://www.reddit.com/r/OfferEngineering/comments/1wae4oq/nubank_senior_swe_system_design_interview_sep_2026/",
+      "type": "relato agregado não verificado",
+      "date": "2026-09-08",
+      "summary": "Post atribuído a outro serviço de entrevistas descreve ingestão, deduplicação, exportação e gargalo de leituras. Sua proveniência é menos forte que um relato direto."
+    },
+    {
+      "id": "report-argentina",
+      "title": "Trabajar en nubank argentina",
+      "url": "https://www.reddit.com/r/devsarg/comments/1x5qqw3/trabajar_en_nubank_argentina/",
+      "type": "relato público não verificado",
+      "date": "2026-10-14",
+      "summary": "Um comentário descreve ranking de vídeos com grande volume. Serve como evidência de variedade de temas relatados, sem confirmar que será usado neste processo."
+    },
+    {
+      "id": "report-glassdoor",
+      "title": "Relato Glassdoor: Miro na entrevista de System Design",
+      "url": "https://www.glassdoor.com/Interview/A-primeira-enteva-com-o-RH-foi-t%C3%A3o-simples-e-normal-que-n%C3%A3o-senti-nenhuma-pergunta-dificil-Na-entrevista-de-System-Desig-QTN_8388975.htm",
+      "type": "relato indexado não verificado",
+      "date": "2025",
+      "summary": "Trecho indexado menciona uso do Miro. Conteúdo de candidato, acesso parcial; não é necessário para confirmar o Miro, pois o material fornecido já informa a ferramenta."
+    },
+    {
+      "id": "giovani-linkedin",
+      "title": "Giovani Barili — perfil profissional público indexado",
+      "url": "https://www.linkedin.com/in/giovanibarili/",
+      "type": "LinkedIn — acesso parcial",
+      "date": null,
+      "summary": "Perfil público profissional: recorte de publicações, atividade e projetos históricos; parte do histórico exige login. Consultado em 30/10/2026."
+    },
+    {
+      "id": "giovani-kafka",
+      "title": "Criando uma camada RESTFul para integração entre microserviços com Apache Kafka",
+      "url": "https://www.infoq.com/br/articles/viavarejo-mensageria/",
+      "type": "artigo técnico — coautor entrevistador",
+      "date": "2019-01-30",
+      "summary": "Giovani Barili é coautor identificado na página. O artigo da Via Varejo discute abstração HTTP sobre Kafka, webhooks, rastreabilidade, reprocessamento e adoção por equipes."
+    },
+    {
+      "id": "giovani-slides",
+      "title": "Giovani Barili — apresentações públicas",
+      "url": "https://www.slideshare.net/giovanibarili",
+      "type": "perfil profissional público",
+      "date": null,
+      "summary": "Índice público contém apresentações sobre Azure, mobilidade e trabalhos acadêmicos. São registros históricos; não permitem concluir domínio técnico atual nem roteiro de entrevista."
+    },
+    {
+      "id": "saulo-linkedin",
+      "title": "Saulo Brust — perfil profissional público indexado",
+      "url": "https://www.linkedin.com/in/saulobrust/",
+      "type": "LinkedIn — acesso parcial",
+      "date": null,
+      "summary": "Perfil público profissional com vínculo Nubank e recorte de reposts. Responsabilidades e experiência completa não ficam disponíveis sem login. Consultado em 30/10/2026."
+    },
+    {
+      "id": "saulo-cajitas",
+      "title": "Post de Pedro Belfort sobre Cuenta Nu e Cajitas",
+      "url": "https://www.linkedin.com/posts/pedrobelfort_cuenta-nu-evoluciona-y-anuncia-cajitas-funcionalidad-activity-7055456866880901120-fm4U",
+      "type": "menção profissional pública",
+      "date": "2023",
+      "summary": "Publicação e comentário sobre Cajitas citam Saulo Brust entre colaboradores. Essa menção não comprova responsabilidades individuais ou propriedade de sistemas."
+    },
+    {
+      "id": "saulo-mexico",
+      "title": "Post de Ximena Salgado sobre sua trajetória no Nu México",
+      "url": "https://es.linkedin.com/posts/ximena-salgado-5a18407a_despu%C3%A9s-de-5-a%C3%B1os-me-despido-de-nu-m%C3%A9xico-activity-7265456863142387712-pZxz",
+      "type": "menção profissional pública",
+      "date": "2024",
+      "summary": "Saulo Brust é citado em agradecimento profissional a colegas no contexto do Nu México. Não permite atribuir uma especialidade técnica específica."
+    },
+    {
+      "id": "aws-idempotent",
+      "title": "Making retries safe with idempotent APIs",
+      "url": "https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/",
+      "type": "documentação primária",
+      "date": null,
+      "summary": "AWS explica identificador fornecido pelo cliente, repetição com mesma intenção, atomicidade do registro de idempotência e efeitos de chamadas atrasadas."
+    },
+    {
+      "id": "aws-retries",
+      "title": "Timeouts, retries, and backoff with jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "type": "documentação primária",
+      "date": "2019-12-05",
+      "summary": "Marc Brooker explica orçamento de timeout, risco de amplificar carga com retries e como backoff com jitter reduz sincronização de tentativas."
+    },
+    {
+      "id": "pg-isolation",
+      "title": "PostgreSQL: Transaction Isolation",
+      "url": "https://www.postgresql.org/docs/16/transaction-iso.html",
+      "type": "documentação primária",
+      "date": null,
+      "summary": "Referência de isolamento, anomalias e retries após falhas de serialização. Isolamento serializável não elimina a necessidade de tratar aborts."
+    },
+    {
+      "id": "kafka-design",
+      "title": "Apache Kafka 4.1: Design",
+      "url": "https://kafka.apache.org/41/design/design/",
+      "type": "documentação primária versionada",
+      "date": null,
+      "summary": "Explica persistência, particionamento, replicação, entrega e transações. Conferir o escopo da garantia antes de estendê-la a banco externo ou parceiro FTP."
+    },
+    {
+      "id": "datomic-overview",
+      "title": "Datomic: Overview",
+      "url": "https://docs.datomic.com/datomic-overview.html",
+      "type": "documentação primária",
+      "date": null,
+      "summary": "Modelo de fatos imutáveis, consultas temporais, transações ordenadas e diferenças entre edições. Evita tratar Datomic como um banco schemaless comum."
+    },
+    {
+      "id": "aws-saga",
+      "title": "Saga orchestration pattern",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-orchestration.html",
+      "type": "documentação primária",
+      "date": null,
+      "summary": "A seção de limitações explicita ausência de isolamento, consistência eventual e necessidade de idempotência dos participantes. Apoia a correção do exemplo de saga no material fornecido."
+    },
+    {
+      "id": "outbox-pattern",
+      "title": "Pattern: Transactional outbox",
+      "url": "https://microservices.io/patterns/data/transactional-outbox",
+      "type": "referência primária de padrão",
+      "date": null,
+      "summary": "Chris Richardson descreve gravação atômica de estado e evento, relay e duplicação possível na publicação. Consumidores ainda precisam tratar reentregas."
+    },
+    {
+      "id": "pg-insert",
+      "title": "PostgreSQL 18 — INSERT, ON CONFLICT e RETURNING",
+      "url": "https://www.postgresql.org/docs/18/sql-insert.html",
+      "type": "official-docs",
+      "date": "2026-10-30",
+      "summary": "ON CONFLICT oferece um caminho sem violação de unicidade; RETURNING devolve somente linhas inseridas ou atualizadas. Um retry idempotente deve separar o ramo que adquiriu a chave daquele que recupera o resultado existente."
+    },
+    {
+      "id": "pg-transactions",
+      "title": "PostgreSQL 18 — Transactions",
+      "url": "https://www.postgresql.org/docs/18/tutorial-transactions.html",
+      "type": "official-docs",
+      "date": "2026-10-30",
+      "summary": "Após um erro abortar a transação, é preciso rollback completo ou rollback para savepoint antes de continuar. O fluxo de tratamento de duplicatas deve explicitar essa fronteira."
+    },
+    {
+      "id": "little-law",
+      "title": "John D. C. Little — A Proof for the Queuing Formula: L = λW",
+      "url": "https://pubsonline.informs.org/doi/10.1287/opre.9.3.383",
+      "type": "research-paper",
+      "date": "1961-06-01",
+      "summary": "Demonstra a relação entre médias de população, taxa de chegada e tempo no sistema sob condições de estacionariedade e finitude. É uma identidade de médias, não uma previsão direta de p99 nem de um pico transitório."
+    },
+    {
+      "id": "tail-at-scale",
+      "title": "Jeffrey Dean e Luiz André Barroso — The Tail at Scale",
+      "url": "https://research.google/pubs/the-tail-at-scale/",
+      "type": "research-paper",
+      "date": "2013",
+      "summary": "Discute como episódios raros de latência passam a dominar serviços de grande escala e técnicas para limitar seu impacto. Ajuda a distinguir tempo médio de experiência nas caudas."
+    },
+    {
+      "id": "dynamo-paper",
+      "title": "Amazon — Dynamo: Amazon’s Highly Available Key-value Store",
+      "url": "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf",
+      "type": "research-paper",
+      "date": "2007",
+      "summary": "Descreve consistent hashing, nós virtuais, replicação e reconciliação no Dynamo histórico. Reduzir remapeamento ao mudar nós não elimina a concentração de acessos numa única chave. Não equivale à implementação atual do serviço DynamoDB."
+    },
+    {
+      "id": "dynamodb-partition-keys",
+      "title": "AWS — Best practices for designing and using partition keys effectively in DynamoDB",
+      "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html",
+      "type": "official-docs",
+      "date": null,
+      "summary": "Orienta distribuir atividade pelas chaves e considerar capacidade por partição, tamanho dos itens e padrões de acesso. Capacidade total da tabela não garante capacidade para uma chave quente."
+    }
+  ],
+  "interview": {
+    "overview": "O material fornecido é a evidência mais específica para esta entrevista: 60 minutos de desenho colaborativo no Miro, com apresentação pessoal de até 5 minutos. O foco é tornar o raciocínio observável: esclarecer o problema, propor uma solução simples, justificar escolhas, aceitar novas restrições e discutir falhas. A pesquisa pública ajuda a preparar cenários; não revela uma prova garantida nem uma rubrica secreta. Não existe um catálogo finito de todas as arquiteturas ou tecnologias do mundo, e nenhuma coleção garante aprovação.",
+    "signals": [
+      {
+        "title": "A confirmação mais forte vem do seu guia",
+        "body": "O guia pede justificativa das ferramentas e técnicas, raciocínio explícito e uma solução que possa evoluir. Não exige terminar o exercício o mais rápido possível. Miro é ferramenta de comunicação; clareza do desenho pesa mais que acabamento visual.",
+        "sourceIds": [
+          "supplied-arch"
+        ]
+      },
+      {
+        "title": "Colaboração e revisão fazem parte da tarefa",
+        "body": "A cada mudança de cenário, repita a nova restrição e explique qual decisão ela altera. Faça checkpoints curtos, aproximadamente a cada 10 minutos, sem transformar a conversa em um monólogo.",
+        "sourceIds": [
+          "supplied-arch",
+          "supplied-prep"
+        ]
+      },
+      {
+        "title": "Critérios públicos, sem inventar pesos",
+        "body": "O guia público do Nubank enfatiza raciocínio, colaboração, curiosidade e escolhas que consideram complexidade, desempenho, custo e simplicidade. Nenhuma fonte oficial consultada publica pesos de pontuação ou perguntas obrigatórias.",
+        "sourceIds": [
+          "nu-hiring"
+        ]
+      },
+      {
+        "title": "Comece pela garantia de negócio",
+        "body": "Antes de escolher Kafka ou um banco, escreva o que não pode acontecer: o mesmo estorno em dois arquivos; débito duplicado; perda silenciosa; informar liquidação sem confirmação. Depois defina a fronteira que realmente protege cada garantia. Esta é uma estratégia de preparação, não um requisito oculto do Nubank.",
+        "sourceIds": [
+          "report-chargeback-2026",
+          "aws-idempotent"
+        ]
+      },
+      {
+        "title": "Relatos aumentam a prioridade de chargeback, sem prever a prova",
+        "body": "Há relatos independentes em 2025 e 2026 sobre lotes de chargebacks para um parceiro. Treinar esse cenário é útil porque reúne restrições externas, estados, idempotência, concorrência, arquivos e reconciliação. Continue treinando ao menos um problema diferente.",
+        "sourceIds": [
+          "report-chargeback-2026",
+          "report-system-2025",
+          "report-auth-2025"
+        ]
+      },
+      {
+        "title": "Demonstre profundidade somente onde ela muda a decisão",
+        "body": "Explique um fluxo inteiro primeiro. Aprofunde índice, lock, chave idempotente, timeout e recuperação quando isso provar uma garantia ou resolver um gargalo. Conhecer muitos produtos ajuda menos que justificar uma escolha coerente com o contrato.",
+        "sourceIds": [
+          "supplied-prep",
+          "nu-canonicity"
+        ]
+      },
+      {
+        "title": "Correção técnica do material de treino",
+        "body": "Uma saga coordena transações locais e compensações; ela não fornece, por si só, isolamento serializável ou atomicidade global. Comunicação síncrona também não implica consistência forte. Discuta a propriedade necessária, a fronteira transacional e os estados intermediários que podem ser observados.",
+        "sourceIds": [
+          "supplied-prep",
+          "aws-saga",
+          "pg-isolation"
+        ]
+      },
+      {
+        "title": "Stack do Nubank é contexto, não resposta obrigatória",
+        "body": "Clojure, Datomic e Kafka aparecem repetidamente nas fontes oficiais. Entender seus princípios ajuda. Isso não significa que a entrevista exija implementá-los, nem que todas as equipes usem uma única stack sem exceção.",
+        "sourceIds": [
+          "nu-stack",
+          "nu-canonicity",
+          "nu-feature2"
+        ]
+      }
+    ],
+    "reports": [
+      {
+        "title": "Chargebacks com quatro envios diários — julho de 2026",
+        "body": "Um candidato relata CSV enviado por FTP, limite de quatro envios por dia, pedido proibido em mais de um arquivo e uma máquina disponível no datacenter do parceiro. No treino, esclareça se o limite vale para tentativas, arquivos ou confirmações, qual o cutoff e como consultar recebimento.",
+        "sourceIds": [
+          "report-chargeback-2026"
+        ],
+        "caveat": "Relato anônimo de candidato, não confirmado pelo Nubank. FTP foi a palavra usada; não substituir silenciosamente por SFTP. Confirme protocolo e canal seguro no enunciado real."
+      },
+      {
+        "title": "Perguntas chegam durante o desenho — outubro de 2025",
+        "body": "Um relato detalha quadro Miro inicial, esclarecimento de requisitos, perguntas durante a montagem e cenários adicionais. Outros comentários descrevem experiências diferentes. Prepare-se para adaptar a solução antes de terminar o desenho inicial.",
+        "sourceIds": [
+          "report-system-2025"
+        ],
+        "caveat": "A divisão exata de minutos e os cargos relatados são daquela experiência. Seu convite e seu material têm prioridade."
+      },
+      {
+        "title": "Integração segura com autorizador externo — janeiro de 2025",
+        "body": "Um comentarista afirma ter feito um exercício de comunicação com um autorizador da Mastercard. É uma boa variação para praticar trust boundaries, autenticação, timeouts, resposta incerta e degradação controlada.",
+        "sourceIds": [
+          "report-auth-2025"
+        ],
+        "caveat": "Afirmação pessoal sem confirmação independente; não é documentação do contrato real da Mastercard."
+      },
+      {
+        "title": "Ingestão, deduplicação e gargalo de leitura — setembro de 2026",
+        "body": "Uma publicação agregada relata chargebacks e dificuldade ao discutir leituras repetidas no banco. Use como estímulo para explicar índices por estado/cutoff, paginação por chave, processamento em streaming e custo de scans.",
+        "sourceIds": [
+          "report-chargeback-sep"
+        ],
+        "caveat": "O post declara derivar de outro serviço comercial. Proveniência mais fraca; não contar como confirmação independente das outras versões."
+      },
+      {
+        "title": "Outro tema aparece em relato argentino — outubro de 2026",
+        "body": "Um comentarista relata desenho de ranking de vídeos em alto volume. Pratique contadores, janela temporal, agregação e leitura materializada como problema de contraste.",
+        "sourceIds": [
+          "report-argentina"
+        ],
+        "caveat": "Um comentário não estabelece frequência, nível ou aplicabilidade à sua entrevista."
+      },
+      {
+        "title": "Miro também aparece no Glassdoor",
+        "body": "O trecho público indexado menciona desenhar a solução no Miro. A mesma ferramenta é confirmada pelo seu guia fornecido.",
+        "sourceIds": [
+          "report-glassdoor",
+          "supplied-arch"
+        ],
+        "caveat": "Acesso parcial ao relato. Não foram extraídos requisitos adicionais de conteúdo indisponível."
+      }
+    ]
+  },
+  "people": [
+    {
+      "name": "Giovani Barili",
+      "role": "Staff Software Engineer — cargo informado no convite fornecido",
+      "verified": [
+        {
+          "claim": "É identificado como coautor do artigo da Via Varejo sobre uma camada RESTful de integração com Apache Kafka, publicado na InfoQ em 30/01/2019.",
+          "sourceIds": [
+            "giovani-kafka"
+          ]
+        },
+        {
+          "claim": "A biografia dessa publicação histórica descreve atuação em arquitetura de aplicações, microserviços, qualidade e liderança; não é prova de responsabilidades atuais no Nubank.",
+          "sourceIds": [
+            "giovani-kafka"
+          ]
+        },
+        {
+          "claim": "O LinkedIn indexado lista publicações sobre CI/CD, AWS e SQL Azure e projetos profissionais com integração de sistemas e migração de nuvem.",
+          "sourceIds": [
+            "giovani-linkedin"
+          ]
+        },
+        {
+          "claim": "O índice público de apresentações inclui Azure, mobilidade e trabalhos acadêmicos.",
+          "sourceIds": [
+            "giovani-slides"
+          ]
+        },
+        {
+          "claim": "O perfil público lista projetos históricos de esteira de crédito (2015), cartão-presente (2015–2016), integração contábil com ERPs e gestão condominial preparada para SaaS (2016–2017). São descrições do próprio perfil, não verificação independente da execução.",
+          "sourceIds": [
+            "giovani-linkedin"
+          ]
+        },
+        {
+          "claim": "O recorte de atividade inclui compartilhamentos sobre DDD estratégico, modernização gradual por strangler e .NET em Docker. Compartilhar conteúdo não prova autoria ou adoção atual.",
+          "sourceIds": [
+            "giovani-linkedin"
+          ]
+        }
+      ],
+      "limits": "A consulta inicial pelo navegador de pesquisa foi limitada; uma leitura posterior da página pública sem login mostrou parte dos posts, publicações e projetos. O histórico completo exige autenticação e não foi acessado. O portal resume os tópicos profissionais relevantes e não a totalidade da vida, feed ou comentários. Não é possível deduzir quais perguntas ele fará.",
+      "preparation": [
+        {
+          "topic": "Kafka, webhooks e entrega confiável",
+          "reason": "A coautoria dá uma conexão documental com integração assíncrona, replay, falhas e rastreabilidade. Treine duplicatas, ordenação por chave e consumidores lentos.",
+          "caveat": "Inferência de preparação a partir de publicação histórica; não previsão de pergunta."
+        },
+        {
+          "topic": "Abstrações e plataformas",
+          "reason": "O artigo discute facilitar o consumo de mensageria por times com tecnologias diferentes. Compare autonomia, padronização, custo operacional e limites de uma camada HTTP.",
+          "caveat": "Não apresentar a solução antiga como stack atual do entrevistador."
+        },
+        {
+          "topic": "Migração gradual e compatibilidade",
+          "reason": "Pratique um rollout com coexistência de versões, contrato de mensagens, observabilidade e reversão.",
+          "caveat": "Exercício criado para ampliar preparação; não informação sobre o processo de avaliação."
+        }
+      ]
+    },
+    {
+      "name": "Saulo Brust",
+      "role": "Principal Software Engineer — cargo informado no convite fornecido",
+      "verified": [
+        {
+          "claim": "O recorte público do LinkedIn identifica vínculo com Nubank. O cargo usado neste portal vem do convite fornecido.",
+          "sourceIds": [
+            "saulo-linkedin",
+            "supplied-invite"
+          ]
+        },
+        {
+          "claim": "Publicação/comentário profissional sobre Cuenta Nu e Cajitas menciona seu nome entre colaboradores; não especifica sua responsabilidade técnica.",
+          "sourceIds": [
+            "saulo-cajitas"
+          ]
+        },
+        {
+          "claim": "É citado em agradecimento profissional no contexto de Nu México.",
+          "sourceIds": [
+            "saulo-mexico"
+          ]
+        },
+        {
+          "claim": "A página pública mostra reposts sobre infraestrutura do Nubank, Cuenta Nu e estratégia de IA; eles são compartilhamentos de material de terceiros, não evidência de autoria ou responsabilidade técnica individual.",
+          "sourceIds": [
+            "saulo-linkedin"
+          ]
+        }
+      ],
+      "limits": "Foi acessada uma página pública sem login com recorte de atividade. O perfil completo e o histórico de empregos continuam restritos. Não há base para listar todas as contribuições, posts ou especializações atuais. As recomendações abaixo são preparação geral para conversar com um engenheiro Principal, não previsão de suas perguntas.",
+      "preparation": [
+        {
+          "topic": "Invariantes e limites de domínio",
+          "reason": "Treine separar saldo contábil, saldo disponível, reserva e liquidação; explique o que pertence a uma transação e o que precisa de reconciliação.",
+          "caveat": "Sugestão geral para sistemas financeiros. Não atribuída como especialidade comprovada de Saulo."
+        },
+        {
+          "topic": "Plataforma para múltiplos produtos e países",
+          "reason": "Use um exercício de contas e caixinhas para discutir contratos, moedas, regras locais e evolução. As menções públicas só estabelecem contexto profissional amplo.",
+          "caveat": "Não inferir participação individual no desenho de Cajitas ou no core banking."
+        },
+        {
+          "topic": "Decisões reversíveis e operação",
+          "reason": "Prepare uma explicação de migração incremental, blast radius, owner, métricas e rollback.",
+          "caveat": "Competência geral de arquitetura sênior, sem promessa sobre o roteiro da entrevista."
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "chargeback",
+      "title": "Chargeback → lote imutável → parceiro externo",
+      "summary": "Cenário de treino inspirado em relatos públicos; não é arquitetura oficial de produção nem enunciado garantido.",
+      "details": [
+        "Comece pelo contrato: quatro envios de quê, em qual fuso, com qual janela, prazo, limite de tamanho e confirmação? Qual evento torna um chargeback elegível?",
+        "Modele o pedido e o lote separadamente. Uma associação durável e única entre pedido e lote impede que o mesmo pedido entre em dois lotes; geração de arquivo e entrega são estados distintos.",
+        "Desenho de treino: API → banco transacional com chave idempotente → seletor de elegíveis → lote/manifesto → arquivo imutável → agente junto ao parceiro → confirmação/reconciliação.",
+        "Atribuição concorrente precisa de exclusão por transação, versão ou claim atômico. Um cron não impede dois processos de disputar a mesma janela. Lease exige proteção contra dono antigo ainda executando.",
+        "Depois de congelar o lote, gere o arquivo a partir de seus membros, com contagem, soma de controle e checksum. Um retry usa o mesmo batch_id e os mesmos bytes, conforme contrato do parceiro.",
+        "Se a conexão cair depois do upload, o resultado é desconhecido. Consultar recebimento ou reconciliar pode ser necessário. Sem participação do receptor, não prometer exactly-once de ponta a ponta.",
+        "Evite scan integral frequente: índice compatível com elegibilidade e cutoff; paginação por chave; leitura em blocos e escrita de CSV em streaming. Meça candidatos examinados por item exportado.",
+        "A expansão pode usar outbox para publicar eventos após a gravação; Kafka ou SQS só entram se picos, desacoplamento ou replay justificarem. Um banco e workers podem bastar no começo."
+      ],
+      "questions": [
+        "A máquina cai depois de enviar, mas antes de salvar a confirmação. Qual decisão é segura?",
+        "O parceiro processou metade do arquivo. O que significa reenviar?",
+        "Se só existem quatro tentativas por dia, sua política de retry ainda funciona?",
+        "Como atender um pedido após o cutoff sem perder sua prioridade?",
+        "Qual métrica detecta pedidos presos, mesmo com todos os pods saudáveis?"
+      ],
+      "sourceIds": [
+        "report-chargeback-2026",
+        "report-system-2025",
+        "aws-idempotent",
+        "pg-isolation",
+        "outbox-pattern"
+      ]
+    },
+    {
+      "id": "payments-latency",
+      "title": "Payment Conditions: leitura materializada",
+      "summary": "Caso oficial publicado em janeiro de 2026; números pertencem à medição descrita no artigo.",
+      "details": [
+        "A integração precisava de P90 até 360 ms. O artigo relata aproximadamente 1200 ms antes e 280 ms depois da mudança.",
+        "Primeiro, a equipe reduziu chamadas redundantes e camadas sem valor de domínio; depois retirou a composição síncrona do caminho principal de leitura.",
+        "Eventos de mudanças relevantes alimentam um agregador que grava uma representação pronta para consulta. O custo passa parcialmente da leitura para a escrita.",
+        "A representação persistida não vira a única verdade. O artigo descreve retorno ao fluxo síncrono quando indisponibilidade ou freshness exigem.",
+        "No treino, explicite o atraso aceitável, como detectá-lo e o risco de sobrecarregar dependências quando muitas leituras acionam fallback."
+      ],
+      "questions": [
+        "Qual dado pode ficar atrasado por 2 segundos e qual não pode?",
+        "Como impedir uma tempestade de fallback?",
+        "Como medir p99 durante warm-up da JVM?",
+        "Como reconstruir a projeção enquanto ela continua recebendo eventos?"
+      ],
+      "sourceIds": [
+        "nu-latency"
+      ]
+    },
+    {
+      "id": "evergreen",
+      "title": "Saldo com histórico e cache de valores imutáveis",
+      "summary": "Caso oficial histórico da conta do Nubank; útil para discutir custo de replay, memória e versão.",
+      "details": [
+        "O problema descrito combina saldo calculado a partir de eventos com pressão de memória nos peers de Datomic.",
+        "Uma ideia central é cachear um valor imutável sob uma referência estável e descobrir qual referência corresponde à versão atual desejada.",
+        "Usar a versão global do banco como parte da chave descartaria cache de uma conta quando outra conta mudasse; a granularidade da referência importa.",
+        "No exercício, compare replay de n eventos, snapshot mais delta e projeção incremental. Cada redução de leitura adiciona estado derivado que precisa de validação e recuperação."
+      ],
+      "questions": [
+        "O snapshot está correto para qual versão do histórico?",
+        "Como detectar evento duplicado sem apagar trilha de auditoria?",
+        "Qual é o custo de recalcular uma conta com milhões de lançamentos?",
+        "Como corrigir uma projeção errada preservando o registro original?"
+      ],
+      "sourceIds": [
+        "nu-evergreen",
+        "datomic-overview"
+      ]
+    },
+    {
+      "id": "cloud-cells",
+      "title": "Shards, contas AWS e limites de nuvem",
+      "summary": "Caso oficial de capacidade e isolamento, publicado em abril de 2025.",
+      "details": [
+        "O artigo descreve saída de poucas contas AWS muito grandes para uma divisão com maior isolamento entre domínios e ambientes.",
+        "Sharding inclui Datomic, Kafka e conjuntos de serviços, criando unidades menores de capacidade e de falha.",
+        "Quotas e capacidade física continuam existindo. O sistema Smoke Detector acompanha consumo e tendências para antecipar limites.",
+        "No treino, explique roteamento por cliente, hotspot, expansão de uma unidade, custo de rebalancear dados e o comportamento quando a unidade de um cliente está indisponível."
+      ],
+      "questions": [
+        "Por que mais réplicas de pod não resolvem uma quota de load balancer?",
+        "Que falha é realmente isolada por conta, cluster ou shard?",
+        "Como mover um cliente entre shards com tráfego ativo?",
+        "Como dimensionar headroom antes de uma campanha?"
+      ],
+      "sourceIds": [
+        "nu-cloud"
+      ]
+    },
+    {
+      "id": "fraud-defense",
+      "title": "Defense Platform: detecção e ação",
+      "summary": "Caso oficial da plataforma de risco, publicado em julho de 2025.",
+      "details": [
+        "A fonte informa cerca de 450 milhões de eventos por dia, múltiplas chamadas internas por evento e 20 shards no Brasil naquele contexto.",
+        "A arquitetura separa detecção e ação; regras e modelos têm diferentes custos e necessidades de dados.",
+        "A stack descrita inclui Clojure, Datomic sobre DynamoDB, Kafka e modelos Python. Logs, métricas e traces dão visibilidade à operação.",
+        "No exercício, a decisão central é quais sinais precisam ser síncronos para uma autorização e quais podem atualizar indicadores depois. Defina degradação com produto e risco."
+      ],
+      "questions": [
+        "O modelo não respondeu dentro do budget: aprovar, negar ou pedir autenticação adicional?",
+        "Como distinguir atraso de feature de ausência real de comportamento?",
+        "Que ordenação por conta é necessária?",
+        "Como lançar uma nova regra sem criar falsos positivos em massa?"
+      ],
+      "sourceIds": [
+        "nu-fraud"
+      ]
+    },
+    {
+      "id": "database-platform",
+      "title": "21 mil bancos: governança como parte da arquitetura",
+      "summary": "Caso oficial publicado em julho de 2026, com foco em ownership e automação.",
+      "details": [
+        "A fonte descreve uma plataforma com mais de 21 mil bancos e uma equipe central pequena; o modelo distribui responsabilidade aos times consumidores.",
+        "Provisionamento exige identificação do recurso, time responsável e configuração. Nimbus, Sorting Hat e Penseira apoiam declaração, alocação e inventário.",
+        "Acompanhar o que realmente permanece ativo é diferente de apenas registrar o que foi criado. Recursos sem propósito, dono ou centro de custo exigem tratamento.",
+        "No treino, inclua critérios de desativação, backups verificáveis, migração de owner e reconciliação entre estado declarado e real."
+      ],
+      "questions": [
+        "Quem recebe o alerta quando um banco cresce?",
+        "Como impedir exclusão de um recurso aparentemente abandonado que ainda recebe escrita?",
+        "Como demonstrar que um backup pode ser restaurado?",
+        "Como equilibrar self-service e limites de capacidade?"
+      ],
+      "sourceIds": [
+        "nu-db-ownership"
+      ]
+    },
+    {
+      "id": "conversation-platform",
+      "title": "Chat: do serviço acoplado à plataforma",
+      "summary": "Caso oficial de junho de 2026 sobre separação de plataforma e regras dos produtos.",
+      "details": [
+        "O chat-client concentrava mensagens, automações, bots, notificações e estado de conversação, dificultando evolução independente.",
+        "A nova direção introduz seleção de agentes e contratos comuns para agentes determinísticos, humanos e baseados em IA.",
+        "Sessões persistidas e eventos padronizados fortalecem auditoria; métricas da plataforma e das jornadas pertencem a responsáveis diferentes.",
+        "A fonte relata coexistência com o legado. No exercício, trate migração, compatibilidade, roteamento e reversão como partes do projeto."
+      ],
+      "questions": [
+        "Como transferir uma conversa de bot para humano sem perder contexto?",
+        "Como evitar duas respostas concorrentes de agentes?",
+        "Como desativar um fluxo antigo com segurança?",
+        "O que é SLO da plataforma e o que é resultado do produto?"
+      ],
+      "sourceIds": [
+        "nu-chat"
+      ]
+    },
+    {
+      "id": "testing-platform",
+      "title": "Contratos de esquema e testes de comportamento",
+      "summary": "Caso oficial histórico publicado em setembro de 2021; não generalizar como proibição de E2E.",
+      "details": [
+        "A suíte global de staging gerava filas, lentidão, flakiness e alto custo de manutenção.",
+        "Sachem passou a verificar compatibilidade de esquemas nas fronteiras HTTP e Kafka, aproveitando padronização já existente.",
+        "A própria fonte reconhece a limitação: compatibilidade estrutural não prova comportamento. Testes de aceitação cobrindo subconjuntos críticos complementaram a estratégia.",
+        "No treino, demonstre quais invariantes precisam de teste de domínio, concorrência, integração com parceiro e ensaio de falha em produção controlada."
+      ],
+      "questions": [
+        "Um campo continua string mas muda de centavos para reais: contrato estrutural detecta?",
+        "Como testar a queda após um commit e antes do ACK?",
+        "Que prova exigiria antes de remover uma suíte antiga?",
+        "Como testar um fluxo distribuído sem duplicar o ambiente inteiro?"
+      ],
+      "sourceIds": [
+        "nu-contracts"
+      ]
+    },
+    {
+      "id": "realtime-features",
+      "title": "Feature store: dados rápidos e semântica estável",
+      "summary": "Caso oficial de 2026: escolher entre chamada direta e features mantidas por streaming.",
+      "details": [
+        "A série compara obter dados na fonte durante a requisição com mantê-los numa camada intermediária atualizada por eventos.",
+        "Streaming desacopla carga, mas lag, ordem e divergência entre batch e online podem falhar silenciosamente.",
+        "Versionar features e monitorar diferenças entre valores de treino e inferência são responsabilidades explícitas; centralizar definições ajuda, sem eliminar o problema.",
+        "No treino, use timestamp do evento, watermark, política para atraso e replay idempotente. Separe falta de informação de valor zero."
+      ],
+      "questions": [
+        "Como um evento atrasado altera uma janela de 24 horas?",
+        "Como provar que a feature usada online era disponível naquele instante histórico?",
+        "Que alteração exige nova versão da feature?",
+        "Quando a chamada direta ainda é a opção correta?"
+      ],
+      "sourceIds": [
+        "nu-feature1",
+        "nu-feature2",
+        "nu-feature3"
+      ]
+    },
+    {
+      "id": "analytics-separation",
+      "title": "Separar OLTP de análise e construir dados reutilizáveis",
+      "summary": "Caso histórico oficial sobre a evolução do ambiente analítico.",
+      "details": [
+        "Consultar diretamente o armazenamento transacional para análise deixou de atender ao crescimento de dados e de consumidores.",
+        "A padronização em Datomic permitiu uma extração genérica para uma plataforma self-service e produção de datasets derivados.",
+        "A autonomia também criou desafios de descoberta e reuso; plataforma de dados exige semântica, ownership e qualidade além do pipeline.",
+        "No exercício, explique atraso aceitável, captura de mudanças, reconstrução, proteção do OLTP e contratos entre produtores e consumidores."
+      ],
+      "questions": [
+        "Por que uma réplica de leitura pode ser insuficiente para OLAP?",
+        "Como reparar um dia de dados sem duplicar agregações?",
+        "Quem responde por um dataset semântico errado?",
+        "Como comparar dados analíticos com a fonte transacional?"
+      ],
+      "sourceIds": [
+        "nu-analytics",
+        "nu-data-talk"
+      ]
+    },
+    {
+      "id": "historic-core",
+      "title": "Autorização, ledger e mensageria: uma visão histórica",
+      "summary": "Palestra pública de autores do Nubank na QCon; usar para princípios, não para decorar topologia atual.",
+      "details": [
+        "A apresentação aborda autorização, contabilidade de partidas dobradas, Kafka, Datomic, dados analíticos e divisão por clientes/tempo.",
+        "Um padrão discutido é interromper consumo quando uma dependência falha repetidamente, deixando backlog observável em vez de amplificar erros.",
+        "No treino, separe uma autorização de reserva, captura, liquidação e estorno. Mesmo se conectadas, não são o mesmo evento de negócio.",
+        "Documente a invariável contábil, a chave da operação e a reconciliação com a rede externa. A transação local não confirma sozinha o estado do parceiro."
+      ],
+      "questions": [
+        "Qual é a diferença entre autorizar e liquidar?",
+        "Como liberar uma reserva expirada que recebeu captura atrasada?",
+        "Como verificar que débitos e créditos fecham por moeda?",
+        "Quanto backlog pode acumular antes de violar o prazo de negócio?"
+      ],
+      "sourceIds": [
+        "nu-qcon",
+        "nu-podcast"
+      ]
+    },
+    {
+      "id": "future-multicountry",
+      "title": "Exercício prospectivo: contas e caixinhas em vários países",
+      "summary": "Cenário educacional criado para treino. Não representa projeto anunciado, roadmap ou arquitetura interna do Nubank.",
+      "details": [
+        "Modele conta, subconta de finalidade, lançamentos, disponibilidade e regras de rendimento como conceitos distintos.",
+        "Decida se transferir entre caixinhas muda apenas alocação interna ou exige movimentação financeira externa; essa resposta altera a fronteira transacional.",
+        "Escolha representação monetária explícita, moeda e regras de arredondamento. Não usar ponto flutuante binário para valores contábeis.",
+        "Adicione políticas locais atrás de contratos estáveis, migração incremental e trilha auditável. Faça requisitos legais com especialistas; não invente regras por país."
+      ],
+      "questions": [
+        "Um cliente move dinheiro enquanto há uma retirada em processamento: quem reserva o quê?",
+        "Como alterar uma regra de rendimento sem reescrever o passado?",
+        "Como separar país, moeda e entidade legal no modelo?",
+        "Qual o plano de migração caso o limite transacional seja atingido?"
+      ],
+      "sourceIds": [
+        "nu-growth",
+        "saulo-cajitas",
+        "datomic-overview"
+      ]
+    }
+  ],
+  "studyPlan": [
+    {
+      "day": "2026-10-30 — sexta-feira",
+      "title": "Entender a avaliação e construir uma solução base",
+      "tasks": [
+        "Ler o guia fornecido e ensaiar uma apresentação pessoal de 2–3 minutos: contexto, escala, decisão e resultado.",
+        "Praticar 15 minutos no Miro: caixas, setas, rótulos, duplicar objetos, separar fonte de verdade e derivados.",
+        "Desenhar chargeback simples em 45 minutos. Escrever os invariantes, estados e o contrato do parceiro antes dos produtos.",
+        "Fazer um simulado de 60 minutos gravando a própria explicação. Revisar clareza, decisões sem justificativa e silêncio excessivo."
+      ]
+    },
+    {
+      "day": "2026-10-31 — sábado",
+      "title": "Garantias, concorrência e falhas",
+      "tasks": [
+        "Aprofundar chave idempotente, índice único, transação local, outbox/inbox e diferença entre envio e confirmação.",
+        "Executar mentalmente falhas em cada fronteira: antes/depois de commit, publicação, geração de arquivo, upload e ACK.",
+        "Resolver simultaneidade de dois workers e uma retomada com lease vencido. Especificar estado UNKNOWN e reconciliação.",
+        "Fazer um simulado de chargeback com interrupções e um de ledger/autorização. Reservar ao menos 20 minutos de feedback por simulado."
+      ]
+    },
+    {
+      "day": "2026-11-01 — domingo",
+      "title": "Escala e profundidade com evidência",
+      "tasks": [
+        "Ler os casos oficiais de latência, evergreen cache e cloud limits. Para cada um, explicar problema, custo escolhido e novo modo de falha.",
+        "Calcular throughput médio e pico, tamanho de arquivos, tempo de drenagem, memória por worker e budget de latência. Declarar todas as hipóteses.",
+        "Estudar o artigo de Giovani sobre integração HTTP/Kafka como contexto profissional; formular perguntas técnicas sem supor que ele as fará.",
+        "Fazer um simulado em tema diferente: notificações, ranking ou fraude. Escolher um aprofundamento em armazenamento e outro em operação."
+      ]
+    },
+    {
+      "day": "2026-11-02 — segunda-feira",
+      "title": "Simulado final e consolidação",
+      "tasks": [
+        "Fazer uma entrevista completa de 60 minutos com cenário sorteado, sem consultar respostas.",
+        "Usar uma rubrica própria: requisitos, invariantes, desenho simples, trade-offs, falhas, capacidade, operação e colaboração.",
+        "Revisar somente as 3 lacunas mais graves. Não tentar memorizar mais de mil perguntas na véspera.",
+        "Preparar ambiente, conexão, áudio, Miro e anotações curtas. Encerrar estudo pesado cedo para preservar descanso."
+      ]
+    },
+    {
+      "day": "2026-11-03 — terça-feira, antes das 09:00 (Brasília)",
+      "title": "Entrar com método e espaço para pensar",
+      "tasks": [
+        "Revisar uma página com abertura, perguntas de requisito, garantias e fechamento; evitar consumir material novo.",
+        "Abrir ferramentas e verificar áudio/conexão com antecedência.",
+        "Na conversa: explicitar hipótese → escolher → justificar → testar falha → adaptar.",
+        "Concluir com as garantias cobertas, principal limitação e próximo passo. A banca pode conduzir o ritmo; o roteiro de 60 minutos é apenas treino."
+      ]
+    }
+  ]
+}

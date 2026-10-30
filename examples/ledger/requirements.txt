@@ -1,0 +1,2 @@
+# Versão usada na execução e nos testes deste exemplo (Python 3.10.11).
+pydantic==2.6.4

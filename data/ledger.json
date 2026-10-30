@@ -684,6 +684,63 @@
       "intro": "A qualidade do desenho aparece quando cada fronteira falha de maneira diferente. Comece pelo que é verdadeiro após o crash, depois decida como continuar sem fabricar sucesso, saldo ou ordem global.",
       "blocks": [
         {
+          "type": "prose",
+          "title": "Read-your-writes: protocolo proposto, não comportamento privado atribuído ao Nubank",
+          "paragraphs": [
+            "Uma resposta de commit pode carregar um token opaco com database/shard, ownership epoch, posição confirmada e identidade da operação. Para uma tela que precisa mostrar o efeito, a API pede à projeção prova de que alcançou esse ponto. Um projector só pode avançar seu watermark quando todas as mudanças relevantes anteriores estão aplicadas segundo o contrato; observar o evento com o maior número não prova ausência de buracos.",
+            "Se o prazo de espera acabar, três respostas são possíveis: ler da autoridade com admissão e autorização próprias; mostrar “processando atualização” com o resultado confirmado da operação; ou retornar indisponibilidade/frescor insuficiente. O que não vale é apresentar um saldo velho como prova de que a transferência falhou.",
+            "d/sync e db-after resolvem aspectos de coordenação dentro da API Datomic. Não sincronizam automaticamente Redis, DynamoDB de leitura ou consumidores Kafka. t lógico, entity ID da transação e txInstant são conceitos distintos; txInstant em milissegundos não é identidade exclusiva. Um token não deve misturar posições de databases diferentes. Em leitura que reúne vários shards, um vetor de posições ou outro contrato de snapshot será necessário; tirar o maior número entre dois t locais não cria uma linha do tempo global.",
+            "Assine/valide o token ou trate-o apenas como indicação não confiável: o cliente não pode pedir uma posição impossível e manter workers esperando indefinidamente. Limite prazo, versão e escopo do token. Após migração ou restore, lineage/epoch determina se a posição antiga ainda pode ser satisfeita ou precisa ser traduzida; essa mudança é parte do protocolo."
+          ],
+          "sourceIds": [
+            "ledger-datomic-api",
+            "ledger-datomic-sync",
+            "ledger-dynamo",
+            "ledger-datomic-best"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Estado de uma leitura com frescor mínimo",
+          "text": "commit_token = {ledger_id, shard_id, ownership_epoch, position, operation_id}\n\nread_view(account_id, min_token, deadline):\n    authorize(account_id)\n    validate_token_scope_and_lineage(min_token)\n    while time_left(deadline) permits bounded_read:\n        (view, watermark) = read_view_and_watermark_consistently()\n        if same_lineage(watermark, min_token) and watermark >= min_token.position:\n            return view  // versão da view corresponde ao watermark validado\n        if not time_left(deadline) permits bounded_wait: break\n        wait_for_progress_or_timeout(deadline)\n    if policy_allows_authoritative_fallback and admission_granted:\n        snapshot = read_authoritative_snapshot(min_token, deadline)\n        if same_database_and_epoch(snapshot, min_token) and snapshot.basis >= min_token.position:\n            return query(snapshot, account_id)\n    return freshness_not_yet_satisfied\n\n// Não validar watermark novo e depois devolver valor velho de outro cache.\n// \"contiguous\" importa: máximo visto != todos os eventos anteriores aplicados.\n// Em Datomic, usar sincronização/valor apropriado à API e à edição.\n// Esse é um protocolo de aplicação proposto, não uma API pronta do Nubank.",
+          "language": "text"
+        },
+        {
+          "type": "prose",
+          "title": "Caso 1 · AccountOpened precisa preceder CreditPosted",
+          "paragraphs": [
+            "Primeiro, defina a causa: o crédito pressupõe que a conta existe, tem moeda definida e está autorizada a receber aquele lançamento. Se ambos os eventos pertencem à mesma história de conta, o produtor autoritativo atribui uma sequência monotônica e publica AccountOpened antes de CreditPosted. Com o mesmo tópico, a mesma chave e o mesmo mapeamento de partição, Kafka preserva a ordem dos registros daquela partição; ainda é necessário que o produtor/relay publique na ordem causal e que o consumidor não conclua processamento paralelo fora dela.",
+            "Mesma chave em tópicos diferentes não fornece ordem entre tópicos. Dois produtores independentes também não ganham causalidade só por usar account_id. Mudança de número de partições, migração de tópico ou alteração de roteador pode mudar a distribuição. Uma transferência entre duas contas tem duas histórias: ordenar pela conta de origem não prova que o destino já foi criado. A solução vem de uma autoridade transacional que valida as duas contas ou de um workflow que depende explicitamente da confirmação de abertura.",
+            "O consumidor mantém aggregate_version esperado e inbox durável. Ao receber CreditPosted v2 sem AccountOpened v1, não cria uma conta fictícia nem descarta o crédito como erro definitivo. Pode estacionar o evento por agregado, buscar a dependência na autoridade ou aguardar/reprocessar com backoff limitado. O checkpoint do transporte só pode avançar sobre essa mensagem se a pendência já estiver duravelmente registrada e recuperável. Do contrário, um crash transforma a espera em perda.",
+            "Depois de aplicar v1, o consumidor libera v2, atualiza visão e dedupe atomicamente e avança o progresso contíguo. Alertas de idade da pendência revelam evento realmente ausente. Se a conta nunca deveria existir ou o evento viola contrato, quarentena com evidência e owner substitui retry infinito. O protocolo de gaps faz parte do contrato de recuperação, não de uma tentativa de adivinhar ordem por timestamp."
+          ],
+          "sourceIds": [
+            "ledger-kafka",
+            "ledger-outbox"
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Exemplo causal com inbox por agregado",
+          "text": "AccountOpened {account_id:A, aggregate_version:1, event_id:e1}\nCreditPosted  {account_id:A, aggregate_version:2, event_id:e2, delta:+15000}\n\nconsume(event):\n    begin destination_transaction\n    try:\n        expected = aggregate_state[event.account_id].version + 1\n        if inbox[event.event_id].applied:\n            verify_same_event_identity_and_payload(event)\n        elif event.version > expected:\n            persist_pending_inbox(event)  // recuperável mesmo após crash\n        elif event.version < expected:\n            require_known_duplicate_or_raise_history_conflict(event)\n        else:\n            validate_transition_and_apply(event)\n            mark_inbox_applied_and_advance_aggregate_version(event)\n        commit\n    catch error:\n        rollback\n        retry_or_quarantine_durably_according_to_error(error, event)\n        return  // sem ack até tratamento durável estar garantido\n    acknowledge_transport()\n\n// Worker independente consulta pending_inbox durável e recupera gaps.\n// Não depender de um agendamento volátil entre commit e crash.\n// Se uma quarentena for usada, publicar/gravar nela antes de confirmar a origem.\n// v2 não transforma uma conta ausente em uma conta autorizada.",
+          "language": "text"
+        },
+        {
+          "type": "prose",
+          "title": "Caso 2 · TED/Pix aprovado internamente e rejeitado externamente",
+          "paragraphs": [
+            "O cenário é uma hipótese de entrevista, não descrição do processamento privado Nubank ou substituto da documentação do arranjo de pagamento. Aprovação interna significa que identidade, regras e fundos passaram pela autoridade local. A liquidação externa exige outra evidência. Uma máquina de estados útil é PENDING_RESERVED → SENT → SETTLED, com ramo de rejeição definitiva para REJECTED_COMPENSATING → REJECTED_COMPENSATED e ramo de timeout para UNKNOWN → RECONCILING. O nome final só muda após confirmação durável do resultado e da compensação correspondente.",
+            "Uma forma explícita de representar reserva em subcontas é postar J-reserve: disponível-A −15000 e reservado-A +15000. Com R$1.000 iniciais, o cliente passa a ter R$850 disponíveis e R$150 reservados; a obrigação total continua R$1.000. Se o destino rejeita de forma definitiva, J-release cria reservado-A −15000 e disponível-A +15000, referenciando a reserva. O journal de reserva continua existindo. Essa representação é uma opção; outra é uma tabela/entidade de holds transacional, mantendo saldo contábil separado de disponibilidade.",
+            "Se há liquidação externa confirmada, uma representação simplificada posta reservado-A −15000 e ativo-de-liquidação +15000 na convenção crédito−débito; o crédito reduz o saldo natural devedor daquele ativo. O plano real pode exigir contas de obrigação, taxas, liquidação e múltiplos passos. Se um desenho já havia contabilizado em uma conta transitória de obrigação antes da resposta externa, a rejeição gera novas entries que invertem/compensam o lançamento apropriado e liberam a reserva, com referências à causa. Nunca editar a entry original para fazê-la desaparecer.",
+            "Timeout depois de SENT não é rejeição: o parceiro pode ter liquidado. Manter estado desconhecido, consultar por referência estável e reconciliar evita devolver disponibilidade e ainda reconhecer um pagamento pago. Retries usam a mesma identidade no parceiro quando o contrato permite. A compensação também é idempotente; duas rejeições ou dois callbacks não devolvem R$300 por um pagamento de R$150. Se compensar falhar, a operação continua REJECTED_COMPENSATING e exige retry/ação operacional, em vez de exibir dinheiro devolvido antes do commit."
+          ],
+          "sourceIds": [
+            "ledger-ledger-model",
+            "ledger-retry",
+            "ledger-outbox"
+          ]
+        },
+        {
           "type": "table",
           "title": "Matriz de falhas, consistência, ordenação e correção",
           "headers": [
@@ -818,28 +875,6 @@
         },
         {
           "type": "prose",
-          "title": "Read-your-writes: protocolo proposto, não comportamento privado atribuído ao Nubank",
-          "paragraphs": [
-            "Uma resposta de commit pode carregar um token opaco com database/shard, ownership epoch, posição confirmada e identidade da operação. Para uma tela que precisa mostrar o efeito, a API pede à projeção prova de que alcançou esse ponto. Um projector só pode avançar seu watermark quando todas as mudanças relevantes anteriores estão aplicadas segundo o contrato; observar o evento com o maior número não prova ausência de buracos.",
-            "Se o prazo de espera acabar, três respostas são possíveis: ler da autoridade com admissão e autorização próprias; mostrar “processando atualização” com o resultado confirmado da operação; ou retornar indisponibilidade/frescor insuficiente. O que não vale é apresentar um saldo velho como prova de que a transferência falhou.",
-            "d/sync e db-after resolvem aspectos de coordenação dentro da API Datomic. Não sincronizam automaticamente Redis, DynamoDB de leitura ou consumidores Kafka. t lógico, entity ID da transação e txInstant são conceitos distintos; txInstant em milissegundos não é identidade exclusiva. Um token não deve misturar posições de databases diferentes. Em leitura que reúne vários shards, um vetor de posições ou outro contrato de snapshot será necessário; tirar o maior número entre dois t locais não cria uma linha do tempo global.",
-            "Assine/valide o token ou trate-o apenas como indicação não confiável: o cliente não pode pedir uma posição impossível e manter workers esperando indefinidamente. Limite prazo, versão e escopo do token. Após migração ou restore, lineage/epoch determina se a posição antiga ainda pode ser satisfeita ou precisa ser traduzida; essa mudança é parte do protocolo."
-          ],
-          "sourceIds": [
-            "ledger-datomic-api",
-            "ledger-datomic-sync",
-            "ledger-dynamo",
-            "ledger-datomic-best"
-          ]
-        },
-        {
-          "type": "code",
-          "title": "Estado de uma leitura com frescor mínimo",
-          "text": "commit_token = {ledger_id, shard_id, ownership_epoch, position, operation_id}\n\nread_view(account_id, min_token, deadline):\n    authorize(account_id)\n    validate_token_scope_and_lineage(min_token)\n    while time_left(deadline) permits bounded_read:\n        (view, watermark) = read_view_and_watermark_consistently()\n        if same_lineage(watermark, min_token) and watermark >= min_token.position:\n            return view  // versão da view corresponde ao watermark validado\n        if not time_left(deadline) permits bounded_wait: break\n        wait_for_progress_or_timeout(deadline)\n    if policy_allows_authoritative_fallback and admission_granted:\n        snapshot = read_authoritative_snapshot(min_token, deadline)\n        if same_database_and_epoch(snapshot, min_token) and snapshot.basis >= min_token.position:\n            return query(snapshot, account_id)\n    return freshness_not_yet_satisfied\n\n// Não validar watermark novo e depois devolver valor velho de outro cache.\n// \"contiguous\" importa: máximo visto != todos os eventos anteriores aplicados.\n// Em Datomic, usar sincronização/valor apropriado à API e à edição.\n// Esse é um protocolo de aplicação proposto, não uma API pronta do Nubank.",
-          "language": "text"
-        },
-        {
-          "type": "prose",
           "title": "Capacity planning: derive, meça, depois escolha shards e máquinas",
           "paragraphs": [
             "Use λ para operações de negócio por segundo, k para média de entries por journal, d para datoms totais produzidos por operação, b para bytes serializados do evento, r para fator de replicação e T para retenção. A taxa de entries é λk; a de datoms é λd; payload lógico no log é λb por segundo. Essas contas dimensionam ordens de grandeza, mas não incluem índices, metadados, compressão, compactação, múltiplas cópias, overhead de protocolo ou custo de leitura.",
@@ -850,6 +885,42 @@
           ],
           "sourceIds": [
             "ledger-datomic-capacity",
+            "ledger-overload"
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Baseline de infraestrutura para um experimento, não benchmark ou receita Nubank",
+          "headers": [
+            "Peça",
+            "Hipótese inicial de laboratório/carga",
+            "O que validar antes de dimensionar produção"
+          ],
+          "rows": [
+            [
+              "API/core workers",
+              "2–3 réplicas, por exemplo 2–4 vCPU e 4–8 GiB cada; requests/limits e pools explícitos.",
+              "Perfil CPU/heap, GC, serialização, taxa de rejeição e p99 com uma réplica/zone indisponível. Números são ponto de partida ajustável."
+            ],
+            [
+              "Datomic Pro por unidade",
+              "Exemplo inicial 4–8 vCPU e 16–32 GiB para processos transacionais/consulta conforme papel; ajustar heap e cache ao working set.",
+              "Seguir suporte/capacidade/HA da edição. Não inferir throughput desses recursos nem somar capacidade de writers como se cada um aceitasse escrita independente no mesmo database."
+            ],
+            [
+              "Kafka experimental",
+              "3 brokers em domínios de falha; replication.factor=3, min.insync.replicas=2, producer acks=all e idempotence habilitada; discos persistentes.",
+              "Com ISR insuficiente a escrita deve falhar; evitar eleição não limpa se ameaça a durabilidade. Dimensionar partições, rede, disco, retenção e recuperação. EOS Kafka não inclui automaticamente Datomic."
+            ],
+            [
+              "Projectors/read stores",
+              "2–3 workers inicialmente, concorrência limitada por partições e capacidade do destino; cache com memória/eviction definidos.",
+              "Throughput de catch-up maior que chegada, versão/dedupe atômicas, custo/limites do destino e p99 em cold cache. Banco gerenciado é dimensionado também por IOPS/throughput/quota, não só RAM do worker."
+            ]
+          ],
+          "sourceIds": [
+            "ledger-datomic-capacity",
+            "ledger-kafka",
             "ledger-overload"
           ]
         },
@@ -1007,77 +1078,6 @@
             "Qual configuração e qual teste sustentam o RPO prometido? O backup inclui chaves e dependências necessárias?",
             "Ao migrar para Azure ou on-prem, que semântica você redesenha e qual invariante deve permanecer idêntica?",
             "Que parte do seu código é demonstração local e que evidência faltaria antes de colocar dinheiro real nele?"
-          ]
-        },
-        {
-          "type": "prose",
-          "title": "Caso 1 · AccountOpened precisa preceder CreditPosted",
-          "paragraphs": [
-            "Primeiro, defina a causa: o crédito pressupõe que a conta existe, tem moeda definida e está autorizada a receber aquele lançamento. Se ambos os eventos pertencem à mesma história de conta, o produtor autoritativo atribui uma sequência monotônica e publica AccountOpened antes de CreditPosted. Com o mesmo tópico, a mesma chave e o mesmo mapeamento de partição, Kafka preserva a ordem dos registros daquela partição; ainda é necessário que o produtor/relay publique na ordem causal e que o consumidor não conclua processamento paralelo fora dela.",
-            "Mesma chave em tópicos diferentes não fornece ordem entre tópicos. Dois produtores independentes também não ganham causalidade só por usar account_id. Mudança de número de partições, migração de tópico ou alteração de roteador pode mudar a distribuição. Uma transferência entre duas contas tem duas histórias: ordenar pela conta de origem não prova que o destino já foi criado. A solução vem de uma autoridade transacional que valida as duas contas ou de um workflow que depende explicitamente da confirmação de abertura.",
-            "O consumidor mantém aggregate_version esperado e inbox durável. Ao receber CreditPosted v2 sem AccountOpened v1, não cria uma conta fictícia nem descarta o crédito como erro definitivo. Pode estacionar o evento por agregado, buscar a dependência na autoridade ou aguardar/reprocessar com backoff limitado. O checkpoint do transporte só pode avançar sobre essa mensagem se a pendência já estiver duravelmente registrada e recuperável. Do contrário, um crash transforma a espera em perda.",
-            "Depois de aplicar v1, o consumidor libera v2, atualiza visão e dedupe atomicamente e avança o progresso contíguo. Alertas de idade da pendência revelam evento realmente ausente. Se a conta nunca deveria existir ou o evento viola contrato, quarentena com evidência e owner substitui retry infinito. O protocolo de gaps faz parte do contrato de recuperação, não de uma tentativa de adivinhar ordem por timestamp."
-          ],
-          "sourceIds": [
-            "ledger-kafka",
-            "ledger-outbox"
-          ]
-        },
-        {
-          "type": "code",
-          "title": "Exemplo causal com inbox por agregado",
-          "text": "AccountOpened {account_id:A, aggregate_version:1, event_id:e1}\nCreditPosted  {account_id:A, aggregate_version:2, event_id:e2, delta:+15000}\n\nconsume(event):\n    begin destination_transaction\n    try:\n        expected = aggregate_state[event.account_id].version + 1\n        if inbox[event.event_id].applied:\n            verify_same_event_identity_and_payload(event)\n        elif event.version > expected:\n            persist_pending_inbox(event)  // recuperável mesmo após crash\n        elif event.version < expected:\n            require_known_duplicate_or_raise_history_conflict(event)\n        else:\n            validate_transition_and_apply(event)\n            mark_inbox_applied_and_advance_aggregate_version(event)\n        commit\n    catch error:\n        rollback\n        retry_or_quarantine_durably_according_to_error(error, event)\n        return  // sem ack até tratamento durável estar garantido\n    acknowledge_transport()\n\n// Worker independente consulta pending_inbox durável e recupera gaps.\n// Não depender de um agendamento volátil entre commit e crash.\n// Se uma quarentena for usada, publicar/gravar nela antes de confirmar a origem.\n// v2 não transforma uma conta ausente em uma conta autorizada.",
-          "language": "text"
-        },
-        {
-          "type": "prose",
-          "title": "Caso 2 · TED/Pix aprovado internamente e rejeitado externamente",
-          "paragraphs": [
-            "O cenário é uma hipótese de entrevista, não descrição do processamento privado Nubank ou substituto da documentação do arranjo de pagamento. Aprovação interna significa que identidade, regras e fundos passaram pela autoridade local. A liquidação externa exige outra evidência. Uma máquina de estados útil é PENDING_RESERVED → SENT → SETTLED, com ramo de rejeição definitiva para REJECTED_COMPENSATING → REJECTED_COMPENSATED e ramo de timeout para UNKNOWN → RECONCILING. O nome final só muda após confirmação durável do resultado e da compensação correspondente.",
-            "Uma forma explícita de representar reserva em subcontas é postar J-reserve: disponível-A −15000 e reservado-A +15000. Com R$1.000 iniciais, o cliente passa a ter R$850 disponíveis e R$150 reservados; a obrigação total continua R$1.000. Se o destino rejeita de forma definitiva, J-release cria reservado-A −15000 e disponível-A +15000, referenciando a reserva. O journal de reserva continua existindo. Essa representação é uma opção; outra é uma tabela/entidade de holds transacional, mantendo saldo contábil separado de disponibilidade.",
-            "Se há liquidação externa confirmada, uma representação simplificada posta reservado-A −15000 e ativo-de-liquidação +15000 na convenção crédito−débito; o crédito reduz o saldo natural devedor daquele ativo. O plano real pode exigir contas de obrigação, taxas, liquidação e múltiplos passos. Se um desenho já havia contabilizado em uma conta transitória de obrigação antes da resposta externa, a rejeição gera novas entries que invertem/compensam o lançamento apropriado e liberam a reserva, com referências à causa. Nunca editar a entry original para fazê-la desaparecer.",
-            "Timeout depois de SENT não é rejeição: o parceiro pode ter liquidado. Manter estado desconhecido, consultar por referência estável e reconciliar evita devolver disponibilidade e ainda reconhecer um pagamento pago. Retries usam a mesma identidade no parceiro quando o contrato permite. A compensação também é idempotente; duas rejeições ou dois callbacks não devolvem R$300 por um pagamento de R$150. Se compensar falhar, a operação continua REJECTED_COMPENSATING e exige retry/ação operacional, em vez de exibir dinheiro devolvido antes do commit."
-          ],
-          "sourceIds": [
-            "ledger-ledger-model",
-            "ledger-retry",
-            "ledger-outbox"
-          ]
-        },
-        {
-          "type": "table",
-          "title": "Baseline de infraestrutura para um experimento, não benchmark ou receita Nubank",
-          "headers": [
-            "Peça",
-            "Hipótese inicial de laboratório/carga",
-            "O que validar antes de dimensionar produção"
-          ],
-          "rows": [
-            [
-              "API/core workers",
-              "2–3 réplicas, por exemplo 2–4 vCPU e 4–8 GiB cada; requests/limits e pools explícitos.",
-              "Perfil CPU/heap, GC, serialização, taxa de rejeição e p99 com uma réplica/zone indisponível. Números são ponto de partida ajustável."
-            ],
-            [
-              "Datomic Pro por unidade",
-              "Exemplo inicial 4–8 vCPU e 16–32 GiB para processos transacionais/consulta conforme papel; ajustar heap e cache ao working set.",
-              "Seguir suporte/capacidade/HA da edição. Não inferir throughput desses recursos nem somar capacidade de writers como se cada um aceitasse escrita independente no mesmo database."
-            ],
-            [
-              "Kafka experimental",
-              "3 brokers em domínios de falha; replication.factor=3, min.insync.replicas=2, producer acks=all e idempotence habilitada; discos persistentes.",
-              "Com ISR insuficiente a escrita deve falhar; evitar eleição não limpa se ameaça a durabilidade. Dimensionar partições, rede, disco, retenção e recuperação. EOS Kafka não inclui automaticamente Datomic."
-            ],
-            [
-              "Projectors/read stores",
-              "2–3 workers inicialmente, concorrência limitada por partições e capacidade do destino; cache com memória/eviction definidos.",
-              "Throughput de catch-up maior que chegada, versão/dedupe atômicas, custo/limites do destino e p99 em cold cache. Banco gerenciado é dimensionado também por IOPS/throughput/quota, não só RAM do worker."
-            ]
-          ],
-          "sourceIds": [
-            "ledger-datomic-capacity",
-            "ledger-kafka",
-            "ledger-overload"
           ]
         }
       ],

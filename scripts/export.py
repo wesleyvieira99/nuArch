@@ -3,11 +3,11 @@ from pathlib import Path
 import base64,json,mimetypes,re,sys
 root=Path(__file__).resolve().parents[1]
 out=Path(sys.argv[1]) if len(sys.argv)>1 else root/'nuArch-portable.html'
-data=[json.loads((root/'data'/f'{name}.json').read_text()) for name in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux')]
+data=[json.loads((root/'data'/f'{name}.json').read_text()) for name in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided')]
 for entry in data[3]['entries']:
     path=root/entry['logo'];mime=mimetypes.guess_type(path)[0] or 'application/octet-stream'
     entry['logo']=f'data:{mime};base64,'+base64.b64encode(path.read_bytes()).decode()
-js=(root/'app.js').read_text();start=js.index('const responses=await Promise.all(');end=js.index(';const [a,p,r,l,g,f,v,c]=responses',start)
+js=(root/'app.js').read_text();start=js.index('const responses=await Promise.all(');end=js.index(';const [a,p,r,l,g,f,v,c,w]=responses',start)
 js=js[:start]+'const responses=window.__NUARCH_DATA__'+js[end:]
 js=js.replace("import {quorumModel,queueModel,cacheBurstModel,poolModel,tokenBucketModel} from './models.mjs';",(root/'models.mjs').read_text().replace('export function ','function '))
 js=js.replace("import {createProgressStore} from './progress-merge.mjs';",(root/'progress-merge.mjs').read_text().replace('export function ','function ').replace('export const ','const '))

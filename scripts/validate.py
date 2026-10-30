@@ -3,7 +3,7 @@ import json,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 load=lambda n:json.loads((root/'data'/f'{n}.json').read_text())
-a,p,r,l,g,f,v,course=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux')]
+a,p,r,l,g,f,v,course,guided=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided')]
 assert len(a['architectures'])>=60
 assert len(p['questions'])>1000
 assert len(p['mocks'])>100
@@ -11,7 +11,7 @@ for objects,key in [(a['architectures'],'id'),(p['questions'],'id'),(p['question
     vals=[x[key] for x in objects]
     assert len(vals)==len(set(vals)),f'Duplicate {key}'
 sources={}
-for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']:
+for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']+guided['sources']:
     assert s['id'] not in sources or sources[s['id']]['url']==s['url'],s['id']
     assert s.get('url') is None or s['url'].startswith('https://'),s
     sources[s['id']]=s
@@ -26,7 +26,7 @@ def refs(obj):
             else:refs(value)
     elif isinstance(obj,list):
         for item in obj:refs(item)
-for obj in (a,p,r,g,f,v,course):refs(obj)
+for obj in (a,p,r,g,f,v,course,guided):refs(obj)
 for arch in a['architectures']:
     assert arch['title'] and len(arch['steps'])>=2 and len(arch['internals'])>=5,arch['id']
     assert len(arch['code']['text'])>15 and arch['sourceIds'],arch['id']
@@ -113,6 +113,35 @@ for resource in course_files:
 for resource in course['allLinks']+[r for l in course['lessons'] for r in l['links']]:
     assert resource['url'].startswith('https://'),resource
 
+assert len(guided['cases'])==5
+assert len({c['id'] for c in guided['cases']})==5
+for case in guided['cases']:
+    assert len(case['steps'])==10 and len(case['nodes'])>=8 and len(case['failureDrills'])==3,case['id']
+    assert len(case['rubric'])>=5 and len(case['assumptions'])>=3 and len(case['invariants'])>=3,case['id']
+    assert case['evidence']['kind'] in ('Relato público','Caso oficial adaptado','Cenário plausível')
+    assert case['evidence']['sourceIds'] and case['evidence']['limits']
+    node_ids={n['id'] for n in case['nodes']}
+    assert len(node_ids)==len(case['nodes'])
+    cursor=0
+    for i,step in enumerate(case['steps']):
+        assert step['minute']==cursor and step['duration']>0,(case['id'],i)
+        cursor+=step['duration']
+        assert len(step['candidate'])>=2 and all(len(x)>80 for x in step['candidate']),(case['id'],i)
+        assert len(step['draw'])>=2 and step['focusNodes'] and step['mechanics'],(case['id'],i)
+        assert step['artifact']['code'] and step['interviewer'] and step['checkpoint'] and step['principal']
+        assert all(step['challenge'].get(k) for k in ('question','answer','pivot'))
+        assert all(step['decision'].get(k) for k in ('choice','alternative','why','whenToChange'))
+        for nid in step['focusNodes']:
+            assert nid in node_ids and next(n for n in case['nodes'] if n['id']==nid)['firstStep']<=i,(case['id'],i,nid)
+    assert cursor==60,case['id']
+    for node in case['nodes']:
+        assert 83<=node['x']<=892 and 32<=node['y']<=410 and 0<=node['firstStep']<=9,(case['id'],node)
+    for edge in case['edges']:
+        assert edge['from'] in node_ids and edge['to'] in node_ids
+        assert 0<=edge['firstStep']<=9 and all(next(n for n in case['nodes'] if n['id']==nid)['firstStep']<=edge['firstStep'] for nid in (edge['from'],edge['to']))
+    assert all(id in {arch['id'] for arch in a['architectures']} for id in case['relatedArchitectures'])
+    assert all(isinstance(case['deployment'][p],str) and len(case['deployment'][p])>100 for p in ('aws','azure','onprem'))
+
 assert len(g['codeFiles'])>=4
 for file in g['codeFiles']:
     assert file['text']==(root/'examples'/'ledger'/file['name']).read_text(),file['name']
@@ -127,4 +156,4 @@ for path in root.rglob('*'):
     if path.suffix in ('.html','.js','.json','.md','.css'):
         text=path.read_text()
         assert not re.search(r'meet\.google\.com/[a-z-]+|[\w.+-]+@(?:gmail|hotmail|outlook)\.com|/Users/|/Downloads/',text),path
-print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'status':'PASS'},ensure_ascii=False,indent=2))
+print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'guided_cases':len(guided['cases']),'guided_steps':sum(len(c['steps']) for c in guided['cases']),'status':'PASS'},ensure_ascii=False,indent=2))

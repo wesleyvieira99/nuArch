@@ -3,7 +3,7 @@ import json,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 load=lambda n:json.loads((root/'data'/f'{n}.json').read_text())
-a,p,r,l,g=[load(n) for n in ('architectures','practice','research','logos','ledger')]
+a,p,r,l,g,f,v,course=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux')]
 assert len(a['architectures'])>=60
 assert len(p['questions'])>1000
 assert len(p['mocks'])>100
@@ -11,7 +11,7 @@ for objects,key in [(a['architectures'],'id'),(p['questions'],'id'),(p['question
     vals=[x[key] for x in objects]
     assert len(vals)==len(set(vals)),f'Duplicate {key}'
 sources={}
-for s in r['sources']+a['sources']+p['sources']+g['sources']:
+for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']:
     assert s['id'] not in sources or sources[s['id']]['url']==s['url'],s['id']
     assert s.get('url') is None or s['url'].startswith('https://'),s
     sources[s['id']]=s
@@ -26,7 +26,7 @@ def refs(obj):
             else:refs(value)
     elif isinstance(obj,list):
         for item in obj:refs(item)
-for obj in (a,p,r,g):refs(obj)
+for obj in (a,p,r,g,f,v,course):refs(obj)
 for arch in a['architectures']:
     assert arch['title'] and len(arch['steps'])>=2 and len(arch['internals'])>=5,arch['id']
     assert len(arch['code']['text'])>15 and arch['sourceIds'],arch['id']
@@ -39,6 +39,16 @@ for arch in a['architectures']:
         dep=arch['deployments'][provider]
         assert len(dep['components'])==len(arch['nodes']) and dep['notes'],(arch['id'],provider)
         for n,c in zip(arch['nodes'],dep['components']):assert n['label']==c['role'] and c['service'] and c['reason']
+
+    o=arch['operations']
+    assert len(o['bottlenecks'])>=2 and len(o['resilience'])>=2,arch['id']
+    for b in o['bottlenecks']:
+        assert all(isinstance(b[k],str) and len(b[k])>=(3 if k=='where' else 15) for k in ('where','signal','cause','mitigation','tradeoff')),(arch['id'],b)
+    assert o['scaling']['trigger'] and len(o['scaling']['sequence'])>=3 and o['scaling']['limit'],arch['id']
+    for b in o['resilience']:
+        assert all(isinstance(b[k],str) and len(b[k])>=(3 if k=='failure' else 15) for k in ('failure','detection','failover','recovery','userImpact','dataRisk')),(arch['id'],b)
+    assert all(isinstance(o['serviceLevel'][k],str) and len(o['serviceLevel'][k])>=15 for k in ('userJourney','sli','slo','timeoutPolicy','recoveryObjectives','validation')),arch['id']
+    assert o['staffQuestion']['question'] and o['staffQuestion']['answer'] and o['sourceIds'],arch['id']
 for q in p['questions']:
     assert len(q['answer'])>=2 and q['redFlags'] and q['followUp'] and q['scenario'],q['id']
 for mock in p['mocks']:
@@ -57,6 +67,52 @@ for section in g['sections']:
         if block['type']=='table':
             assert block['headers'] and block['rows']
             assert all(len(row)==len(block['headers']) for row in block['rows'])
+
+assert [c['id'] for c in f['chapters']]==['cap','replication','databases','caches','balancing','queues']
+for chapter in f['chapters']:
+    assert len(chapter['sections'])>=5 and len(chapter['questions'])>=4 and chapter['sourceIds'],chapter['id']
+    for section in chapter['sections']:
+        assert section['title'] and section['blocks'],chapter['id']
+        for block in section['blocks']:
+            assert block['type'] in ('prose','code','table','callout','list'),block
+            if block['type']=='table':
+                assert block['headers'] and block['rows']
+                assert all(len(row)==len(block['headers']) for row in block['rows'])
+assert len(v['videos'])==50
+assert len({x['id'] for x in v['videos']})==50
+assert len({x['guide'] for x in v['videos']})==50
+for video in v['videos']:
+    assert re.fullmatch(r'[A-Za-z0-9_-]{11}',video['id'])
+    assert video['url']=='https://www.youtube.com/watch?v='+video['id']
+    assert video['thumbnail']=='https://i.ytimg.com/vi/'+video['id']+'/hqdefault.jpg'
+    assert video['seconds']>600 and video['channelUrl'].startswith('https://www.youtube.com/')
+    assert video['kind'] in ('Entrevista simulada','Walkthrough')
+    assert len(video['guide'])>120 and len(video['focus'])>=2 and len(video['challenge'])>40,video['id']
+    assert video['category']==video['topic']
+    assert len(video['relatedArchitectures'])>=2
+    assert all(x in {arch['id'] for arch in a['architectures']} for x in video['relatedArchitectures'])
+    assert 'revisão editorial' not in video['guide']
+
+assert len(course['lessons'])==29
+assert [l['number'] for l in course['lessons']]==list(range(1,30))
+assert len({l['id'] for l in course['lessons']})==29
+course_files=course['otherResources']+[r for l in course['lessons'] for r in l['resources'] if not r.get('external')]
+assert len(course_files)==len({r['path'] for r in course_files})==341
+assert course['coverage']['fileCount']==course['coverage']['catalogedFileCount']==341
+assert course['coverage']['treeTruncated'] is False
+assert sum(r['type']=='Diagrama' for r in course_files)==course['coverage']['diagramCount']==16
+assert course['videoLinks']==[]
+for lesson in course['lessons']:
+    slides=[r for r in lesson['resources'] if r['type']=='Slides']
+    assert len(slides)==1 and re.fullmatch(r'https://docs\.google\.com/presentation/d/[\w-]+/edit\?[^ ]+',slides[0]['url'])
+    assert len(lesson['summary'])>100 and lesson['topics']
+    assert all(x in {arch['id'] for arch in a['architectures']} for x in lesson['relatedArchitectures']),lesson['id']
+for resource in course_files:
+    assert '/blob/'+course['commit']+'/' in resource['url'] and resource['url'].startswith(course['repositoryUrl'])
+    assert resource['path'] and resource['type'] and resource['group']
+for resource in course['allLinks']+[r for l in course['lessons'] for r in l['links']]:
+    assert resource['url'].startswith('https://'),resource
+
 assert len(g['codeFiles'])>=4
 for file in g['codeFiles']:
     assert file['text']==(root/'examples'/'ledger'/file['name']).read_text(),file['name']
@@ -71,4 +127,4 @@ for path in root.rglob('*'):
     if path.suffix in ('.html','.js','.json','.md','.css'):
         text=path.read_text()
         assert not re.search(r'meet\.google\.com/[a-z-]+|[\w.+-]+@(?:gmail|hotmail|outlook)\.com|/Users/|/Downloads/',text),path
-print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'status':'PASS'},ensure_ascii=False,indent=2))
+print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'status':'PASS'},ensure_ascii=False,indent=2))

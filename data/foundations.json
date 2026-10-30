@@ -1,0 +1,1743 @@
+{
+  "chapters": [
+    {
+      "id": "cap",
+      "title": "CAP, PACELC e contratos de consistência",
+      "subtitle": "Escolha o que cada operação promete quando a rede deixa de cooperar.",
+      "summary": "CAP trata de uma impossibilidade durante falhas de comunicação. Uma decisão de Staff começa pela operação, pelo estado que ela observa e pela consequência de responder errado; a sigla vem depois.",
+      "sections": [
+        {
+          "title": "1. As três letras, sem atalhos",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Propriedade",
+                "Significado técnico",
+                "Erro comum"
+              ],
+              "rows": [
+                [
+                  "C: consistency",
+                  "Linearizabilidade: operações parecem ocorrer em instantes entre chamada e resposta, respeitando a precedência real.",
+                  "Confundir com a letra C de ACID, que se refere às invariantes do banco/aplicação."
+                ],
+                [
+                  "A: availability",
+                  "Toda requisição recebida por um nó que não falhou termina conforme a especificação da operação. Não há um limite de milissegundos na definição.",
+                  "Contar um 503 rápido como sucesso da operação, ou igualar o conceito formal a 99,9% mensal."
+                ],
+                [
+                  "P: partition tolerance",
+                  "O modelo admite perda/atraso de mensagens entre partes vivas do sistema.",
+                  "Tratar uma rede distribuída como incapaz de partir porque os servidores estão na mesma região."
+                ]
+              ],
+              "sourceIds": [
+                "fund-cap",
+                "fund-linearizable"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Não é uma seleção permanente de duas opções em três. Se uma partição impede a coordenação necessária, não se pode garantir simultaneamente a resposta correta de um objeto linearizável e o término de todas as operações em todos os lados. Em períodos sem partição, é possível manter consistência e disponibilidade; a coordenação ainda custa recursos e tempo.",
+                "Uma rejeição de negócio válida, como saldo insuficiente comprovado, é uma resposta da especificação. Rejeitar arbitrariamente todas as escritas para alegar disponibilidade contorna o problema verbalmente, mas deixa de implementar a operação prometida."
+              ],
+              "sourceIds": [
+                "fund-cap",
+                "fund-cap-perspectives"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. Uma falha financeira, acompanhada até a tela",
+          "blocks": [
+            {
+              "type": "callout",
+              "title": "Exercício de projeto, não descrição interna do Nubank",
+              "text": "Considere um saldo disponível de R$ 100 em duas regiões. A ligação se rompe. Na região A, um débito de R$ 80 é confirmado. Depois dessa confirmação, uma leitura começa na região B, que só conhece os R$ 100 iniciais.",
+              "sourceIds": []
+            },
+            {
+              "type": "list",
+              "items": [
+                "Se B responder R$ 100 como saldo atual e definitivo, viola o contrato linearizável: a operação anterior já terminou. B não sabe distinguir ausência de débito de débito inacessível.",
+                "Se B esperar a informação ou rejeitar temporariamente a leitura atual, preserva a segurança desse contrato, mas não a disponibilidade formal em B. Um prazo de espera limitado torna o comportamento operacional previsível.",
+                "B pode exibir “última atualização conhecida: R$ 100” sob um contrato de leitura explicitamente mais fraco. Esse valor não autoriza outro débito de R$ 80. Mostrar o histórico e autorizar gasto são operações diferentes.",
+                "Se as duas regiões precisarem autorizar gastos desconectadas, o desenho pode distribuir previamente direitos de gasto limitados. A soma desses direitos não excede o saldo reservado. Isso troca flexibilidade por disponibilidade; não oferece saldo global fresco nem direitos ilimitados durante a partição."
+              ],
+              "sourceIds": []
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Ao recuperar a rede, não se apaga a evidência do incidente. Reconciliam-se comandos, posições do log e respostas observadas. Uma operação cujo resultado ficou desconhecido é consultada pela chave de negócio; o cliente não deve inventar uma segunda intenção para resolver um timeout. O saldo contábil continua sujeito à regra de conservação por moeda, independentemente da experiência visual."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "3. Linearizável, serializável e estritamente serializável",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Contrato",
+                "O que restringe",
+                "O que ainda precisa ser garantido"
+              ],
+              "rows": [
+                [
+                  "Linearizabilidade",
+                  "A história de operações de um objeto e sua ordem de tempo real. O “objeto” pode ser uma chave ou uma API maior.",
+                  "Duas escritas linearizáveis separadas não tornam uma transferência atômica entre duas contas."
+                ],
+                [
+                  "Serializabilidade",
+                  "O resultado de transações concorrentes equivale a alguma execução serial.",
+                  "A definição isolada não obriga essa ordem a respeitar precedência em tempo real entre transações."
+                ],
+                [
+                  "Serializabilidade estrita",
+                  "Transações serializáveis cuja ordem também respeita operações que terminaram antes de outras começarem.",
+                  "Durabilidade, autorização, idempotência e validações de domínio continuam sendo contratos separados."
+                ],
+                [
+                  "Snapshot isolation",
+                  "Leituras coerentes de um snapshot e regras de conflito de escrita do mecanismo.",
+                  "Pode permitir write skew: transações alteram linhas diferentes depois de validar a mesma restrição conjunta."
+                ]
+              ],
+              "sourceIds": [
+                "fund-linearizable",
+                "fund-serializable",
+                "fund-strict",
+                "fund-pg-isolation"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Exemplo de write skew: duas contas de cobertura somam R$ 200; a regra exige pelo menos R$ 100 no conjunto. Duas transações leem o mesmo snapshot e retiram R$ 100 de contas distintas. Cada atualização isolada pode ser válida, mas a soma final é zero. Use uma restrição serializada sobre o conjunto, locks adquiridos de modo consistente, ou isolamento serializável com repetição da transação abortada. Um SELECT anterior seguido de UPDATE não prova essa propriedade.",
+                "Na entrevista, explicite o escopo: “esta transação protege as duas contas neste banco”; “este GET precisa observar minha confirmação”; “o extrato pode atrasar”. A frase “o banco é consistente” não responde a nenhuma das três perguntas sozinha."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "4. PACELC e o custo no caminho crítico",
+          "blocks": [
+            {
+              "type": "prose",
+              "paragraphs": [
+                "PACELC organiza duas decisões: durante uma partição, como disponibilidade e consistência são negociadas; fora dela, como latência e consistência influenciam o desenho. É um enquadramento de projeto, não uma tabela universal de latências nem um substituto para ler os contratos do produto. Classificar um banco sem indicar operação, configuração e topologia esconde diferenças importantes."
+              ],
+              "sourceIds": [
+                "fund-pacelc"
+              ]
+            },
+            {
+              "type": "table",
+              "headers": [
+                "Caminho",
+                "Custo a investigar",
+                "Consequência"
+              ],
+              "rows": [
+                [
+                  "Ler cache local",
+                  "CPU, RAM e estado já materializado; o trabalho de atualização foi deslocado para outro caminho.",
+                  "Menor dependência de rede, mas frescor precisa de versão, expiração ou espera."
+                ],
+                [
+                  "Consultar líder/autoridade",
+                  "Rede até autoridade, fila e execução; uma leitura do líder também precisa de protocolo de liderança válido.",
+                  "Uma liderança antiga isolada não pode declarar estado atual só porque ainda está viva."
+                ],
+                [
+                  "Confirmar em quorum",
+                  "Rede, persistência e conjunto suficiente de confirmações; o membro lento pode ou não estar no conjunto necessário.",
+                  "A cauda do caminho decisivo importa mais que a média entre todos os nós."
+                ],
+                [
+                  "Coordenar várias regiões",
+                  "Distância física, retransmissões, eleição e variância de rede.",
+                  "Mais CPU não elimina o tempo de propagação entre regiões."
+                ]
+              ],
+              "sourceIds": [
+                "fund-raft"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Em um log com líder, uma rodada estável costuma enviar mensagens para O(n) réplicas; batching amortiza cabeçalhos e sincronizações de disco. Isso não significa O(1) de latência nem throughput ilimitado: fila, fsync, contenção e tamanho do lote permanecem. Meça p50/p95/p99 por etapa e durante falha, não apenas em cache quente. Perder quorum pode preservar segurança justamente por suspender progresso."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "5. Decidir a degradação antes do incidente",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Operação proposta",
+                "Durante perda da autoridade",
+                "Experiência e observação"
+              ],
+              "rows": [
+                [
+                  "Autorizar débito sem cheque especial",
+                  "Bloquear decisão definitiva ou aceitar comando apenas como pendente durável.",
+                  "Exibir processamento; contar pendência separadamente de pagamento liquidado."
+                ],
+                [
+                  "Exibir extrato informativo",
+                  "Servir snapshot identificado, dentro de um orçamento de atraso aprovado.",
+                  "Mostrar horário/estado de atualização e permitir recuperação do frescor."
+                ],
+                [
+                  "Alterar preferência visual",
+                  "Aceitar atualização se resolução de concorrência for definida.",
+                  "Último valor vence pode ser aceitável aqui; não transportá-lo para lançamentos financeiros."
+                ],
+                [
+                  "Confirmar transferência entre contas",
+                  "Exigir a fronteira atômica ou protocolo distribuído especificado.",
+                  "Não celebrar sucesso quando só a metade do fluxo foi registrada."
+                ]
+              ],
+              "sourceIds": []
+            },
+            {
+              "type": "code",
+              "language": "text",
+              "text": "contrato = contrato_da_operacao(request.tipo)\nif contrato.exige_autoridade and not autoridade_confirmada():\n    if contrato.permite_comando_pendente:\n        id = persistir_intencao_idempotente(request)\n        return PENDENTE(id)  # não é confirmação financeira\n    return TEMPORARIAMENTE_INDISPONIVEL\nreturn executar_conforme_contrato(request)",
+              "title": "Pseudocódigo de política: verificação de autoridade depende de protocolo, não de ping",
+              "sourceIds": []
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Um SLI mede algo observável, como proporção de débitos com decisão correta em até dois segundos. O SLO é a meta interna dessa medida; SLA é um compromisso contratual que pode incluir consequências. Valores escolhidos em um exercício são propostas, não SLAs do Nubank. Uma tela rápida com saldo incorreto falha no objetivo de correção, mesmo se todos os servidores responderem HTTP 200."
+              ],
+              "sourceIds": []
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-cap",
+        "fund-cap-perspectives",
+        "fund-pacelc",
+        "fund-linearizable",
+        "fund-serializable",
+        "fund-strict",
+        "fund-raft",
+        "fund-pg-isolation"
+      ],
+      "questions": [
+        {
+          "q": "CAP obriga um banco a ser sempre lento para ser consistente?",
+          "answer": "Não. CAP estabelece uma impossibilidade em execuções com partições. Na operação normal, coordenação e distância afetam latência; PACELC ajuda a discutir esse custo. Cache, batching e localização mudam desempenho sem apagar o contrato."
+        },
+        {
+          "q": "Por que devolver 503 não resolve a disponibilidade de CAP?",
+          "answer": "Terminar uma chamada com indisponibilidade não executa a operação de leitura/escrita prometida. A definição formal não é apenas entregar um pacote HTTP."
+        },
+        {
+          "q": "Um saldo no cache pode continuar disponível com a escrita bloqueada?",
+          "answer": "Sim, sob um contrato de snapshot ou atraso explícito. A autorização de novo gasto precisa consultar a autoridade ou consumir direitos previamente reservados."
+        },
+        {
+          "q": "Serializable garante que li a última escrita concluída?",
+          "answer": "A definição de serializabilidade, isoladamente, não impõe tempo real. É preciso verificar o contrato concreto; serializabilidade estrita inclui essa precedência."
+        },
+        {
+          "q": "Como você provaria a decisão durante a entrevista?",
+          "answer": "Desenharia duas regiões isoladas, uma escrita confirmada e uma leitura posterior no outro lado. Explicaria o conhecimento disponível a cada nó e qual promessa ao usuário precisa mudar."
+        }
+      ]
+    },
+    {
+      "id": "replication",
+      "title": "Replicação, quorum e sharding",
+      "subtitle": "Distribuir cópias, distribuir responsabilidade e manter uma autoridade reconhecível.",
+      "summary": "Replicação aumenta a redundância do mesmo estado; sharding divide o estado. Nenhum deles, isoladamente, fornece atomicidade entre contas ou uma estratégia segura de failover.",
+      "sections": [
+        {
+          "title": "1. Três famílias, três tipos de coordenação",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Modelo",
+                "Funcionamento",
+                "Risco que o nome não resolve"
+              ],
+              "rows": [
+                [
+                  "Líder e seguidores",
+                  "O líder ordena escritas; seguidores recebem log físico ou mudanças lógicas. Confirmação pode esperar persistência remota ou apenas local.",
+                  "Eleição segura, isolamento do antigo líder, lag e leituras que exigem frescor."
+                ],
+                [
+                  "Múltiplos líderes",
+                  "Mais de um local aceita escrita e depois replica mudanças. Pode haver propriedade separada de chaves ou conflito concorrente.",
+                  "Last-write-wins por relógio pode perder incrementos ou escolher uma escrita antiga com timestamp maior."
+                ],
+                [
+                  "Sem líder fixo por chave",
+                  "Um coordenador encaminha a operação a réplicas; versões, quorums e reparo reconciliam resultados.",
+                  "Aritmética de quorum não substitui ordenação, tratamento de falhas parciais e regras de conflito."
+                ]
+              ],
+              "sourceIds": [
+                "fund-pg-replication",
+                "fund-dynamo",
+                "fund-cassandra"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Para saldo, armazenar “saldo = 100” em dois líderes e aceitar substituições concorrentes perde o significado das operações. Um conjunto de lançamentos identificados evita perder eventos por sobrescrita, mas ainda não impede dois débitos simultâneos de consumirem o mesmo limite. Convergência de dados e preservação de uma invariante são problemas diferentes.",
+                "Em replicação por consenso, termos/épocas distinguem lideranças. A eleição e o compromisso de entradas seguem o protocolo, não simplesmente o nó com relógio mais recente. Um token de fencing precisa ser verificado pelo recurso que recebe a escrita; um processo antigo pode continuar executando após perder o direito de escrever."
+              ],
+              "sourceIds": [
+                "fund-raft"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. A conta do quorum — e o que falta nela",
+          "blocks": [
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Se N é o conjunto fixo de réplicas de uma chave, W o número de confirmações de escrita e R o número de respostas consideradas numa leitura, R + W > N garante interseção desses conjuntos. W > N/2 também faz dois quorums de escrita se cruzarem. Isso é uma propriedade de conjuntos, não uma prova completa de linearizabilidade.",
+                "É necessário especificar quando uma confirmação é durável, qual versão vence, como concorrência é ordenada, o que acontece com uma escrita que alcança apenas parte dos nós, como mudanças de membros preservam interseção e se a leitura precisa reparar/escrever de volta antes de responder. Protocolos distintos respondem de maneiras diferentes."
+              ],
+              "sourceIds": [
+                "fund-dynamo",
+                "fund-raft"
+              ]
+            },
+            {
+              "type": "code",
+              "language": "text",
+              "text": "N = {A, B, C}; W = 2; R = 2\n1. write(v2) confirma em {A, B}; C ainda contém v1.\n2. read() recebe {B: v2, C: v1}.\n3. Há interseção: {A,B} ∩ {B,C} = {B}.\n4. Devolver a primeira resposta de C ignora a versão nova.\n5. Escolher maior timestamp local não basta com relógios divergentes.\n6. Use o protocolo/versionamento definido; não “quorum caseiro”.",
+              "title": "Exemplo de por que interseção é necessária em certos desenhos, mas insuficiente",
+              "sourceIds": []
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Sloppy quorum pode confirmar em nós substitutos fora do conjunto normal quando réplicas estão indisponíveis. Se a escrita contou D e E, mas a leitura consultou A e B, a conta baseada apenas em N=3 perdeu sua hipótese de mesmo universo. Hinted handoff e read repair ajudam a convergir depois; não tornam automaticamente toda leitura imediatamente atual."
+              ],
+              "sourceIds": [
+                "fund-dynamo"
+              ]
+            },
+            {
+              "type": "callout",
+              "title": "Experimente o laboratório com a hipótese visível",
+              "text": "Para N=3, R=2 e W=2, marque quais nós pertencem a cada conjunto. Depois provoque uma escrita parcial e uma troca de membros. O laboratório demonstra interseção; uma implementação completa ainda exige protocolo, persistência e história de operações.",
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "3. Frescor, ordem e falha são contratos distintos",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Garantia",
+                "Promessa",
+                "Implementação possível e limite"
+              ],
+              "rows": [
+                [
+                  "Eventual",
+                  "Sem novas mudanças e com comunicação/reparo suficientes, réplicas convergem.",
+                  "Não define, por si só, prazo máximo ou preservação de invariantes de negócio."
+                ],
+                [
+                  "Read-your-writes",
+                  "A sessão observa os efeitos que ela confirmou.",
+                  "Token mínimo de versão ou roteamento à autoridade; não garante observar todas as escritas dos outros clientes."
+                ],
+                [
+                  "Leituras monotônicas",
+                  "Uma sessão não volta para uma versão anterior já observada.",
+                  "Carregar progresso entre requisições; roteamento aleatório sem versão pode regredir."
+                ],
+                [
+                  "Linearizável",
+                  "Operações respeitam precedência de tempo real dentro do escopo declarado.",
+                  "Consenso/protocolo de leitura apropriado; um GET no antigo líder não basta."
+                ]
+              ],
+              "sourceIds": [
+                "fund-linearizable",
+                "fund-ddb-read"
+              ]
+            },
+            {
+              "type": "code",
+              "language": "text",
+              "text": "read_after(token, deadline):\n  require token.database == target.database\n  require lineage_contains(token.epoch, token.position)\n  while time_left(deadline):\n    view, applied = read_coherent_view_and_progress()\n    if applied.covers(token): return view\n    wait_for_progress_bounded(deadline)\n  return read_authority_at_least(token, deadline)\n  # Se não houver autoridade ou o commit foi perdido: erro explícito.",
+              "title": "Token proposto: versão da origem e watermark da mesma visão lógica",
+              "sourceIds": []
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Não compare offsets de linhagens incompatíveis depois de failover. “Recebido”, “persistido” e “aplicado à leitura” são estágios diferentes. Uma réplica pode ter o log no disco e ainda servir uma visão velha. Se o novo líder perdeu um commit confirmado sob replicação assíncrona, nenhum token recria o dado perdido: é um evento de recuperação e reconciliação."
+              ],
+              "sourceIds": [
+                "fund-pg-replication",
+                "fund-pg-wal"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. Escolher a fronteira do shard",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Estratégia",
+                "Benefício",
+                "Ponto de atenção"
+              ],
+              "rows": [
+                [
+                  "Hash de account_id",
+                  "Espalha contas entre destinos; busca pontual tem roteamento direto.",
+                  "Range scans globais exigem fan-out; uma conta extremamente quente continua em um destino."
+                ],
+                [
+                  "Faixas de chave/data",
+                  "Localidade para intervalos e expiração de histórico.",
+                  "Faixa de escrita recente pode ficar quente; dividir a faixa não resolve uma única chave indivisível."
+                ],
+                [
+                  "Diretório account→shard",
+                  "Permite mover contas e acomodar clientes grandes.",
+                  "Diretório precisa de versão, disponibilidade e atualização coordenada do roteamento."
+                ],
+                [
+                  "Região/tenant",
+                  "Localidade e isolamento operacional por grupo.",
+                  "Distribuição desigual e operações entre grupos podem atravessar fronteiras atômicas."
+                ]
+              ],
+              "sourceIds": [
+                "fund-cassandra",
+                "fund-pg-partition"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Particionar uma tabela PostgreSQL dentro da mesma instância melhora manutenção e pruning; isso não cria sozinho servidores independentes. Vnodes ajudam a distribuir intervalos entre máquinas, mas não dividem magicamente a serialização de uma conta quente. O limite pode ser a invariante da conta, não a capacidade agregada do cluster.",
+                "Para contagem comutativa, subcontadores podem distribuir carga e ser agregados. Para saldo disponível sem overdraft, dividir a autoridade exige reservar direitos ou coordenar; somar contadores eventualmente não protege o limite em tempo real. Índices globais e buscas secundárias também precisam de estratégia própria."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "5. Resharding sem dois donos e transferência entre shards",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "Marque o mapeamento atual com época e escolha um corte de snapshot. Capture as mudanças posteriores com um log durável, preservando IDs e sequência.",
+                "Copie snapshot e índices, aplique o fluxo incremental e compare contagens, checksums e invariantes por conta. Copiar bytes sem o delta permite perder escritas feitas durante a migração.",
+                "No corte, impeça novos commits na autoridade antiga, drene operações em voo e prove que o destino alcançou o corte final. Publique a nova época e rejeite escritores com tokens antigos.",
+                "Mantenha redirects e dedupe para requisições atrasadas. Depois que o destino aceita escrita, voltar para a cópia antiga exige um protocolo de migração reversa/reconciliação; trocar DNS não é rollback de dados."
+              ],
+              "sourceIds": []
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Exercício financeiro: conta A mora no shard 1 e B no shard 2. O débito e o crédito não cabem na transação local de um só shard. As opções incluem co-localizar a fronteira financeira, usar um banco com transação distribuída e compreender sua coordenação, ou representar reserva e contas de trânsito em uma máquina de estados durável. Uma saga oferece etapas locais e compensações; não fornece atomicidade global instantânea.",
+                "Com transferência em trânsito, a interface diferencia reservada, pendente e concluída. Cada transição tem chave idempotente; compensação é novo lançamento. Se o destino não responde, descubra o resultado antes de estornar. Teste perda do ACK depois do crédito, líder antigo voltando e eventos atrasados após mudança de época. Esses testes tornam verificável a promessa feita ao usuário."
+              ],
+              "sourceIds": []
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-pg-replication",
+        "fund-pg-wal",
+        "fund-raft",
+        "fund-dynamo",
+        "fund-cassandra",
+        "fund-linearizable",
+        "fund-ddb-read",
+        "fund-pg-partition"
+      ],
+      "questions": [
+        {
+          "q": "N=3, R=2 e W=2 tornam qualquer store linearizável?",
+          "answer": "Não. A interseção existe num conjunto estável, mas ainda faltam regras de versão, concorrência, persistência, escrita parcial, leitura e mudança de membros. Sloppy quorum pode nem preservar a interseção assumida."
+        },
+        {
+          "q": "Adicionar shards resolve uma única conta quente?",
+          "answer": "Não necessariamente. Distribui contas diferentes. A operação indivisível e sua invariante continuam limitadas por uma autoridade; dividir exige reformular o domínio ou coordenar."
+        },
+        {
+          "q": "Por que fencing é mais forte que um lock com TTL?",
+          "answer": "Um titular antigo pode retomar após pausa longa e continuar escrevendo. O recurso precisa rejeitar sua época antiga; expirar o lock em outro lugar não interrompe o processo."
+        },
+        {
+          "q": "Quando uma réplica está pronta para read-your-writes?",
+          "answer": "Quando a visão que será retornada prova conter o token exigido na mesma linhagem. WAL recebido não garante replay aplicado; progresso lido separadamente de cache antigo também não prova frescor."
+        },
+        {
+          "q": "O que significa rollback depois de resharding?",
+          "answer": "Antes de abrir escrita no destino pode-se abandonar a cópia. Depois, é preciso transportar e reconciliar as novas mudanças; apontar para o snapshot antigo perde dados."
+        }
+      ]
+    },
+    {
+      "id": "databases",
+      "title": "Bancos, índices e capacidade de conexão",
+      "subtitle": "O contrato lógico encontra páginas, WAL, memória, rede e filas.",
+      "summary": "SQL e NoSQL são famílias de interfaces e modelos. Escolha pela consulta, pela transação necessária e pelo modo de falha; depois explique o custo físico e operacional da decisão.",
+      "sections": [
+        {
+          "title": "1. SQL versus NoSQL: compare o contrato concreto",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Pergunta",
+                "O que verificar",
+                "Exemplo de decisão"
+              ],
+              "rows": [
+                [
+                  "Qual é a fronteira atômica?",
+                  "Uma linha, vários itens, partição, banco ou várias regiões?",
+                  "Transferência exige proteger as contas e a chave idempotente no escopo escolhido."
+                ],
+                [
+                  "Qual isolamento e leitura?",
+                  "Snapshot, serializável, leitura forte opcional, índice secundário assíncrono?",
+                  "No DynamoDB, tabela/LSI e GSI não oferecem as mesmas opções de frescor."
+                ],
+                [
+                  "Qual consulta domina?",
+                  "Lookup por chave, range, join, agregação ou busca textual?",
+                  "Modelar pela chave pode tornar o caminho comum previsível e a consulta nova cara."
+                ],
+                [
+                  "Quem opera crescimento?",
+                  "Índices, quotas, hot partitions, compactação, backup e restore.",
+                  "Escala gerenciada reduz tarefas, mas não elimina distribuição desigual ou limites transacionais."
+                ]
+              ],
+              "sourceIds": [
+                "fund-ddb-read",
+                "fund-ddb-transactions",
+                "fund-pg-isolation"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "NoSQL não significa “sem transações”: o DynamoDB tem APIs transacionais com escopo e limites documentados. SQL não significa “sempre forte”: isolamento, réplica consultada e configuração de durabilidade alteram o contrato. A vantagem de consultas relacionais é flexibilidade; o custo pode incluir joins, planejamento e índices. Um acesso por chave bem definido favorece previsibilidade, mas desloca agregações e manutenção de visões para a aplicação.",
+                "Neste exercício, escolha um ledger autoritativo transacional e uma projeção de extrato separada se o atraso for aceitável. A projeção pode usar outro banco; isso não autoriza consultar saldo atrasado para decidir um débito. “Poliglota” precisa justificar o custo de operação e reconciliação de cada cópia."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "2. B-tree, LSM e onde o hardware entra",
+          "blocks": [
+            {
+              "type": "table",
+              "headers": [
+                "Estrutura",
+                "Caminho físico",
+                "Custo relevante"
+              ],
+              "rows": [
+                [
+                  "B-tree/B+tree",
+                  "Busca navega páginas de alto fan-out; folhas ordenadas favorecem intervalos. Escritas podem alterar páginas e causar splits.",
+                  "Aproximadamente O(log_B N + K/B) acessos a páginas para localizar e percorrer K itens contíguos; heap, cache e versão alteram o custo real."
+                ],
+                [
+                  "LSM",
+                  "WAL e memtable recebem mudanças; flush cria SSTs ordenadas; compactações mesclam níveis/runs.",
+                  "Amortiza escrita, mas releituras e regravações geram amplificação de leitura, escrita e espaço."
+                ],
+                [
+                  "Bloom filter",
+                  "Filtro probabilístico testa se uma chave certamente não está em um conjunto, dentro de sua implementação correta.",
+                  "Falsos positivos causam trabalho extra; não deve eliminar chave existente. Consome memória e hashing."
+                ]
+              ],
+              "sourceIds": [
+                "fund-rocksdb"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Um lookup que visita três páginas pode ser barato se elas estiverem em RAM e caro se exigir I/O aleatório. SSD reduz certos custos, mas fsync, largura de banda, amplificação de escrita e desgaste continuam relevantes. Compressão economiza I/O e cache em troca de CPU. Compactação concorrendo com leituras pode afetar p99 mesmo com throughput médio estável.",
+                "B-tree não é sinônimo de SQL, nem LSM de NoSQL. Um mecanismo pode combinar índices diferentes. Evite anunciar “LSM tem escrita O(1)” sem explicar amortização, WAL, estrutura da memtable, flush e compactação. Dimensione pelo conjunto de trabalho, bytes escritos por operação, retenção e padrões de consulta."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "3. Índice existe para uma consulta e custa em cada mudança",
+          "blocks": [
+            {
+              "type": "code",
+              "language": "sql",
+              "text": "CREATE INDEX statement_account_time\n  ON ledger_entry (account_id, booked_at DESC, entry_id DESC)\n  INCLUDE (delta_cents, currency);\n\nSELECT entry_id, booked_at, delta_cents, currency\nFROM ledger_entry\nWHERE account_id = $1\n  AND (booked_at, entry_id) < ($2, $3)\nORDER BY booked_at DESC, entry_id DESC\nLIMIT 50;\n\nCREATE INDEX pending_by_due\n  ON payment (next_attempt_at, payment_id)\n  WHERE status = 'PENDING';",
+              "title": "Índices propostos para paginação estável e fila de trabalho",
+              "sourceIds": [
+                "fund-pg-multicolumn",
+                "fund-pg-covering",
+                "fund-pg-partial"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "A igualdade por account_id restringe o início do percurso; data e ID fornecem desempate estável. Keyset pagination evita descartar grandes quantidades de linhas com OFFSET e resiste melhor a inserções concorrentes, sem prometer um snapshot global entre páginas. Se o usuário precisa um extrato congelado, defina também o corte temporal/transacional.",
+                "Colunas iniciais influenciam fortemente a eficiência, mas “sem o prefixo o índice nunca serve” é falso: o PostgreSQL atual pode usar skip scan em condições apropriadas. INCLUDE leva payload ao índice, sem transformá-lo em chave de busca. Um index-only scan ainda pode consultar heap para verificar visibilidade quando a visibility map não permite dispensá-lo."
+              ],
+              "sourceIds": [
+                "fund-pg-multicolumn",
+                "fund-pg-covering"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Se quase todos os registros são PENDING, um índice só por status pode filtrar pouco; se poucos o são, um índice parcial pode ser pequeno e útil. O planejador precisa provar que o predicado da consulta implica o predicado do índice. Parametrização e planos genéricos podem impedir essa prova. Mais índices significam mais WAL, manutenção, armazenamento e carga de cache; valide com EXPLAIN (ANALYZE, BUFFERS) em dados representativos, lembrando que ANALYZE executa a consulta."
+              ],
+              "sourceIds": [
+                "fund-pg-partial"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. MVCC, lag e failover sem confundir os estágios",
+          "blocks": [
+            {
+              "type": "prose",
+              "paragraphs": [
+                "MVCC mantém versões e decide quais são visíveis ao snapshot. Isso reduz conflitos entre leitura comum e escrita, mas não elimina locks, DDL bloqueante ou disputa entre escritores. Transações longas retêm versões necessárias e podem dificultar limpeza; observe idade de transação, bloat e trabalho de vacuum, além de CPU. Em PostgreSQL, Read Committed muda o snapshot entre comandos; Repeatable Read usa snapshot estável, mas ainda permite anomalias de serialização."
+              ],
+              "sourceIds": [
+                "fund-pg-mvcc",
+                "fund-pg-isolation"
+              ]
+            },
+            {
+              "type": "table",
+              "headers": [
+                "Confirmação/estado",
+                "O que se sabe",
+                "O que não se conclui"
+              ],
+              "rows": [
+                [
+                  "Commit local durável, replicação assíncrona",
+                  "A origem persistiu segundo sua configuração.",
+                  "O candidato a failover possui todas as confirmações."
+                ],
+                [
+                  "WAL recebido ou escrito no remoto",
+                  "A transferência avançou até um estágio de rede/armazenamento.",
+                  "A consulta no remoto já enxerga o dado."
+                ],
+                [
+                  "Commit síncrono esperando flush",
+                  "As réplicas exigidas persistiram o log segundo a configuração.",
+                  "Qualquer outra réplica ou projeção externa está atualizada."
+                ],
+                [
+                  "remote_apply nos standbys exigidos",
+                  "A confirmação espera também replay nesses standbys.",
+                  "Todas as regiões, caches e consumidores Kafka alcançaram a mudança."
+                ]
+              ],
+              "sourceIds": [
+                "fund-pg-replication",
+                "fund-pg-wal"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "RPO descreve a perda de dados tolerada; RTO, o tempo de recuperação pretendido. “Tem réplica” não prova RPO zero. Promover uma cópia atrasada pode perder um débito confirmado e permitir gasto incorreto. Prove a posição elegível, isole o antigo escritor e reconcilie resultados desconhecidos. Tokens de leitura carregam linhagem e posição; comparar números de logs divergentes depois de promoção é uma falsa prova de frescor."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "5. Pool: concorrência útil, não conexões infinitas",
+          "blocks": [
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Pela lei de Little, concorrência média no banco L = λ × W, usando taxa de transações no banco e tempo médio durante o qual cada uma segura a conexão. Exemplo ilustrativo: 1.000 transações/s × 0,020 s = 20 conexões ocupadas em média. Isso não dimensiona sozinho um pool de 20: rajadas, variância, contenção e capacidade máxima precisam ser medidas. Usar toda a latência HTTP como W superestima a conta se o banco fica ocupado só numa parte.",
+                "Se vinte réplicas da aplicação abrem cinquenta conexões cada, o destino pode receber mil conexões. Aumentar o pool diante de locks pode apenas aumentar a fila dentro do banco. Limite espera e concorrência, reserve capacidade para recuperação/administração e observe tempo para adquirir conexão separado do tempo da query."
+              ],
+              "sourceIds": [
+                "fund-pool-config",
+                "fund-overload"
+              ]
+            },
+            {
+              "type": "table",
+              "headers": [
+                "Modo",
+                "Posse da conexão",
+                "Condição de uso"
+              ],
+              "rows": [
+                [
+                  "Session pooling",
+                  "Uma sessão conserva o backend até desconectar.",
+                  "Compatível com estado de sessão, mas muitas sessões ociosas retêm conexões."
+                ],
+                [
+                  "Transaction pooling",
+                  "Backend volta ao pool após a transação.",
+                  "Não presumir SET persistente, LISTEN ou lock consultivo de sessão entre transações."
+                ],
+                [
+                  "Statement pooling",
+                  "Reuso após comando.",
+                  "Não suporta transações de vários comandos nesse modo do PgBouncer."
+                ]
+              ],
+              "sourceIds": [
+                "fund-pool"
+              ]
+            },
+            {
+              "type": "prose",
+              "paragraphs": [
+                "Prepared statements exigem precisão: PgBouncer atual suporta prepared plans do protocolo em transaction pooling quando max_prepared_statements está configurado; PREPARE/DEALLOCATE SQL não é o mesmo recurso. Teste driver, ORM e migrações na configuração real. Prefira estado com escopo transacional quando aplicável e descarte conexões de estado incerto."
+              ],
+              "sourceIds": [
+                "fund-pool",
+                "fund-pool-config"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "6. Incidente completo: conexão presa, retry e pagamento duplicado",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "Uma query segura locks por tempo excessivo; conexões ocupadas crescem e novas requisições aguardam. Separar pool_wait, lock_wait e execução identifica o gargalo.",
+                "Clientes atingem timeout e repetem. Se três camadas fazem até três tentativas cada, uma intenção pode gerar até 27 chamadas ao fundo. O timeout não prova que o commit falhou.",
+                "Contenha a amplificação: deadline propagado, fila limitada, orçamento de retries em uma camada e backoff com jitter. Remova trabalho abandonado quando o protocolo suportar cancelamento seguro.",
+                "Para erro serializável/deadlock elegível, repita a transação completa com a mesma identidade de negócio e nova leitura. Não dispare pagamento externo dentro de um bloco que pode ser executado novamente; registre outbox no mesmo commit.",
+                "Para commit com resultado desconhecido, consulte a operação por chave idempotente. Se indisponível, exponha pendência. Uma nova chave para “tentar de novo” pode transformar uma falha de resposta em débito duplicado."
+              ],
+              "sourceIds": [
+                "fund-retry",
+                "fund-pg-isolation",
+                "fund-overload"
+              ]
+            },
+            {
+              "type": "callout",
+              "title": "O teste que fecha o argumento",
+              "text": "Injete atraso no banco e perda da resposta depois do commit. Verifique limite de conexões, crescimento e drenagem da fila, p99 da jornada, ausência de efeitos duplicados e recuperação após retirar a falha. O objetivo é comportamento previsível, não um número de benchmark inventado.",
+              "sourceIds": []
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-ddb-read",
+        "fund-ddb-transactions",
+        "fund-pg-isolation",
+        "fund-pg-mvcc",
+        "fund-pg-multicolumn",
+        "fund-pg-covering",
+        "fund-pg-partial",
+        "fund-rocksdb",
+        "fund-pg-replication",
+        "fund-pg-wal",
+        "fund-pool",
+        "fund-pool-config",
+        "fund-retry",
+        "fund-overload"
+      ],
+      "questions": [
+        {
+          "q": "Por que um índice covering ainda acessa a tabela?",
+          "answer": "No PostgreSQL, pode precisar consultar o heap para verificar visibilidade MVCC quando a página não está marcada all-visible. Ter todas as colunas no índice é necessário, mas não garante zero heap fetches."
+        },
+        {
+          "q": "O que uma queda de p50 com piora de p99 sugere numa LSM?",
+          "answer": "Investigue compactação, stalls, flush, saturação de I/O e cache. A média pode melhorar por batching enquanto pausas e competição de recursos prejudicam a cauda."
+        },
+        {
+          "q": "Devo aumentar o pool quando todas as conexões estão ocupadas?",
+          "answer": "Só após localizar o limite. Se o banco está saturado ou bloqueado, mais concorrência piora a fila. Meça tempo de posse, aquisição, locks e capacidade; aplique backpressure."
+        },
+        {
+          "q": "Qual diferença entre WAL persistido e dado visível na réplica?",
+          "answer": "Persistência protege recuperação, mas o replay pode estar atrasado. Uma leitura fresca exige que a visão retornada tenha aplicado a posição exigida; remote_apply só cobre os standbys configurados."
+        },
+        {
+          "q": "SQL garante que meu débito é seguro?",
+          "answer": "Não pelo nome. É preciso transação que inclua validação, atualização e dedupe, isolamento/locks adequados, durabilidade e contrato de retry. NoSQL também pode oferecer transações com limites explícitos."
+        }
+      ]
+    },
+    {
+      "id": "caches",
+      "title": "Caches: velocidade sem perder o significado do dado",
+      "subtitle": "LRU, LFU, TTL, Bloom, stampede e as corridas que invalidation não resolve sozinha.",
+      "summary": "Cache reduz trabalho repetido e absorve algumas falhas, mas cria estados frios, cópias antigas e uma dependência operacional. A primeira decisão é quais respostas podem ficar obsoletas; depois vêm política de memória e coordenação de refresh.",
+      "sections": [
+        {
+          "title": "1. Comece pelo contrato, não pelo Redis",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Frescor é parte da API",
+              "paragraphs": [
+                "Um cache armazena uma cópia descartável de dados recuperáveis. Se sua perda elimina o único registro de uma chave de idempotência financeira, ele já não está sendo usado apenas como cache. Separe autoridade, projeção persistente e aceleração de leitura. Cache local evita rede, mas cada processo tem uma versão; cache compartilhado reduz duplicação entre instâncias, acrescentando rede, disponibilidade e capacidade próprias.",
+                "No cenário autoral de uma fintech, nome do estabelecimento pode tolerar atraso; saldo disponível para autorizar gasto e revogação de acesso exigem outro contrato. Especifique versão, idade máxima, comportamento com origem indisponível e se a interface exibirá “atualizando”. Hit ratio alto não prova correção nem protege a origem quando todos os caches reiniciam juntos."
+              ],
+              "sourceIds": [
+                "fund-aws-cache"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. Eviction, expiração e memória são decisões diferentes",
+          "blocks": [
+            {
+              "type": "table",
+              "title": "Escolha pela distribuição de acesso",
+              "headers": [
+                "Política",
+                "Mecanismo e custo típico",
+                "Benefício e limite"
+              ],
+              "rows": [
+                [
+                  "LRU exato",
+                  "Hash map + lista duplamente encadeada: acesso/movimentação O(1) esperado; memória O(N).",
+                  "Favorece uso recente; varredura sequencial pode expulsar o conjunto quente. Atualiza metadados a cada hit."
+                ],
+                [
+                  "LFU",
+                  "Conta acessos e remove baixa frequência; implementação com buckets pode ter O(1) esperado, mas decay e concorrência alteram o custo.",
+                  "Resiste a scans; popularidade antiga precisa envelhecer para não congelar o conjunto residente."
+                ],
+                [
+                  "TTL",
+                  "Guarda prazo de validade; checagem por acesso O(1), descoberta de expirados depende de amostragem, heap ou roda temporal.",
+                  "Limita reutilização por tempo; não escolhe, por si só, a melhor vítima quando a RAM acaba."
+                ],
+                [
+                  "Aleatória / noeviction",
+                  "Amostra vítima ou recusa escritas que precisam de espaço.",
+                  "Aleatória tem pouco metadado. noeviction transfere a pressão ao cliente; não significa memória infinita."
+                ]
+              ],
+              "sourceIds": [
+                "fund-redis-eviction"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "A implementação importa",
+              "paragraphs": [
+                "Redis usa aproximações por amostragem para LRU e contador probabilístico com envelhecimento para LFU; não mantém necessariamente a política exata do livro. allkeys considera todo o conjunto elegível; volatile restringe a chaves com expiração, podendo faltar vítimas. Escolha e parâmetros devem ser conferidos na versão usada.",
+                "Dimensione payload, nomes de chaves, estruturas internas, fragmentação, buffers, conexões e replicação. maxmemory não é simplesmente toda a RAM do processo: determinados buffers não entram no cálculo de eviction. Objetos grandes afetam rede, cópias, serialização e cauda de latência. Um GET de hash table “O(1)” ainda transfere O(bytes) e pode esperar na fila de execução."
+              ],
+              "sourceIds": [
+                "fund-redis-eviction"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "3. Três tempestades diferentes",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Penetração, avalanche e stampede",
+              "paragraphs": [
+                "Penetração: pedidos de identificadores inexistentes atravessam repetidamente o cache. Cache negativo guarda “não encontrado” por prazo curto e escopo correto; uma criação precisa invalidar a negativa. Não confunda “origem caiu” com “recurso não existe”, nem compartilhe uma negativa de autorização entre titulares.",
+                "Avalanche: muitas chaves ou instâncias ficam frias juntas por expiração, deploy ou falha. TTL com jitter espalha vencimentos; aquecimento gradual e limite de tráfego à origem reduzem o pico. Distribuir expirações não resolve a perda inteira do cache: preserve capacidade degradada e admissão limitada.",
+                "Stampede: uma única chave quente expira e milhares de leitores a recompõem. Single-flight coalesce leitores concorrentes em um único refresh por chave e processo. Em várias instâncias, ainda podem existir vários refreshes; avalie coordenação compartilhada, refresh antecipado probabilístico ou aceitar duplicação limitada. Cada waiter precisa de deadline e o cancelamento de um cliente não deve necessariamente cancelar o refresh usado por outros."
+              ],
+              "sourceIds": [
+                "fund-aws-cache"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "Bloom: ausência do conjunto inserido, não verdade universal",
+              "paragraphs": [
+                "Um Bloom filter mantém m bits e k hashes; inserir/consultar custa O(k), com acessos à memória. Pode responder “talvez presente” para ausentes, exigindo consulta à origem. A ausência de falsos negativos vale para itens efetivamente inseridos, com hashes estáveis, sem perda de bits nem remoção incorreta. Um índice alimentado com atraso pode rejeitar um registro recém-criado que ainda não entrou no filtro.",
+                "Para n elementos e hipóteses usuais de hashes uniformes, p≈(1−e^(−kn/m))^k; próximo do ótimo, k≈(m/n)ln2. Exceder capacidade aumenta falsos positivos. Bloom clássico não remove itens; variantes e reconstrução têm outros contratos. Nunca use “talvez presente” como autorização ou prova de existência financeira."
+              ],
+              "sourceIds": [
+                "fund-redis-bloom"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. Cache-aside tem uma corrida de repopulação",
+          "blocks": [
+            {
+              "type": "code",
+              "title": "Apagar depois do write ainda permite valor antigo",
+              "language": "pseudocódigo",
+              "text": "R1: cache miss → começa SELECT e obtém versão 7\nW1: banco confirma versão 8 → invalida cache\nR1: termina atrasado → SET versão 7 no cache vazio\nR2: lê versão 7 apesar de W1 já ter confirmado",
+              "sourceIds": [
+                "fund-aws-cache"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "A correção precisa sobreviver ao cache vazio",
+              "paragraphs": [
+                "Uma comparação de versão no SET evita substituir v8 por v7 quando v8 ainda existe. Se a invalidação apagou o valor e sua versão, essa comparação não sabe que v7 é antiga. Uma solução preserva watermark/tombstone de invalidação separado e só aceita versões compatíveis; outra usa chaves imutáveis por versão e um ponteiro coerente. Retenção, atomicidade e perda desse metadado também fazem parte do protocolo.",
+                "Outbox pode tornar a entrega de invalidação recuperável, mas ela continua atrasada. Write-through mantém a passagem pelo cache, sem transformar duas escritas independentes em transação. Write-behind reconhece antes da origem e pode perder ou reordenar alterações: exige persistência e replay apropriados. TTL sozinho não prova read-your-writes; a sessão pode carregar minVersion e esperar, consultar autoridade ou mostrar pendência."
+              ],
+              "sourceIds": [
+                "fund-aws-outbox"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "5. Coordenar refresh sem transformar lease em magia",
+          "blocks": [
+            {
+              "type": "code",
+              "title": "Esqueleto: separar frescor, tolerância e concorrência",
+              "language": "pseudocódigo",
+              "text": "get(key, deadline, policy):\n  entry = cache.read(key)\n  if entry and entry.version >= policy.min_version and entry.fresh:\n    return entry.value\n  if (entry and entry.version >= policy.min_version and\n      policy.may_serve_stale and entry.within_stale_limit):\n    singleflight.start_if_absent(key, refresh_with_version_check)\n    return value_with_as_of(entry)\n  result = await singleflight.join_or_start(key, refresh_with_version_check)\n                            .until(deadline)\n  if result.version >= policy.min_version: return result.value\n  return read_authority_at_least_or_pending(key, policy.min_version, deadline)\n\n# Refresh tem limite de concorrência na origem, timeout e comparação de versão.\n# Falha não renova indefinidamente o prazo de um valor obsoleto.",
+              "sourceIds": [
+                "fund-aws-cache"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "Expiração de lock não interrompe o antigo dono",
+              "paragraphs": [
+                "Uma lease com TTL evita espera eterna após crash, mas o worker antigo pode voltar de uma pausa longa depois que outro assumiu. Token aleatório identifica quem pode liberar o lock; fencing é outra coisa: um número monotônico que o destino verifica para rejeitar escritores antigos. Sem essa checagem no recurso protegido, a lease não impede escrita tardia. Failover com replicação assíncrona também pode perder aquisição de lock.",
+                "Para recompor descrição de estabelecimento, refresh duplicado pode ser aceitável. Para impedir débito duplicado, a proteção definitiva deve residir na transação autoritativa. O lock de cache reduz trabalho; não substitui unicidade durável, CAS ou isolamento do ledger."
+              ],
+              "sourceIds": [
+                "fund-redis-locks"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "A versão mínima pertence a cada solicitante",
+              "paragraphs": [
+                "Singleflight compartilha trabalho, mas não iguala os requisitos de quem espera. Um refresh iniciado antes de um commit pode terminar com uma versão válida para um cliente e insuficiente para outro. Cada solicitante revalida a versão retornada contra seu próprio token e, se necessário, consulta a autoridade ou informa pendência dentro do mesmo deadline. Impedir regressão no SET do cache não prova read-your-writes para todos os participantes."
+              ],
+              "sourceIds": []
+            }
+          ]
+        },
+        {
+          "title": "6. Operação, segurança e teste do estado frio",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Treine a falha que muda o modo do sistema",
+              "paragraphs": [
+                "Em exercício autoral, simule a perda do Redis quando 98% das leituras eram hits. O tráfego à origem pode saltar de 2% para perto de 100%, aproximadamente 50 vezes sob a mesma demanda. Limite misses concorrentes, priorize consultas essenciais e degrade dados tolerantes. Meça miss rate, idade por versão, refreshes por chave, evictions, memória real e p99 do miss; a média ponderada esconde a experiência dos misses.",
+                "Chaves incluem tenant, permissão relevante e versão da representação. Não armazene tokens ou documentos sensíveis sem necessidade. Uma resposta de saldo cacheada ainda exige autorização por objeto; revogação não pode depender de um TTL arbitrariamente longo. Teste corrida de repopulação, criação após negativa, pause de refresh maior que lease, reinício simultâneo e dados antigos após failover."
+              ],
+              "sourceIds": [
+                "fund-owasp-auth",
+                "fund-aws-cache"
+              ]
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-redis-eviction",
+        "fund-redis-bloom",
+        "fund-aws-cache",
+        "fund-redis-locks",
+        "fund-owasp-auth",
+        "fund-aws-outbox"
+      ],
+      "questions": [
+        {
+          "q": "Qual diferença entre hit ratio de 99% e uma origem capaz de sobreviver sem cache?",
+          "answer": "Hit ratio descreve carga normal. A origem pode receber cem vezes seu fluxo habitual de misses quando o cache esfria; admissão, concorrência, degradação e recuperação gradual precisam ser testadas."
+        },
+        {
+          "q": "Por que SET somente se versão maior não corrige toda invalidação?",
+          "answer": "Após apagar valor e versão, um leitor antigo pode preencher a chave vazia. A comparação precisa de watermark preservado, geração ou outra evidência de versão que sobreviva à invalidação."
+        },
+        {
+          "q": "Bloom tem falsos negativos?",
+          "answer": "O filtro clássico íntegro não tem falsos negativos para o conjunto efetivamente inserido. A aplicação pode observar ausências erradas por atualização atrasada, perda de estado ou remoção incorreta."
+        },
+        {
+          "q": "Uma lease distribuída pode proteger saldo?",
+          "answer": "Expiração não mata o antigo worker. Sem fencing verificado pelo destino e persistência adequada, ela não prova exclusão do efeito. Use a fronteira transacional do saldo para a garantia financeira."
+        }
+      ]
+    },
+    {
+      "id": "balancing",
+      "title": "Balanceamento e admissão: escolher o destino e controlar o trabalho",
+      "subtitle": "L4/L7, P2C, EWMA, afinidade, drenagem e o limite que um algoritmo de distribuição não cria.",
+      "summary": "Distribuir requisições não aumenta automaticamente a capacidade do banco nem limita trabalho em voo. Separe seleção de backend, health checks, admissão, shaping e recuperação; cada mecanismo responde a uma pergunta diferente.",
+      "sections": [
+        {
+          "title": "1. O que está sendo balanceado?",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Conexões, requisições e trabalho não são a mesma unidade",
+              "paragraphs": [
+                "Um balanceador L4 decide usando informações de transporte e fluxo, tipicamente sem interpretar rota HTTP. L7 entende o protocolo e pode rotear por caminho, cabeçalho ou identidade validada, terminar TLS e aplicar políticas por requisição. Essa inteligência custa parsing, criptografia, memória e uma fronteira adicional de falha.",
+                "Uma conexão HTTP/2 pode carregar muitos streams; poucas conexões não significam pouca carga. Uma requisição de extrato anual custa muito mais que consultar um status pequeno. Identifique unidade de trabalho, duração, bytes, CPU e fan-out antes de escolher algoritmo. O pool de conexões ao banco pode ser o limite comum a todos os backends; adicionar pods não amplia esse limite."
+              ],
+              "sourceIds": [
+                "fund-nginx-lb",
+                "fund-sre-overload"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. Algoritmos: sinal, custo e ponto cego",
+          "blocks": [
+            {
+              "type": "table",
+              "title": "N destinos; custos dependem da estrutura escolhida",
+              "headers": [
+                "Algoritmo",
+                "Como decide",
+                "Custo e limite"
+              ],
+              "rows": [
+                [
+                  "Round robin / weighted RR",
+                  "Percorre destinos; pesos distribuem proporções.",
+                  "RR simples O(1). Weighted RR varia por implementação; smooth WRR pode varrer O(N). Ignora duração real e pesos envelhecem."
+                ],
+                [
+                  "Least connections / requests",
+                  "Escolhe menor trabalho ativo observado.",
+                  "Varredura O(N) ou estrutura auxiliar. Contar conexões engana em multiplexação; contador local não vê outros balanceadores."
+                ],
+                [
+                  "Power of two choices",
+                  "Amostra dois destinos e escolhe o menos ocupado.",
+                  "O(1) por escolha com amostra fixa. Reduz concentração sem sincronizar uma ordenação global; precisa de sinal útil."
+                ],
+                [
+                  "EWMA / Peak EWMA",
+                  "Atualiza estimativa de latência e combina com requisições em voo.",
+                  "Atualização O(1); seleção pode usar amostragem. Responde à lentidão, mas métricas antigas, cold start e erros rápidos exigem cuidado."
+                ],
+                [
+                  "Hash / rendezvous",
+                  "A chave determina preferencialmente o destino.",
+                  "Ring com V pontos: busca O(log V); rendezvous ingênuo calcula N scores, O(N). Favorece localidade, mas uma chave quente continua quente."
+                ]
+              ],
+              "sourceIds": [
+                "fund-envoy-lb",
+                "fund-linkerd-ewma",
+                "fund-rfc-hash"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "Adaptive não significa infalível",
+              "paragraphs": [
+                "EWMA suaviza observações, por exemplo e←α·amostra+(1−α)·e; meia-vida ou janela determina a velocidade de adaptação. Peak EWMA reage de modo assimétrico a picos e decai com o tempo. Um destino que responde erro em 1 ms não deve parecer melhor que outro que conclui corretamente em 20 ms: qualidade, outlier detection e carga ativa complementam latência.",
+                "No Envoy, least request com pesos iguais usa amostragem de destinos; pesos diferentes mudam o procedimento. Não atribua a todo produto um algoritmo pelo nome comercial. Meça desequilíbrio, taxa de erro e latência por destino; sincronizar todos os clientes no “melhor servidor” cria efeito manada."
+              ],
+              "sourceIds": [
+                "fund-linkerd-ewma",
+                "fund-envoy-lb"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "3. Hash, afinidade e sessões",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Localidade ajuda; estado continua precisando de dono e recuperação",
+              "paragraphs": [
+                "Rendezvous escolhe o destino com maior score H(chave,destino); com funções bem distribuídas, adicionar um servidor altera apenas as chaves que o elegem. Hash consistente em anel usa pontos virtuais para ajustar distribuição. Isso reduz remapeamento comparado a hash(chave) mod N, mas não move dados, replica sessões nem preserva uma transação em andamento.",
+                "Sticky session pode melhorar cache local ou manter conexão com um processo, porém a queda desse processo exige recuperar sessão de armazenamento apropriado ou aceitar perda explicitamente. Cookies de afinidade não concedem autorização. Hot tenant pode dominar um backend; subparticionar só é seguro se não quebrar ordem ou invariante do agregado. A afinidade é uma política de roteamento, não consenso."
+              ],
+              "sourceIds": [
+                "fund-rfc-hash",
+                "fund-nginx-lb"
+              ]
+            },
+            {
+              "type": "callout",
+              "text": "Cenário autoral: rotear pagamentos por account_id pode reduzir contenção local. Ainda é necessário impedir duas instâncias de escreverem como autoridade da conta após uma mudança de ownership. O hash não fornece fencing nem saldo compartilhado.",
+              "sourceIds": [
+                "fund-envoy-lb"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. Rate, burst e concorrência",
+          "blocks": [
+            {
+              "type": "table",
+              "title": "Proteções complementares",
+              "headers": [
+                "Controle",
+                "O que limita",
+                "Trade-off"
+              ],
+              "rows": [
+                [
+                  "Token bucket",
+                  "Taxa média r com burst máximo B de tokens disponíveis.",
+                  "Permite rajadas até B; não suaviza instantaneamente toda carga. Custo ponderado exige tokens por operação."
+                ],
+                [
+                  "Leaky bucket como shaper",
+                  "Saída em ritmo controlado a partir de buffer limitado.",
+                  "Suaviza saída, acrescentando espera. “Leaky bucket” também nomeia medidores sem fila: explicite a variante."
+                ],
+                [
+                  "Concurrency limit",
+                  "Número de requisições em voo.",
+                  "Protege memória, conexões e dependências quando latência cresce; limite baixo deixa capacidade ociosa."
+                ],
+                [
+                  "Admission + deadline",
+                  "Só aceita trabalho compatível com capacidade e tempo restante.",
+                  "Rejeição explícita pode ser melhor que aceitar e expirar; obrigação já aceita duravelmente requer tratamento próprio."
+                ]
+              ],
+              "sourceIds": [
+                "fund-envoy-token",
+                "fund-sre-overload"
+              ]
+            },
+            {
+              "type": "code",
+              "title": "Token bucket local: decisão atômica por chave",
+              "language": "pseudocódigo",
+              "text": "admit(key, cost, now):\n  require finite(cost) and cost > 0  # B > 0; r >= 0\n  atomic_for_key:\n    tokens = min(B, tokens + r * (now - last))\n    last = now\n    if cost > B or tokens < cost: return REJECT\n    tokens -= cost\n    return ACCEPT\n\n# now usa relógio monotônico local; r está em tokens/segundo.\n# Várias réplicas com buckets independentes não impõem este limite global.",
+              "sourceIds": [
+                "fund-envoy-token"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "O escopo do limite muda ao escalar",
+              "paragraphs": [
+                "Se cada um de dez pods permite 100 requests/s, a aplicação pode aceitar 1.000; aumentar para vinte muda o teto agregado. Um limite global precisa de coordenação, divisão de cotas ou overshoot explicitamente aceito. Em partição, decidir falhar aberto ou fechado depende do risco; quota operacional aproximada não é limite financeiro estrito.",
+                "Taxa constante também não limita simultaneidade: com λ estável e duração W maior, o trabalho em voo cresce. Combine limitação de concorrência com isolamento por tenant e classe. Prioridade estrita pode famintar tráfego comum; reserve capacidade mínima, use fairness ou envelhecimento e rejeite antes de alocar buffers caros."
+              ],
+              "sourceIds": [
+                "fund-envoy-token",
+                "fund-sre-overload"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "5. Falhas, drenagem e escalonamento",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Remover um destino não conclui o que já estava nele",
+              "paragraphs": [
+                "Health checks ativos testam uma condição; observação passiva detecta erros reais. Ambos têm atraso e podem causar flapping. Tirar metade dos destinos transfere carga aos restantes: ejection sem reserva de capacidade pode ampliar o incidente. Uma dependência global caída não deve transformar automaticamente todos os pods em candidatos a reiniciar.",
+                "Durante deploy, pare admissão, atualize endpoints, drene conexões/streams e aguarde inflight dentro de um prazo. Processo encerrado à força pode perder a resposta depois do commit; idempotência resolve a repetição do comando, não o balanceador. Conexões longas precisam de política de renovação; adicionar servidores afeta sobretudo novas seleções.",
+                "Autoscaling tem atraso de medição, provisionamento, readiness e aquecimento. Slow start evita mandar toda a quota ao cache frio. Escale usando saturação relevante e fila/idade, além de CPU; uma aplicação aguardando banco pode ter CPU baixa e estar incapaz de progredir. Teste perda de zona e retorno gradual, com p99 e erros por jornada."
+              ],
+              "sourceIds": [
+                "fund-k8s-termination",
+                "fund-nginx-lb"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "6. Retry é carga adicional com responsabilidade",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Um proxy não sabe que timeout desfez o pagamento",
+              "paragraphs": [
+                "Retry em cada camada multiplica tentativas: cinco camadas com até três tentativas cada podem gerar até 3^5=243 chamadas no último serviço para uma intenção. Escolha uma camada responsável, prazo total e orçamento de retries proporcional ao tráfego original. Backoff com jitter espalha tentativas, mas não torna um efeito financeiro seguro.",
+                "No cenário autoral de autorização, reserva de limite é transacional e consulta de status é recuperável por ID. Se deadline acaba, a resposta pode ser “resultado pendente”; reenviar para outro pod deve carregar a mesma intenção. Propague tempo restante e interrompa trabalho descartável; não cancele uma obrigação financeira já confirmada por simples abandono da conexão.",
+                "Defenda a escolha mostrando um experimento: mistura de requests curtas/longas, backend lento, erro rápido, cache frio e redução abrupta de capacidade. Compare RR, P2C e EWMA pela experiência ponta a ponta e recursos, não apenas pelo equilíbrio de contadores. Nenhum algoritmo promete latência fixa independente de serviço, fila e hardware."
+              ],
+              "sourceIds": [
+                "fund-aws-retries"
+              ]
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-envoy-lb",
+        "fund-linkerd-ewma",
+        "fund-nginx-lb",
+        "fund-rfc-hash",
+        "fund-envoy-token",
+        "fund-sre-overload",
+        "fund-k8s-termination",
+        "fund-aws-retries"
+      ],
+      "questions": [
+        {
+          "q": "Por que least connections pode falhar com HTTP/2?",
+          "answer": "Uma conexão transporta muitos streams com custos diferentes. Observe requests em voo, latência, capacidade e erros; número de sockets não mede necessariamente trabalho."
+        },
+        {
+          "q": "Rendezvous hash permite armazenar a única cópia da sessão em um pod?",
+          "answer": "Ele escolhe um destino, não replica estado. Mudança de membros ou falha remapeia a chave; recuperação e segurança de sessão continuam exigindo desenho próprio."
+        },
+        {
+          "q": "Rate limit substitui limite de concorrência?",
+          "answer": "Não. Mantida a taxa, uma dependência mais lenta aumenta duração e trabalho em voo. Tokens controlam entrada; concorrência controla recursos simultaneamente ocupados."
+        },
+        {
+          "q": "Qual risco há em reenviar pagamento a outro backend após timeout?",
+          "answer": "O primeiro pode ter confirmado antes de perder a resposta. A tentativa mantém identidade de intenção e consulta resultado; troca de backend não prova ausência do efeito."
+        }
+      ]
+    },
+    {
+      "id": "queues",
+      "title": "Filas e backpressure: tempo, memória e obrigações em trânsito",
+      "subtitle": "λ, μ, Little, créditos, Kafka, inbox/outbox e o que uma DLQ não encerra.",
+      "summary": "Uma fila absorve variação por algum tempo. Ela não fabrica capacidade nem conclui uma operação de negócio. Dimensione espera e memória, preserve a identidade do efeito e faça a pressão chegar a quem ainda pode decidir admitir trabalho.",
+      "sections": [
+        {
+          "title": "1. A física da fila aparece na experiência do cliente",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Taxa de chegada e capacidade de serviço",
+              "paragraphs": [
+                "Chame λ de chegada e μ de capacidade efetiva total de processamento, em unidades compatíveis. Se λ>μ por tempo prolongado, o backlog cresce aproximadamente (λ−μ)·t enquanto houver espaço. Repetições entram em λ. Mais consumidores só aumentam μ se banco, partições, rede e parceiro permitirem.",
+                "Exercício autoral: chegam 5.000 tarefas/s e o serviço conclui 4.000/s durante 120 s. Acumulam 120.000 tarefas. Com 2 KiB de payload são cerca de 234 MiB brutos, antes de objetos, headers, cópias e replicação. Depois, capacidade 6.500/s com chegada mantida em 5.000/s drena a fila em aproximadamente 80 s. Voltar a 5.000/s apenas estabiliza o atraso existente.",
+                "Little relaciona médias L=λW em regime estável e na mesma população: se L inclui fila e serviço, W também inclui ambos. Não substitua média por p99. Como ilustração M/M/1, W=1/(μ−λ); depende de chegadas/serviços exponenciais e outras hipóteses, não é uma previsão universal de produção. Próximo da saturação, variância e rajadas tornam a cauda particularmente dolorosa."
+              ],
+              "sourceIds": [
+                "fund-sre-overload"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. Buffer limitado e pressão propagada",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "A fila precisa de orçamento de bytes e de tempo",
+              "paragraphs": [
+                "Limite quantidade, bytes e idade, pois mensagens variam de tamanho. Quando esgota capacidade, pause leitura, reduza créditos, rejeite nova admissão ou descarte somente trabalho explicitamente descartável. Uma transferência já aceita duravelmente não desaparece porque venceu o prazo da interface; passa a pendente, cancelamento ou reconciliação segundo o contrato.",
+                "Pull e créditos permitem que o consumidor receba conforme consegue processar. Prefetch limita mensagens não confirmadas em RabbitMQ; não equivale ao tamanho total da fila. Zero significa sem esse limite. Há escopo por consumidor/canal e basic.get não segue o mesmo controle; confira a API. Prefetch enorme distribui trabalho para clientes lentos e eleva memória/reentrega."
+              ],
+              "sourceIds": [
+                "fund-rabbit-prefetch"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "Async não é memória infinita",
+              "paragraphs": [
+                "Em um event loop, criar milhões de promises/tasks sem limite apenas troca a fila do broker por heap local. Parsing grande, compressão e CPU bloqueante atrasam callbacks, timers e rede. Mantenha um pool limitado, buffers por partição e orçamento de bytes; uma tarefa em espera ainda retém referências.",
+                "Em streams Node, write() retornar false indica que o produtor deve esperar drain antes de continuar escrevendo. Não significa falha do write. highWaterMark é sinal de pressão, não um teto rígido universal de memória. Quem ignora o sinal acumula dados e pressiona GC. Faça backpressure atravessar todas as etapas; um buffer ilimitado intermediário quebra o controle."
+              ],
+              "sourceIds": [
+                "fund-node-streams"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "3. Kafka: parar entregas não é abandonar o protocolo",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Poll e processamento são responsabilidades coordenadas",
+              "paragraphs": [
+                "Pause partições quando o buffer local atingir o limite e continue chamando poll conforme o contrato do cliente. Heartbeats mantêm participação, mas não tornam ilimitado o tempo entre polls: max.poll.interval.ms também importa. Um processamento longo pode provocar rebalance mesmo com heartbeats. Aumentar esse prazo adia detecção; não elimina o problema de capacidade.",
+                "Se processamento ocorre em workers, a thread do consumer controla poll, pausa, retomada e commits; KafkaConsumer não é um objeto genericamente thread-safe. Confirme progresso apenas do que terminou. Ao revogar partições, impeça workers antigos de publicar progresso ou efeitos sem ownership válido. Pause não é preservado automaticamente pelo rebalance; reaplique a política.",
+                "Checkpoint seguro representa prefixo processado da sequência entregue por partição, não o maior offset visto. Offsets Kafka podem ter lacunas legítimas, por compactação ou registros transacionais: não espere que todo inteiro exista. Se o trabalho do offset posterior termina primeiro, não avance sobre uma mensagem anterior ainda pendente. O offset commitado indica a próxima posição de consumo."
+              ],
+              "sourceIds": [
+                "fund-kafka-consumer"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. Entrega e efeito têm fronteiras distintas",
+          "blocks": [
+            {
+              "type": "code",
+              "title": "Consumidor at-least-once com efeito local transacional",
+              "language": "pseudocódigo",
+              "text": "on_message(event):\n  begin database_transaction\n    inserted = INSERT inbox(event_id) ON CONFLICT DO NOTHING\n    if inserted:\n      validate_event_version_and_domain_invariants(event)\n      apply_business_effect(event)\n      persist_projection_version_or_checkpoint(event)\n  commit\n  acknowledge_to_broker()\n\n# Crash depois do commit e antes do ack: mensagem repete; inbox evita novo efeito.\n# Erro antes do commit: rollback inclui inbox; a mensagem pode tentar de novo.",
+              "sourceIds": [
+                "fund-aws-outbox",
+                "fund-rabbit-confirms"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "Exactly-once sempre precisa de um escopo",
+              "paragraphs": [
+                "Publisher confirm indica aceitação pelo broker segundo sua configuração; consumer ack indica a etapa que o consumidor decidiu confirmar. Nenhum comprova sozinho que dinheiro chegou ao beneficiário. Persistência, replicação, retenção e falhas simultâneas continuam parte do modelo de perda.",
+                "Outbox grava alteração e intenção de publicação na mesma transação. Relay publica e depois avança seu checkpoint; se cair entre essas ações, repete. Inbox com efeito local atômico torna essa repetição tolerável. Um HTTP externo não participa automaticamente da transação do banco: use referência idempotente no parceiro, consulta de status e reconciliação.",
+                "Transações Kafka podem coordenar offsets e saídas em Kafka dentro do escopo suportado, com configuração adequada dos leitores. Elas não fazem uma atualização arbitrária em PostgreSQL, um envio de SMS e uma liquidação externa tornarem-se um único commit. Chame a garantia pelo nome e pela fronteira, sem prometer “exactly-once em tudo”."
+              ],
+              "sourceIds": [
+                "fund-kafka-design",
+                "fund-aws-outbox",
+                "fund-rabbit-confirms"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "5. Poison messages, retries e DLQ",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Uma tentativa a mais pode piorar a recuperação",
+              "paragraphs": [
+                "Falha transitória de rede difere de payload inválido, schema incompatível ou regra de negócio recusada. Classifique antes de repetir. Uma mensagem venenosa reencaminhada imediatamente pode monopolizar CPU e bloquear sua partição. Limite tentativas, idade total e concorrência de retry; mantenha identidade do evento.",
+                "Full jitter pode usar atraso sorteado uniformemente entre zero e min(cap, base·2^tentativa). A convenção do índice da tentativa deve ser consistente. Isso espalha tráfego, mas não limita sozinho a quantidade total: acrescente retry budget e respeite deadline. Se o orçamento acabar, persista a situação para tratamento; não finja sucesso."
+              ],
+              "sourceIds": [
+                "fund-aws-retries"
+              ]
+            },
+            {
+              "type": "prose",
+              "title": "DLQ é uma obrigação operacional, não uma conclusão financeira",
+              "paragraphs": [
+                "Dead-letter queue isola item problemático para inspeção. Precisa de dono, alerta, motivo, identidade, origem, schema, primeira ocorrência, retenção e procedimento de redrive com taxa limitada. Não copie dados sensíveis indiscriminadamente. Em SQS, regras de expiração de mensagens em DLQ diferem entre standard e FIFO; configure retenção conscientemente.",
+                "Remover um evento para DLQ e continuar pode romper a ordem de uma sequência dependente. Para um ledger, escolha entre bloquear o agregado, quarentenar sua sequência ou usar uma projeção que suporte lacunas com correção explícita. Retentar todo o lote sem deduplicação pode repetir itens já aplicados. A tela deve dizer pendente ou falha tratável; “foi para DLQ” não é um estado de negócio suficiente."
+              ],
+              "sourceIds": [
+                "fund-sqs-dlq"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "6. Versão causal, perda e recuperação",
+          "blocks": [
+            {
+              "type": "prose",
+              "title": "Lag do consumidor não é só um número no dashboard",
+              "paragraphs": [
+                "No cenário autoral, uma transferência confirma na autoridade em versão v42, mas a projeção está em v40. Ler fortemente a tabela de projeção devolve o último dado que ela recebeu, ainda antigo. A resposta de escrita pode fornecer um token; a leitura exige watermark compatível, espera dentro de um limite, consulta a autoridade ou informa processamento. Em vários shards, um único contador global pode não existir: o token precisa do escopo correto.",
+                "Um watermark só declara aquilo que foi aplicado sem lacunas relevantes. Evento v42 recebido não autoriza avançar sobre v41 pendente em DLQ. Meça idade do item mais antigo, taxa de conclusão, backlog por partição/tenant, tempo em retry, mensagens expiradas, retenção restante e divergência com a autoridade.",
+                "Recuperar exige throughput excedente, identidade preservada e dados ainda disponíveis. Se retenção apagar eventos antes do consumo, replay do broker não os ressuscita; será necessário snapshot autoritativo mais delta, arquivo durável ou reconciliação. Replica de broker não é backup contra todos os erros lógicos. Teste crash entre commit e ack, rebalance com workers ativos, replay e item em DLQ antes de declarar a operação recuperável."
+              ],
+              "sourceIds": [
+                "fund-kafka-design",
+                "fund-kafka-consumer",
+                "fund-sqs-dlq"
+              ]
+            }
+          ]
+        }
+      ],
+      "sourceIds": [
+        "fund-sre-overload",
+        "fund-node-streams",
+        "fund-rabbit-prefetch",
+        "fund-rabbit-confirms",
+        "fund-kafka-consumer",
+        "fund-kafka-design",
+        "fund-aws-outbox",
+        "fund-aws-retries",
+        "fund-sqs-dlq"
+      ],
+      "questions": [
+        {
+          "q": "Depois de um pico, por que igualar μ a λ não elimina o backlog?",
+          "answer": "A capacidade excedente é zero. Para drenar B itens em T segundos enquanto chegam λ, precisa de μ≈λ+B/T, respeitando capacidade real de banco, partições e parceiros."
+        },
+        {
+          "q": "Posso parar de chamar poll depois de pausar Kafka?",
+          "answer": "Não. Pause suspende entrega das partições, mas o consumidor precisa manter seu ciclo/protocolo e respeitar max.poll.interval.ms. Heartbeat não dispensa progresso por poll."
+        },
+        {
+          "q": "Posso commitar o maior offset concluído entre workers?",
+          "answer": "Só se todo trabalho anterior relevante da partição estiver concluído. Caso contrário, reinício pode pular efeito pendente. Use prefixo processado; offsets numéricos podem ter lacunas legítimas."
+        },
+        {
+          "q": "Mandar v41 para DLQ permite publicar watermark v42?",
+          "answer": "Não se watermark promete aplicação completa até v42. Bloqueie/quarentene o agregado, preserve lacuna explicitamente ou adote um modelo com correção definida; não esconda a falta."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "fund-cap",
+      "title": "Gilbert & Lynch — prova original de CAP",
+      "url": "https://groups.csail.mit.edu/tds/papers/Gilbert/Brewer6.pdf",
+      "type": "Documentação oficial",
+      "summary": "Artigo dos autores: impossibilidade no modelo assíncrono, atomic consistency e disponibilidade."
+    },
+    {
+      "id": "fund-cap-perspectives",
+      "title": "Gilbert & Lynch — Perspectives on CAP",
+      "url": "https://groups.csail.mit.edu/tds/papers/Gilbert/Brewer2.pdf",
+      "type": "Documentação oficial",
+      "summary": "Revisita a relação entre segurança, progresso e falhas de comunicação."
+    },
+    {
+      "id": "fund-pacelc",
+      "title": "Daniel Abadi — PACELC",
+      "url": "https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf",
+      "type": "Documentação oficial",
+      "summary": "Artigo original que relaciona disponibilidade/consistência durante partições e latência/consistência na operação normal."
+    },
+    {
+      "id": "fund-linearizable",
+      "title": "Jepsen — Linearizability",
+      "url": "https://jepsen.io/consistency/models/linearizable",
+      "type": "Documentação oficial",
+      "summary": "Definição de ordem atômica compatível com tempo real e escopo do objeto."
+    },
+    {
+      "id": "fund-serializable",
+      "title": "Jepsen — Serializability",
+      "url": "https://jepsen.io/consistency/models/serializable",
+      "type": "Documentação oficial",
+      "summary": "Modelo transacional que não impõe, por definição isolada, ordem de tempo real."
+    },
+    {
+      "id": "fund-strict",
+      "title": "Jepsen — Strong / Strict Serializability",
+      "url": "https://jepsen.io/consistency/models/strong-serializable",
+      "type": "Documentação oficial",
+      "summary": "Serialização de transações compatível com precedência em tempo real."
+    },
+    {
+      "id": "fund-raft",
+      "title": "Ongaro & Ousterhout — Raft",
+      "url": "https://raft.github.io/raft.pdf",
+      "type": "Documentação oficial",
+      "summary": "Artigo original sobre eleição, replicação de log, segurança e mudança de configuração."
+    },
+    {
+      "id": "fund-dynamo",
+      "title": "Amazon — Dynamo, artigo SOSP 2007",
+      "url": "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf",
+      "type": "Documentação oficial",
+      "summary": "Versionamento, resolução de conflitos, hinted handoff e sloppy quorum no Dynamo original; não confundir com DynamoDB atual."
+    },
+    {
+      "id": "fund-cassandra",
+      "title": "Apache Cassandra — arquitetura Dynamo",
+      "url": "https://cassandra.apache.org/doc/latest/cassandra/architecture/dynamo.html",
+      "type": "Documentação oficial",
+      "summary": "Tokens, vnodes, fator de replicação, versões e níveis de consistência."
+    },
+    {
+      "id": "fund-pg-replication",
+      "title": "PostgreSQL — Standby e replicação",
+      "url": "https://www.postgresql.org/docs/current/warm-standby.html",
+      "type": "Documentação oficial",
+      "summary": "Streaming, lag, replicação síncrona e assíncrona e continuidade operacional."
+    },
+    {
+      "id": "fund-pg-wal",
+      "title": "PostgreSQL — Write Ahead Log",
+      "url": "https://www.postgresql.org/docs/current/runtime-config-wal.html",
+      "type": "Documentação oficial",
+      "summary": "Fsync, synchronous_commit, remote_write e remote_apply: diferentes pontos de confirmação."
+    },
+    {
+      "id": "fund-pg-isolation",
+      "title": "PostgreSQL — Transaction Isolation",
+      "url": "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "type": "Documentação oficial",
+      "summary": "Read Committed, Repeatable Read e Serializable Snapshot Isolation, incluindo falhas que exigem repetir a transação."
+    },
+    {
+      "id": "fund-pg-mvcc",
+      "title": "PostgreSQL — MVCC",
+      "url": "https://www.postgresql.org/docs/current/mvcc-intro.html",
+      "type": "Documentação oficial",
+      "summary": "Snapshots e coordenação entre leitores e escritores."
+    },
+    {
+      "id": "fund-pg-multicolumn",
+      "title": "PostgreSQL — índices multicoluna",
+      "url": "https://www.postgresql.org/docs/current/indexes-multicolumn.html",
+      "type": "Documentação oficial",
+      "summary": "Ordem das colunas, igualdade, intervalos e otimização skip scan."
+    },
+    {
+      "id": "fund-pg-covering",
+      "title": "PostgreSQL — Index-only scans e INCLUDE",
+      "url": "https://www.postgresql.org/docs/current/indexes-index-only-scans.html",
+      "type": "Documentação oficial",
+      "summary": "Payload, visibility map e necessidade residual de consultar o heap."
+    },
+    {
+      "id": "fund-pg-partial",
+      "title": "PostgreSQL — índices parciais",
+      "url": "https://www.postgresql.org/docs/current/indexes-partial.html",
+      "type": "Documentação oficial",
+      "summary": "Predicados do índice e requisitos para o planejador demonstrar sua aplicabilidade."
+    },
+    {
+      "id": "fund-pg-partition",
+      "title": "PostgreSQL — particionamento de tabelas",
+      "url": "https://www.postgresql.org/docs/current/ddl-partitioning.html",
+      "type": "Documentação oficial",
+      "summary": "Range/hash/list, pruning e manutenção; particionar tabela não cria automaticamente um cluster distribuído."
+    },
+    {
+      "id": "fund-rocksdb",
+      "title": "RocksDB — visão da implementação",
+      "url": "https://github.com/meta/rocksdb/wiki/RocksDB-Overview",
+      "type": "Documentação oficial",
+      "summary": "WAL, memtables, SSTs e organização de um mecanismo LSM."
+    },
+    {
+      "id": "fund-ddb-read",
+      "title": "DynamoDB — consistência de leitura",
+      "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html",
+      "type": "Documentação oficial",
+      "summary": "Contrato varia entre tabela, LSI, GSI, stream e modo de replicação global."
+    },
+    {
+      "id": "fund-ddb-transactions",
+      "title": "DynamoDB — transações",
+      "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html",
+      "type": "Documentação oficial",
+      "summary": "TransactWriteItems e TransactGetItems com limites explícitos de escopo, itens e tamanho."
+    },
+    {
+      "id": "fund-pool",
+      "title": "PgBouncer — modos e compatibilidade",
+      "url": "https://www.pgbouncer.org/features.html",
+      "type": "Documentação oficial",
+      "summary": "Session/transaction/statement pooling e diferenças entre prepared statements SQL e do protocolo."
+    },
+    {
+      "id": "fund-pool-config",
+      "title": "PgBouncer — configuração",
+      "url": "https://www.pgbouncer.org/config.html",
+      "type": "Documentação oficial",
+      "summary": "Limites do pool, filas e max_prepared_statements."
+    },
+    {
+      "id": "fund-retry",
+      "title": "AWS — timeouts, retries e jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "type": "Documentação oficial",
+      "summary": "Orçamentos de tentativas, efeitos colaterais após timeout e prevenção da amplificação de carga."
+    },
+    {
+      "id": "fund-overload",
+      "title": "Google SRE — Handling Overload",
+      "url": "https://sre.google/sre-book/handling-overload/",
+      "type": "Documentação oficial",
+      "summary": "Filas limitadas, degradação e proteção do serviço quando a procura excede capacidade."
+    },
+    {
+      "id": "fund-redis-eviction",
+      "title": "Redis — Key eviction",
+      "url": "https://redis.io/docs/latest/develop/reference/eviction/",
+      "type": "Documentação oficial",
+      "summary": "Políticas de expulsão, aproximações LRU/LFU e memória não contabilizada pelo limite de eviction."
+    },
+    {
+      "id": "fund-redis-bloom",
+      "title": "Redis — Bloom filter",
+      "url": "https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/",
+      "type": "Documentação oficial",
+      "summary": "Estrutura probabilística de pertinência; complexidade por hashes e falsos positivos."
+    },
+    {
+      "id": "fund-aws-cache",
+      "title": "AWS Builders’ Library — Caching challenges and strategies",
+      "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+      "type": "Documentação oficial",
+      "summary": "Cache frio, dependência operacional do cache, coalescência de requisições e estratégias de atualização."
+    },
+    {
+      "id": "fund-redis-locks",
+      "title": "Redis — Distributed locks",
+      "url": "https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/",
+      "type": "Documentação oficial",
+      "summary": "Aquisição com identidade e expiração, liberação condicionada e limites de segurança durante falhas."
+    },
+    {
+      "id": "fund-owasp-auth",
+      "title": "OWASP — Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "type": "Documentação oficial",
+      "summary": "Autorização por objeto; identificador imprevisível não substitui checagem de permissão."
+    },
+    {
+      "id": "fund-envoy-lb",
+      "title": "Envoy — Supported load balancers",
+      "url": "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers",
+      "type": "Documentação oficial",
+      "summary": "Round robin, pesos, least request com amostragem e hash consistente."
+    },
+    {
+      "id": "fund-linkerd-ewma",
+      "title": "Linkerd — Beyond Round Robin: Load Balancing for Latency",
+      "url": "https://linkerd.io/2016/03/16/beyond-round-robin-load-balancing-for-latency/",
+      "type": "Documentação oficial",
+      "summary": "Explicação primária de seleção adaptativa com Peak EWMA e trabalho em voo."
+    },
+    {
+      "id": "fund-nginx-lb",
+      "title": "NGINX — HTTP Load Balancing",
+      "url": "https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/",
+      "type": "Documentação oficial",
+      "summary": "Métodos de seleção, persistência de sessão, slow start e limites de conexões."
+    },
+    {
+      "id": "fund-rfc-hash",
+      "title": "RFC 2992 — Analysis of an Equal-Cost Multi-Path Algorithm",
+      "url": "https://www.rfc-editor.org/rfc/rfc2992.html",
+      "type": "Documentação oficial",
+      "summary": "Custo e redistribuição de fluxos em algoritmos de hash; comparação com highest-random-weight."
+    },
+    {
+      "id": "fund-envoy-token",
+      "title": "Envoy — Local rate limit",
+      "url": "https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/local_rate_limit_filter",
+      "type": "Documentação oficial",
+      "summary": "Token bucket e distinção entre limite local por processo/conexão e política global."
+    },
+    {
+      "id": "fund-sre-overload",
+      "title": "Google SRE — Handling Overload",
+      "url": "https://sre.google/sre-book/handling-overload/",
+      "type": "Documentação oficial",
+      "summary": "Admissão, degradação, custo heterogêneo de requisições e isolamento entre consumidores."
+    },
+    {
+      "id": "fund-k8s-termination",
+      "title": "Kubernetes — Pod lifecycle and termination",
+      "url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination",
+      "type": "Documentação oficial",
+      "summary": "Coordenação de remoção de endpoints, encerramento gracioso e prazo de terminação."
+    },
+    {
+      "id": "fund-aws-retries",
+      "title": "AWS Builders’ Library — Timeouts, retries, and backoff with jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "type": "Documentação oficial",
+      "summary": "Timeouts, amplificação por retentativas, deadline e jitter."
+    },
+    {
+      "id": "fund-node-streams",
+      "title": "Node.js — Backpressuring in Streams",
+      "url": "https://nodejs.org/learn/modules/backpressuring-in-streams",
+      "type": "Documentação oficial",
+      "summary": "Sinal write=false, evento drain e efeitos de ignorar backpressure na memória e coleta de lixo."
+    },
+    {
+      "id": "fund-rabbit-prefetch",
+      "title": "RabbitMQ — Consumer Prefetch",
+      "url": "https://www.rabbitmq.com/docs/consumer-prefetch",
+      "type": "Documentação oficial",
+      "summary": "Limites de mensagens não confirmadas e escopo do prefetch."
+    },
+    {
+      "id": "fund-rabbit-confirms",
+      "title": "RabbitMQ — Consumer Acknowledgements and Publisher Confirms",
+      "url": "https://www.rabbitmq.com/docs/confirms",
+      "type": "Documentação oficial",
+      "summary": "Confirmações de publicação e de consumo cobrem fronteiras diferentes."
+    },
+    {
+      "id": "fund-kafka-consumer",
+      "title": "Apache Kafka 4.1 — KafkaConsumer",
+      "url": "https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+      "type": "Documentação oficial",
+      "summary": "Poll, pausa, rebalances, commits e coordenação do progresso do consumidor."
+    },
+    {
+      "id": "fund-kafka-design",
+      "title": "Apache Kafka — Design",
+      "url": "https://kafka.apache.org/41/design/design/",
+      "type": "Documentação oficial",
+      "summary": "Log particionado, persistência, ordem e limites de exactly-once."
+    },
+    {
+      "id": "fund-aws-outbox",
+      "title": "AWS — Transactional outbox",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html",
+      "type": "Documentação oficial",
+      "summary": "Mutação e intenção de publicação na mesma transação; consumidor tolera duplicatas."
+    },
+    {
+      "id": "fund-sqs-dlq",
+      "title": "Amazon SQS — Dead-letter queues",
+      "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+      "type": "Documentação oficial",
+      "summary": "Isolamento de mensagens problemáticas, redrive, retenção e impacto sobre ordenação."
+    }
+  ]
+}

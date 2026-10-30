@@ -1,0 +1,1857 @@
+{
+  "videos": [
+    {
+      "id": "cL9If4X7aaE",
+      "title": "Design Google Docs | System Design Interview (with Amazon Engineer, ex-Microsoft)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "1:02:53",
+      "seconds": 3772,
+      "url": "https://www.youtube.com/watch?v=cL9If4X7aaE",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/cL9If4X7aaE/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Colaboração em tempo real",
+      "category": "Colaboração em tempo real",
+      "guide": "Use o problema de edição colaborativa para praticar causalidade, concorrência e recuperação de conexão. Antes de desenhar servidores, descreva quais alterações podem coexistir e como um cliente offline retorna. Como estudo complementar, compare transformação operacional e CRDTs, distinguindo convergência do documento de autorização e das invariantes de um sistema financeiro.",
+      "focus": [
+        "Construa uma sequência com duas edições concorrentes, atraso e duplicação. Explique quais identificadores e relações causais permitem reconciliar o documento sem depender da ordem de chegada.",
+        "Separe estado persistido, presença efêmera e atualizações entregues por conexão. Cada classe precisa de retenção, confirmação e recuperação diferentes; um WebSocket ativo não prova persistência durável."
+      ],
+      "challenge": "Como dois analistas editariam uma investigação de fraude simultaneamente, preservando auditoria e evitando que uma atualização visual concorrente autorize uma transferência financeira indevida?",
+      "relatedArchitectures": [
+        "crdt",
+        "event-sourcing",
+        "optimistic-lock"
+      ],
+      "sourceIds": [
+        "video-cL9If4X7aaE"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "dgawYAH0pO4",
+      "title": "Design Uber Eats | System Design Interview (with Senior Netflix Engineer, Ex-Microsoft)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "1:05:21",
+      "seconds": 3920,
+      "url": "https://www.youtube.com/watch?v=dgawYAH0pO4",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/dgawYAH0pO4/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Pedido, geolocalização e pagamento",
+      "category": "Pedido, geolocalização e pagamento",
+      "guide": "Trate o pedido como uma máquina de estados que conecta catálogo, restaurante, entregador e pagamento. A descrição pública menciona busca, distribuição geográfica e idempotência; use esses eixos para treinar fronteiras. Seu objetivo editorial é explicar onde a resposta precisa ser definitiva e onde o aplicativo pode mostrar progresso enquanto dependências externas respondem.",
+      "focus": [
+        "Desenhe reserva, confirmação e cancelamento com IDs estáveis. Se o pagamento termina e a resposta se perde, consultar a mesma intenção evita transformar retry em cobrança adicional.",
+        "Compare partição por região para descoberta com propriedade transacional do pedido. Um entregador atravessar uma fronteira geográfica não deve criar dois responsáveis pelo mesmo estado de negócio."
+      ],
+      "challenge": "Se uma compra no marketplace do banco foi debitada, mas o parceiro não confirmou o pedido, quais evidências permitem decidir entre esperar, reconciliar ou compensar?",
+      "relatedArchitectures": [
+        "saga-orchestration",
+        "idempotency",
+        "sharding"
+      ],
+      "sourceIds": [
+        "video-dgawYAH0pO4"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "lZ5QuFLCVn0",
+      "title": "System Design Interview - Design a Distributed LRU Cache (Full mock interview with Sr. MAANG SWE)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "42:46",
+      "seconds": 2565,
+      "url": "https://www.youtube.com/watch?v=lZ5QuFLCVn0",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/lZ5QuFLCVn0/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Cache LRU distribuído",
+      "category": "Cache LRU distribuído",
+      "guide": "Comece pelo algoritmo local antes de distribuir o cache: tabela hash, lista duplamente encadeada e atualização de recência. Depois acrescente roteamento, réplicas e falhas, explicitando que uma política LRU global exata pode custar coordenação. Use a sessão para treinar a passagem do custo por operação ao comportamento durante perda de um nó.",
+      "focus": [
+        "Explique o custo esperado de lookup e remoção com hash e ponteiros, incluindo memória por entrada. Diferencie expiração por tempo, expulsão por capacidade e invalidação por mudança.",
+        "Simule perda de um shard e reaquecimento simultâneo. Coalescer buscas, limitar carga na origem e aplicar jitter protege o banco quando muitas chaves deixam de estar disponíveis."
+      ],
+      "challenge": "Quais dados de um aplicativo bancário você manteria nesse cache, e como impediria que um saldo expirado ou perdido fosse usado para autorizar novo gasto?",
+      "relatedArchitectures": [
+        "cache-aside",
+        "consistent-hashing",
+        "backpressure"
+      ],
+      "sourceIds": [
+        "video-lZ5QuFLCVn0"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "MAuLYRcJEr8",
+      "title": "System Design Interview - Design a Web Crawler (Full mock interview with Sr. MAANG SWE)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "44:12",
+      "seconds": 2652,
+      "url": "https://www.youtube.com/watch?v=MAuLYRcJEr8",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/MAuLYRcJEr8/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Crawler e deduplicação",
+      "category": "Crawler e deduplicação",
+      "guide": "Use o crawler para raciocinar sobre filas, justiça entre destinos e trabalho que nunca termina completamente. Transforme volume de páginas em bytes, conexões e taxa de revisita. Como exercício, separe identidade da URL de identidade do conteúdo: endereços diferentes podem produzir o mesmo documento, enquanto o mesmo endereço pode mudar com o tempo.",
+      "focus": [
+        "Projete um scheduler com orçamento por domínio e prazo de revisita. Um destino lento não deve ocupar toda a concorrência nem impedir progresso de outros destinos independentes.",
+        "Compare Bloom filter com verificação exata. Falsos positivos podem descartar trabalho válido; decidir se isso é aceitável depende do requisito, especialmente quando o documento tem valor financeiro."
+      ],
+      "challenge": "Ao coletar comprovantes de parceiros financeiros, como você limitaria chamadas, detectaria documentos repetidos e garantiria que um falso positivo não ocultasse evidência necessária à reconciliação?",
+      "relatedArchitectures": [
+        "queue",
+        "bloom-filter",
+        "rate-limiter"
+      ],
+      "sourceIds": [
+        "video-MAuLYRcJEr8"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "6fOoXT1HYxk",
+      "title": "Design a Key-Value Store - System Design Mock Interview (with Microsoft Software Engineer)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "36:30",
+      "seconds": 2189,
+      "url": "https://www.youtube.com/watch?v=6fOoXT1HYxk",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/6fOoXT1HYxk/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Store chave-valor e roteamento",
+      "category": "Store chave-valor e roteamento",
+      "guide": "A descrição apresenta um store usado como cache; mantenha essa distinção ao estudar. Uma estrutura descartável pode aceitar perda e reconstrução, enquanto uma fonte autoritativa precisa provar durabilidade. Desenhe o caminho de uma chave, a descoberta dos servidores e a redistribuição após adicionar capacidade, sem assumir que réplicas sempre possuem a versão mais recente.",
+      "focus": [
+        "Calcule o movimento de chaves ao mudar o conjunto de nós. Hash consistente reduz remapeamento em certos desenhos, mas balanceamento depende também do tamanho e da popularidade das chaves.",
+        "Escolha um contrato para leitura de réplica: possivelmente atrasada, vinculada à sessão ou coordenada. A presença de uma segunda cópia não define automaticamente frescor nem eleição segura."
+      ],
+      "challenge": "Se esse store mantiver resultados de consultas de limite, como você versionaria as entradas e trataria failover sem conceder crédito com uma política desatualizada?",
+      "relatedArchitectures": [
+        "consistent-hashing",
+        "replication",
+        "cache-aside"
+      ],
+      "sourceIds": [
+        "video-6fOoXT1HYxk"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "dUSVIAGxlUw",
+      "title": "Design Ticketmaster - System Design Interview (with Senior Amazon TPM)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "50:54",
+      "seconds": 3054,
+      "url": "https://www.youtube.com/watch?v=dUSVIAGxlUw",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/dUSVIAGxlUw/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Reserva concorrente de recurso",
+      "category": "Reserva concorrente de recurso",
+      "guide": "Traduza a disputa por um assento em uma invariante: um recurso não pode pertencer a duas compras confirmadas. Faça a arquitetura começar por essa regra e só depois acrescente cache, fila de espera e pagamento. A oportunidade de estudo é separar disponibilidade exibida, reserva temporária e confirmação definitiva sob uma rajada muito concentrada.",
+      "focus": [
+        "Compare atualização condicional, lock transacional e fila de comandos para o mesmo assento. Avalie justiça, timeout e throughput útil quando a maioria das tentativas perde a disputa.",
+        "Modele expiração e captura como transições incompatíveis da mesma reserva. Um temporizador disparar não prova que o pagamento externo falhou; resultado desconhecido exige consulta e reconciliação."
+      ],
+      "challenge": "Como um banco ofereceria uma quantidade limitada de benefício financeiro sem conceder a mesma unidade duas vezes durante pico, retry e confirmação de pagamento atrasada?",
+      "relatedArchitectures": [
+        "reservations",
+        "optimistic-lock",
+        "acid-isolation"
+      ],
+      "sourceIds": [
+        "video-dUSVIAGxlUw"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "iyLqwyFL0Zc",
+      "title": "Design Tinder - System Design Interview (with TikTok Senior Engineer)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "35:55",
+      "seconds": 2154,
+      "url": "https://www.youtube.com/watch?v=iyLqwyFL0Zc",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/iyLqwyFL0Zc/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Descoberta geográfica e ranking",
+      "category": "Descoberta geográfica e ranking",
+      "guide": "Aproveite o tema para separar recuperação de candidatos de ordenação personalizada. Defina distância, filtros e frescor antes de escolher uma estrutura geográfica. Como exercício, avalie regiões densas e usuários em fronteiras: a distribuição de população e consultas importa mais que dividir o mapa em áreas visualmente iguais ou adicionar servidores indiscriminadamente.",
+      "focus": [
+        "Compare uma célula geográfica pequena com uma maior: menos candidatos podem exigir procurar vizinhos; células grandes aumentam filtragem. Meça também alterações de localização e custo de atualização.",
+        "Defina quais filtros são obrigatórios e quais pertencem ao ranking. Uma recomendação atrasada pode ser tolerável, mas exclusão ou autorização revogada precisa respeitar seu próprio contrato de propagação."
+      ],
+      "challenge": "Ao recomendar estabelecimentos com benefícios do cartão, como você combinaria proximidade, elegibilidade e ofertas recentes sem expor dados de localização além do necessário à funcionalidade?",
+      "relatedArchitectures": [
+        "sharding",
+        "search",
+        "cqrs"
+      ],
+      "sourceIds": [
+        "video-iyLqwyFL0Zc"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "6erP70R_NGs",
+      "title": "System Design Interview - Downloading User Data (with Reforge EM)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "38:59",
+      "seconds": 2339,
+      "url": "https://www.youtube.com/watch?v=6erP70R_NGs",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/6erP70R_NGs/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Exportação de dados do usuário",
+      "category": "Exportação de dados do usuário",
+      "guide": "Use a exportação para treinar uma jornada longa que não cabe em uma requisição HTTP. Descreva solicitação, coleta, montagem, publicação e expiração do arquivo. O estudo deve incluir progresso visível, autorização no download e um corte consistente dos dados, deixando claro como alterações e exclusões durante o processamento afetam o resultado final.",
+      "focus": [
+        "Projete tarefas em partes com checkpoints e manifesto de conclusão. Reexecutar uma parte precisa produzir o mesmo artefato lógico, sem duplicar registros ou publicar um arquivo ainda incompleto.",
+        "Separe custo de leitura das origens, compactação e transferência. Limite concorrência por usuário e proteja a operação bancária interativa durante exportações grandes ou pedidos simultâneos."
+      ],
+      "challenge": "Como disponibilizar um extrato completo de vários anos com recuperação após falha, link temporário autorizado e indicação precisa do corte de dados incluído no arquivo?",
+      "relatedArchitectures": [
+        "batch",
+        "durable-workflow",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-6erP70R_NGs"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "ZwwYgiT9GH0",
+      "title": "Design a Distributed Message Queue - System Design Mock Interview",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "32:24",
+      "seconds": 1944,
+      "url": "https://www.youtube.com/watch?v=ZwwYgiT9GH0",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/ZwwYgiT9GH0/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Fila distribuída por dentro",
+      "category": "Fila distribuída por dentro",
+      "guide": "Estude a fila como um produto de armazenamento, não apenas uma seta entre serviços. Defina aceitação durável, ordem, consumo, retenção e confirmação antes de desenhar partições. Como aprofundamento editorial, acompanhe uma mensagem desde o produtor até o efeito final e identifique onde um crash provoca perda possível, duplicação ou resultado desconhecido.",
+      "focus": [
+        "Explique a diferença entre confirmação do produtor e avanço do consumidor. Persistir uma mensagem no broker não prova que o banco do destinatário aplicou o efeito correspondente.",
+        "Modele líder, seguidores e eleição por partição. Exigir confirmações protege determinadas falhas, mas disponibilidade e risco de perda dependem das réplicas elegíveis e da política de promoção."
+      ],
+      "challenge": "Que contrato essa fila precisaria oferecer para transportar intenções de pagamento, e quais garantias continuariam obrigatoriamente no ledger e no consumidor mesmo com replicação do broker?",
+      "relatedArchitectures": [
+        "partitioned-log",
+        "queue",
+        "quorum-consensus"
+      ],
+      "sourceIds": [
+        "video-ZwwYgiT9GH0"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "I9-PUPYZyiw",
+      "title": "Design ChatGPT - System Design Mock Interview (with eBay EM)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "35:14",
+      "seconds": 2113,
+      "url": "https://www.youtube.com/watch?v=I9-PUPYZyiw",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/I9-PUPYZyiw/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Conversas e capacidade de inferência",
+      "category": "Conversas e capacidade de inferência",
+      "guide": "Use o desenho de um assistente como exercício de dois planos: persistência de conversas e execução cara de inferência. Defina identidade de mensagem, cancelamento e resposta parcial antes de estimar servidores. As sugestões aqui são editoriais; o tema serve para comparar carga por tokens, concorrência e filas com a taxa de requisições tradicional.",
+      "focus": [
+        "Diferencie mensagem recebida, geração iniciada, tokens entregues e resposta final persistida. Uma conexão interrompida exige definir retomada, cobrança e idempotência sem fingir que todo trabalho foi desfeito.",
+        "Estabeleça admissão por custo esperado e isolamento entre usuários. Filas ilimitadas escondem saturação até piorar a experiência; deadline e limite de geração devem atravessar o fluxo completo."
+      ],
+      "challenge": "Como um assistente bancário consultaria dados autorizados e sugeriria ações sem transformar texto gerado ou retry de inferência em uma transferência executada sem confirmação explícita?",
+      "relatedArchitectures": [
+        "backpressure",
+        "durable-workflow",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-I9-PUPYZyiw"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "kO0EQNfE2x4",
+      "title": "Design a Hotel Booking Service - System Design Mock Interview (with eBay EM)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "31:15",
+      "seconds": 1875,
+      "url": "https://www.youtube.com/watch?v=kO0EQNfE2x4",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/kO0EQNfE2x4/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Inventário por intervalo",
+      "category": "Inventário por intervalo",
+      "guide": "A reserva de hotel acrescenta uma dimensão importante ao problema de concorrência: disponibilidade por várias noites, não apenas um item isolado. Modele o intervalo, a unidade de inventário e a política de cancelamento. Como estudo, compare leitura rápida para descoberta com a verificação autoritativa que aceita uma reserva inteira ou informa conflito.",
+      "focus": [
+        "Um pedido de várias noites precisa proteger todas as unidades de capacidade necessárias. Reservar dia a dia em commits independentes cria estados parciais que exigem protocolo explícito de recuperação.",
+        "Mantenha a pesquisa desacoplada da decisão de compra. Cache de disponibilidade melhora descoberta, mas a confirmação deve validar estoque atual e identidade da intenção no ponto de autoridade."
+      ],
+      "challenge": "Como um banco reservaria limite para parcelas ou períodos futuros, impedindo sobrealocação quando solicitações concorrentes cobrem intervalos parcialmente sobrepostos e uma delas falha no meio?",
+      "relatedArchitectures": [
+        "reservations",
+        "acid-isolation",
+        "cache-aside"
+      ],
+      "sourceIds": [
+        "video-kO0EQNfE2x4"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "_aybyMlU7-E",
+      "title": "System Design Mock Interview: Design Uber Eats (with eBay EM)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "40:09",
+      "seconds": 2409,
+      "url": "https://www.youtube.com/watch?v=_aybyMlU7-E",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/_aybyMlU7-E/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Estimativas e fluxo de pedido",
+      "category": "Estimativas e fluxo de pedido",
+      "guide": "Use esta segunda abordagem de delivery para praticar a disciplina de estimar antes de escolher componentes. Escreva pedidos por segundo, atualizações de localização e tamanho de histórico separadamente. Construa depois um fluxo mínimo de pedido e compare sua primeira proposta com uma alternativa, explicando qual requisito realmente justifica cada divisão de serviço.",
+      "focus": [
+        "Diferencie tráfego de navegação de tráfego transacional. Leituras de cardápio podem aceitar cache e atraso; criação de pedido precisa evitar duplicatas e preservar a transição de estado.",
+        "Faça estimativas com unidades visíveis e hipóteses revisáveis. Pico, distribuição geográfica e tamanho do payload podem dominar capacidade; média diária não determina sozinha quantidade de workers."
+      ],
+      "challenge": "Se uma campanha bancária multiplicar consultas por cinquenta, mas pagamentos apenas por três, como você protegeria o caminho financeiro sem dimensionar todos os componentes pelo mesmo fator?",
+      "relatedArchitectures": [
+        "microservices",
+        "bff",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-_aybyMlU7-E"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "SgWb6tWx3S8",
+      "title": "System Design Mock Interview: Design a Rate Limiter (with Meta Engineering Manager)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "22:34",
+      "seconds": 1354,
+      "url": "https://www.youtube.com/watch?v=SgWb6tWx3S8",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/SgWb6tWx3S8/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Limites de tráfego distribuídos",
+      "category": "Limites de tráfego distribuídos",
+      "guide": "Trate rate limiting como uma política de admissão com consequências para o usuário. Escolha a identidade limitada, a janela e o comportamento em rajadas antes do algoritmo. Use o tema para comparar precisão, custo e disponibilidade: um contador global exato pode exigir coordenação, enquanto limites locais precisam de um orçamento explícito de excesso.",
+      "focus": [
+        "Compare token bucket, janela fixa e janela deslizante com a mesma sequência de chamadas. Explique a rajada permitida, memória por identidade e atomicidade da atualização do contador.",
+        "Simule falha do store de limites e decida por operação se há quota local, degradação ou recusa. Proteção de login e controle de custos podem exigir políticas diferentes."
+      ],
+      "challenge": "Como limitar tentativas de autenticação e iniciações de pagamento entre várias regiões, preservando acesso legítimo e evitando que a queda do contador permita uma rajada sem controle?",
+      "relatedArchitectures": [
+        "rate-limiter",
+        "api-gateway",
+        "multi-region-active"
+      ],
+      "sourceIds": [
+        "video-SgWb6tWx3S8"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "til92X5hYAY",
+      "title": "System Design Interview: Design Amazon Kindle Payments",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "33:50",
+      "seconds": 2029,
+      "url": "https://www.youtube.com/watch?v=til92X5hYAY",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/til92X5hYAY/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Pagamento e concessão de acesso",
+      "category": "Pagamento e concessão de acesso",
+      "guide": "Este tema aproxima diretamente o estudo de uma entrevista financeira: cobrar e conceder um direito digital são efeitos em sistemas diferentes. Modele intenção, autorização, captura, entrega e reembolso. Como exercício editorial, investigue o ponto em que a interface pode afirmar sucesso e como ela explica um pagamento confirmado cujo conteúdo ainda não ficou disponível.",
+      "focus": [
+        "Vincule cobrança e concessão à mesma identidade de negócio, mas não suponha uma transação ACID entre provedores. Outbox, estados duráveis e dedupe tornam a recuperação observável e repetível.",
+        "Separe rejeição definitiva de resultado desconhecido. Uma resposta perdida após captura exige consulta ao provedor; devolver dinheiro e reenviar cobrança automaticamente pode criar dois fluxos financeiros concorrentes."
+      ],
+      "challenge": "Como garantir que uma compra financiada pelo banco gere um único débito e um único direito de acesso, mesmo após callbacks duplicados e indisponibilidade temporária do parceiro?",
+      "relatedArchitectures": [
+        "ledger",
+        "idempotency",
+        "saga-orchestration"
+      ],
+      "sourceIds": [
+        "video-til92X5hYAY"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "PuU_0esYyhg",
+      "title": "System Design Interview: Design Amazon Prime Video",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "26:53",
+      "seconds": 1612,
+      "url": "https://www.youtube.com/watch?v=PuU_0esYyhg",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/PuU_0esYyhg/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Streaming e experiência sob falha",
+      "category": "Streaming e experiência sob falha",
+      "guide": "Use o serviço de vídeo para decompor latência percebida: descobrir conteúdo, iniciar reprodução e mantê-la sem interrupções. Diferencie armazenamento de origem, distribuição e controle de acesso. Como prática, procure quais falhas permitem continuar com qualidade reduzida e quais exigem interromper a operação por falta de autorização ou de estado confiável.",
+      "focus": [
+        "Modele catálogo e conteúdo binário separadamente. O caminho que entrega bytes pode escalar de forma diferente da API que verifica identidade, assinatura e disponibilidade do título solicitado.",
+        "Compare falha da origem com falha de metadados: conteúdo já distribuído pode continuar acessível, mas uma decisão de autorização não deve ser substituída por suposição sem contrato definido."
+      ],
+      "challenge": "Ao distribuir documentos e comprovantes no aplicativo do banco, como manter downloads rápidos durante falha regional sem tornar um arquivo privado acessível por uma URL permanente?",
+      "relatedArchitectures": [
+        "load-balancing",
+        "oauth-authorization",
+        "disaster-recovery"
+      ],
+      "sourceIds": [
+        "video-PuU_0esYyhg"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "jMRo9QQKja8",
+      "title": "Amazon System Design Mock Interview: Design Amazon Prime Video (with Uber Software Engineer)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "27:28",
+      "seconds": 1647,
+      "url": "https://www.youtube.com/watch?v=jMRo9QQKja8",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/jMRo9QQKja8/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Armazenamento e entrega de mídia",
+      "category": "Armazenamento e entrega de mídia",
+      "guide": "Nesta alternativa de desenho para vídeo, faça seu próprio levantamento de requisitos antes de abrir a solução. Escolha o que deve ser persistido, replicado e reconstruído, e estime bytes além de requisições. O objetivo de estudo é justificar uma recuperação completa: restaurar metadados, localizar objetos e reaquecer distribuição são etapas diferentes.",
+      "focus": [
+        "Defina integridade e publicação de objetos grandes. Um upload parcial não deve aparecer como conteúdo concluído; checksum, manifesto e estado de processamento ajudam a comprovar prontidão para consumo.",
+        "Compare réplica de leitura com backup recuperável. Corrupção lógica ou exclusão pode propagar entre réplicas, por isso continuidade e restauração precisam de objetivos e testes independentes."
+      ],
+      "challenge": "Como armazenar gravações de atendimento bancário e recuperar uma delas após corrupção ou perda de região, preservando autorização, integridade e evidência da versão originalmente registrada?",
+      "relatedArchitectures": [
+        "disaster-recovery",
+        "replication",
+        "durable-workflow"
+      ],
+      "sourceIds": [
+        "video-jMRo9QQKja8"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "0iyLURrWIgQ",
+      "title": "System Design Mock Interview: Design WhatsApp",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "22:33",
+      "seconds": 1352,
+      "url": "https://www.youtube.com/watch?v=0iyLURrWIgQ",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/0iyLURrWIgQ/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Mensageria e entrega offline",
+      "category": "Mensageria e entrega offline",
+      "guide": "Use o aplicativo de mensagens para definir significado de envio, entrega e leitura. Desenhe um usuário com vários dispositivos e outro desconectado; isso revela a necessidade de IDs estáveis, cursor e histórico. Como exercício, preserve ordem no escopo necessário sem prometer uma ordenação global que aumentaria coordenação e custo sem benefício claro.",
+      "focus": [
+        "Separe conexão de presença do armazenamento de mensagens. Um socket cair não deve eliminar a mensagem confirmada, e uma conexão ativa não significa que o usuário visualizou seu conteúdo.",
+        "Projete retomada pelo último cursor confirmado e dedupe por mensagem. Reconectar em outro servidor exige descobrir estado durável sem confiar apenas na memória do processo que caiu."
+      ],
+      "challenge": "Como entregar alertas de movimentação em vários dispositivos, diferenciando notificação enviada, recebida e visualizada sem usar qualquer desses sinais como confirmação de liquidação do pagamento?",
+      "relatedArchitectures": [
+        "partitioned-log",
+        "idempotency",
+        "replication"
+      ],
+      "sourceIds": [
+        "video-0iyLURrWIgQ"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "kIcq1_pBQSY",
+      "title": "Facebook System Design Interview: Design an Analytics Platform (Metrics & Logging)",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "25:23",
+      "seconds": 1523,
+      "url": "https://www.youtube.com/watch?v=kIcq1_pBQSY",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/kIcq1_pBQSY/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Métricas, logs e ingestão",
+      "category": "Métricas, logs e ingestão",
+      "guide": "A plataforma de observabilidade permite discutir um sistema que precisa funcionar justamente quando outros estão falhando. Estime eventos, cardinalidade, retenção e custo de consulta. Use o tema para separar métricas agregadas de logs detalhados e definir quais dados podem ser amostrados, deixando trilhas financeiras obrigatórias em um contrato de persistência próprio.",
+      "focus": [
+        "Uma etiqueta com identificador individual pode explodir séries temporais e memória. Defina dimensões limitadas para métricas e use correlação controlada em traces/logs quando precisar investigar uma operação.",
+        "A ingestão deve aplicar backpressure e degradação explícita. Perder telemetria de diagnóstico e perder evidência financeira são riscos diferentes; o mesmo pipeline não deve mascarar essa distinção."
+      ],
+      "challenge": "Como diagnosticar aumento de pagamentos pendentes durante falha parcial, sem sobrecarregar ainda mais a plataforma e sem tratar um log amostrado como registro autoritativo do ledger?",
+      "relatedArchitectures": [
+        "observability",
+        "streaming",
+        "slo"
+      ],
+      "sourceIds": [
+        "video-kIcq1_pBQSY"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "QF8JNSoJD8E",
+      "title": "Facebook System Design Interview: Design Twitter",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "24:22",
+      "seconds": 1462,
+      "url": "https://www.youtube.com/watch?v=QF8JNSoJD8E",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/QF8JNSoJD8E/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Feed e fan-out",
+      "category": "Feed e fan-out",
+      "guide": "Transforme uma timeline em uma escolha entre trabalho na escrita e trabalho na leitura. Faça duas estimativas: usuários comuns e contas com audiência extrema. A oportunidade editorial é explicar por que uma estratégia híbrida pode ser necessária e como ela afeta atraso, cache, ordenação e reconstrução depois de uma falha no processamento.",
+      "focus": [
+        "Compare fan-out na publicação com composição na leitura. Copiar uma atualização para milhões de destinos concentra custo na escrita; buscar tudo ao abrir a tela concentra custo na consulta.",
+        "Defina paginação com cursor e tratamento de atualizações tardias. Um feed pode aceitar reordenação limitada, mas isso não torna sua ordenação adequada para comprovar sequência financeira ou saldo."
+      ],
+      "challenge": "Como distribuir avisos de um incidente bancário a milhões de clientes sem disputar capacidade com alertas individuais de transações nem gerar notificações repetidas após reprocessamento?",
+      "relatedArchitectures": [
+        "cqrs",
+        "event-driven",
+        "cache-aside"
+      ],
+      "sourceIds": [
+        "video-QF8JNSoJD8E"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "y-tA2NW4LNY",
+      "title": "Top-K System Design Interview Breakdown w/ Ex-Meta Senior Manager",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:31:38",
+      "seconds": 5498,
+      "url": "https://www.youtube.com/watch?v=y-tA2NW4LNY",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/y-tA2NW4LNY/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Top-K e agregações em escala",
+      "category": "Top-K e agregações em escala",
+      "guide": "Use o tema Top-K para distinguir uma ordenação de dados finitos de um ranking que muda continuamente. Defina janela, chave, precisão e atraso antes de escolher estruturas. O roteiro editorial propõe comparar contagem exata e aproximações, observando como memória, redistribuição de chaves e eventos atrasados alteram o significado dos resultados apresentados.",
+      "focus": [
+        "Uma heap limitada pode manter candidatos, mas a contagem por chave ainda ocupa memória. Explique onde vivem os contadores e como atualizações concorrentes invalidam posições antigas no ranking.",
+        "Ao combinar resultados particionados, verifique se candidatos locais bastam para o Top-K global sob sua distribuição. Duplicatas, janelas diferentes e eventos atrasados podem exigir agregação adicional ou correção."
+      ],
+      "challenge": "Como identificar os estabelecimentos com mais contestações na última hora, explicitando atraso e margem de erro sem usar um ranking aproximado como prova definitiva de fraude?",
+      "relatedArchitectures": [
+        "streaming",
+        "sharding",
+        "cqrs"
+      ],
+      "sourceIds": [
+        "video-y-tA2NW4LNY"
+      ],
+      "verification": "Playlist pública + metadados disponíveis"
+    },
+    {
+      "id": "39eAITqeu7g",
+      "title": "System Design Interview: Design Calendar Application",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "25:16",
+      "seconds": 1515,
+      "url": "https://www.youtube.com/watch?v=39eAITqeu7g",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/39eAITqeu7g/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Calendário e tempo de negócio",
+      "category": "Calendário e tempo de negócio",
+      "guide": "Aproveite o calendário para treinar modelagem temporal além de timestamps. Diferencie instante, fuso, recorrência, exceção e duração; depois escolha o que persistir e o que calcular. Como estudo, acompanhe uma edição de série recorrente e pergunte quais ocorrências futuras mudam, quais já ocorreram e como notificações agendadas devem ser corrigidas.",
+      "focus": [
+        "Uma regra recorrente não é apenas somar vinte e quatro horas. Mudanças de fuso e regras locais exigem política explícita para horários inexistentes ou repetidos e para futuras alterações.",
+        "Concorrência em convites e eventos exige identidade e versão. Atualizar uma série e cancelar lembretes antigos deve produzir transições idempotentes, sem apagar evidências necessárias à interpretação do histórico."
+      ],
+      "challenge": "Como agendar pagamentos recorrentes respeitando data local, dias elegíveis e alterações do usuário, impedindo execução duplicada quando o scheduler reinicia perto da virada do dia?",
+      "relatedArchitectures": [
+        "durable-workflow",
+        "optimistic-lock",
+        "idempotency"
+      ],
+      "sourceIds": [
+        "video-39eAITqeu7g"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "1xV5WI0OFkg",
+      "title": "Engineering Manager System Design Interview (Wealthfront EM): Design YouTube",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "23:37",
+      "seconds": 1417,
+      "url": "https://www.youtube.com/watch?v=1xV5WI0OFkg",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/1xV5WI0OFkg/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Upload e processamento assíncrono",
+      "category": "Upload e processamento assíncrono",
+      "guide": "Use a plataforma de vídeo para seguir um objeto grande do upload à publicação. Faça a separação entre metadados transacionais, bytes armazenados e tarefas derivadas. O treino recomendado é defender um fluxo recuperável: partes podem chegar novamente, processamento pode falhar e o catálogo só deve anunciar uma versão cujo estado de prontidão esteja comprovado.",
+      "focus": [
+        "Projete upload em partes com identificação, checksum e finalização explícita. O cliente precisa retomar sem reenviar tudo, mas nenhum consumidor deve confundir conjunto incompleto com objeto publicado.",
+        "Workers de transformação produzem artefatos derivados com versão. Reprocessar deve ser seguro, e mudança de algoritmo precisa permitir comparar versões antes de trocar a referência usada pelos leitores."
+      ],
+      "challenge": "Como receber documentos de abertura de conta, processá-los e disponibilizá-los para análise sem perder partes, duplicar trabalho ou expor um arquivo antes da autorização e validação?",
+      "relatedArchitectures": [
+        "queue",
+        "durable-workflow",
+        "schema-evolution"
+      ],
+      "sourceIds": [
+        "video-1xV5WI0OFkg"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "KYExYE_9nIY",
+      "title": "Design Reddit: System Design Mock Interview",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "41:31",
+      "seconds": 2491,
+      "url": "https://www.youtube.com/watch?v=KYExYE_9nIY",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/KYExYE_9nIY/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Comunidades, comentários e ranking",
+      "category": "Comunidades, comentários e ranking",
+      "guide": "A discussão de uma comunidade social ajuda a separar escrita de conteúdo, estrutura de comentários e ordenação por popularidade. Use o tema para explorar leituras muito desiguais: uma postagem viral pode dominar o tráfego. Como exercício, escolha quais contagens podem convergir depois e quais mudanças de permissão precisam impedir acesso de maneira previsível.",
+      "focus": [
+        "Compare árvore de comentários materializada com consultas recursivas ou por parent_id. Profundidade, paginação e remoção parcial mudam o custo de ler uma conversa extensa com frequência.",
+        "Votos e contagens agregadas exigem dedupe por usuário/ação e estratégia de recomputação. Convergir um contador não garante automaticamente impedir múltiplos votos indevidos na regra de negócio."
+      ],
+      "challenge": "Como construir uma comunidade de educação financeira com conteúdo moderado, garantindo remoção eficaz e isolamento de permissões sem bloquear todo o sistema quando uma postagem viraliza?",
+      "relatedArchitectures": [
+        "graph-model",
+        "cqrs",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-KYExYE_9nIY"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Z-0g_aJL5Fw",
+      "title": "System Design Mock Interview: Design TikTok ft. Google TPM",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "33:11",
+      "seconds": 1991,
+      "url": "https://www.youtube.com/watch?v=Z-0g_aJL5Fw",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Z-0g_aJL5Fw/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Feed de mídia e estimativas",
+      "category": "Feed de mídia e estimativas",
+      "guide": "Use o feed de vídeos para relacionar armazenamento, processamento e consumo, três cargas com unidades diferentes. Estime bytes por upload, versões derivadas e tráfego de reprodução separadamente. Como proposta de estudo, compare pré-computar recomendações com montá-las na leitura e explique como a experiência se degrada quando o ranking ou o pipeline de mídia atrasa.",
+      "focus": [
+        "Otimização de início de reprodução pode aumentar bytes transferidos inutilmente. Quantifique pré-carregamento, cache e abandono antes de assumir que menor latência sempre significa menor custo total.",
+        "Separe eventos de interação de decisões autoritativas. Atraso em analytics pode afetar ranking, mas perda de consentimento ou remoção de acesso requer propagação com contrato próprio e verificável."
+      ],
+      "challenge": "Como um aplicativo bancário distribuiria conteúdo educativo personalizado sem deixar o pipeline de recomendações comprometer latência, privacidade e capacidade dos serviços que consultam saldo ou iniciam pagamentos?",
+      "relatedArchitectures": [
+        "streaming",
+        "bff",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-Z-0g_aJL5Fw"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "uzeJb7ZjoQ4",
+      "title": "System Design Mock Interview: Design Facebook Messenger",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "14:50",
+      "seconds": 890,
+      "url": "https://www.youtube.com/watch?v=uzeJb7ZjoQ4",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/uzeJb7ZjoQ4/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Conexões persistentes e chat",
+      "category": "Conexões persistentes e chat",
+      "guide": "Use esta sessão curta para ensaiar uma comparação objetiva entre polling, long polling e WebSockets. Comece pelo padrão de tráfego e pelo estado necessário para reconectar. Como aprofundamento editorial, desenhe balanceamento de conexões longas, drenagem durante deploy e recuperação do histórico; um protocolo bidirecional não elimina esses problemas operacionais nem define confirmação durável.",
+      "focus": [
+        "Calcule conexões simultâneas, heartbeats e memória por sessão, além de mensagens por segundo. Servidores com CPU livre ainda podem atingir limites de sockets, descritores ou buffers.",
+        "No deploy, pare de aceitar conexões novas antes de drenar as antigas. Clientes retomam por cursor e identidade estável, evitando perda silenciosa ou exibição duplicada de mensagens."
+      ],
+      "challenge": "Como manter um chat de atendimento bancário durante deploy e queda de servidor, preservando histórico e identidade sem considerar uma conexão aberta como prova de autorização permanente?",
+      "relatedArchitectures": [
+        "load-balancing",
+        "partitioned-log",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-uzeJb7ZjoQ4"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "VJpfO6KdyWE",
+      "title": "System Design Mock Interview: Design Instagram",
+      "channel": "Aced (formerly Exponent)",
+      "channelUrl": "https://www.youtube.com/@aced_io",
+      "duration": "31:12",
+      "seconds": 1871,
+      "url": "https://www.youtube.com/watch?v=VJpfO6KdyWE",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/VJpfO6KdyWE/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Instagram: upload e geração de feed",
+      "category": "Instagram: upload e geração de feed",
+      "guide": "Use o recorte de upload e feed anunciado na descrição para praticar duas jornadas com requisitos diferentes. Antes de assistir à proposta, desenhe onde ficam os bytes, os metadados e a timeline. Estime armazenamento e tráfego separadamente. Depois acrescente publicação incompleta, exclusão e uma conta com milhões de seguidores ao seu próprio desenho.",
+      "focus": [
+        "Modele a publicação em estados: upload iniciado, objeto recebido e postagem disponível. Um objeto existente não prova que todos os metadados necessários foram confirmados.",
+        "Compare montar o feed na leitura com preparar referências na escrita. Explique como usuários populares, custo de fan-out e atraso da projeção alteram a escolha."
+      ],
+      "challenge": "Como adaptar essa separação entre mídia e metadados para comprovantes bancários, garantindo autorização por cliente e evitando documentos publicados pela metade?",
+      "relatedArchitectures": [
+        "cqrs",
+        "lakehouse",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-VJpfO6KdyWE"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "fhdPyoO6aXI",
+      "title": "System Design Interview: Design Ticketmaster w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "58:39",
+      "seconds": 3519,
+      "url": "https://www.youtube.com/watch?v=fhdPyoO6aXI",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/fhdPyoO6aXI/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Ticketmaster: disputa por recurso escasso",
+      "category": "Ticketmaster: disputa por recurso escasso",
+      "guide": "Trate a reserva de assentos como exercício de concorrência, tempo e resultado desconhecido. Defina exatamente quando o recurso fica indisponível e o que transforma reserva em compra. Pause antes do capítulo de aprofundamento e proponha dois mecanismos de exclusão. Teste ambos com pagamento aceito depois da expiração e resposta perdida.",
+      "focus": [
+        "Diferencie expiração lógica, limpeza física e liberação do estoque. Um job atrasado não deve permitir dois compradores confirmados nem bloquear indefinidamente um assento.",
+        "Modele a corrida entre captura, cancelamento e vencimento com transições atômicas. Acrescente identidade da intenção e reconciliação quando o provedor de pagamento responde ambiguamente."
+      ],
+      "challenge": "Como reservar limite de crédito por alguns minutos sem permitir gasto duplo quando captura e expiração acontecem simultaneamente?",
+      "relatedArchitectures": [
+        "reservations",
+        "optimistic-lock",
+        "idempotency"
+      ],
+      "sourceIds": [
+        "video-fhdPyoO6aXI"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "lsKU38RKQSo",
+      "title": "Design Uber w/ a Ex-Meta Staff Engineer: System Design Interview breakdown",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:03:05",
+      "seconds": 3784,
+      "url": "https://www.youtube.com/watch?v=lsKU38RKQSo",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/lsKU38RKQSo/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Uber: localização e atribuição concorrente",
+      "category": "Uber: localização e atribuição concorrente",
+      "guide": "Divida seu estudo entre busca aproximada de candidatos e confirmação exclusiva da corrida. O primeiro problema tolera localização envelhecida; o segundo precisa impedir atribuições incompatíveis. Antes do aprofundamento, desenhe a atualização de posição, o aceite e o cancelamento. Inclua motorista desconectado, proposta expirada e mudança de região durante a negociação.",
+      "focus": [
+        "Uma lista de motoristas próximos é uma projeção sujeita a atraso. Especifique frescor aceitável e revalide disponibilidade ao confirmar, em vez de tratar busca como reserva.",
+        "Particione buscas por região, mas discuta fronteiras, pontos muito movimentados e movimentação entre partições. A distribuição espacial não elimina a necessidade de coordenar a atribuição."
+      ],
+      "challenge": "Como atribuir um atendimento antifraude a um único analista usando uma fila de candidatos que pode estar atrasada ou repetir resultados?",
+      "relatedArchitectures": [
+        "reservations",
+        "sharding",
+        "optimistic-lock"
+      ],
+      "sourceIds": [
+        "video-lsKU38RKQSo"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "_UZ1ngy-kOI",
+      "title": "Design Dropbox or Google Drive w/ a Ex-Meta Staff Engineer System Design Interview",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "58:08",
+      "seconds": 3487,
+      "url": "https://www.youtube.com/watch?v=_UZ1ngy-kOI",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/_UZ1ngy-kOI/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Dropbox: sincronização e versões de arquivos",
+      "category": "Dropbox: sincronização e versões de arquivos",
+      "guide": "Use o problema para separar conteúdo imutável, metadados mutáveis e sincronização entre dispositivos. Construa primeiro upload e download básicos; só depois inclua blocos, retomada e conflitos. Na sua solução, explique o que acontece quando o objeto foi gravado, mas a versão não foi publicada, ou quando dois dispositivos editam sem conectividade.",
+      "focus": [
+        "Associe uma versão de metadados ao conjunto de objetos confirmado. Valide tamanho e integridade antes de publicar; objetos órfãos exigem coleta posterior com critérios seguros.",
+        "Não confunda deduplicação de bytes com autorização. Um hash conhecido não deve permitir ler conteúdo de outra pessoa; compartilhamento e revogação precisam de verificação própria."
+      ],
+      "challenge": "Como guardar documentos de abertura de conta com versões auditáveis, upload retomável e revogação de acesso sem expor arquivos de outro cliente?",
+      "relatedArchitectures": [
+        "lakehouse",
+        "optimistic-lock",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-_UZ1ngy-kOI"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "iUU4O1sWtJA",
+      "title": "Beginner System Design Interview: Design Bitly w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "59:30",
+      "seconds": 3570,
+      "url": "https://www.youtube.com/watch?v=iUU4O1sWtJA",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/iUU4O1sWtJA/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Sênior",
+      "topic": "Bitly: chaves, redirecionamento e cache",
+      "category": "Bitly: chaves, redirecionamento e cache",
+      "guide": "Aproveite o problema pequeno para mostrar disciplina: requisitos, unicidade da chave, API de criação e caminho de leitura. Faça uma estimativa de colisão coerente com o espaço escolhido, sem presumir que código curto é único. Depois introduza expiração, abuso, atualização de destino e pico concentrado em um único link.",
+      "focus": [
+        "Compare sequência codificada e identificador aleatório com detecção de colisão. Discuta previsibilidade, tamanho do espaço e necessidade de gravar unicidade de forma atômica.",
+        "Escolha política de cache considerando atualização e revogação do destino. Defina diferença entre ausência real, expiração e falha temporária de acesso ao armazenamento."
+      ],
+      "challenge": "Como criar links de cobrança com validade e revogação, evitando que um cache antigo continue encaminhando para uma cobrança cancelada?",
+      "relatedArchitectures": [
+        "btree",
+        "cache-aside",
+        "idempotency"
+      ],
+      "sourceIds": [
+        "video-iUU4O1sWtJA"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "cr6p0n0N-VA",
+      "title": "Design Whatsapp: System Design Interview w/ a Ex-Meta Senior Manager",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "58:12",
+      "seconds": 3492,
+      "url": "https://www.youtube.com/watch?v=cr6p0n0N-VA",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/cr6p0n0N-VA/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "WhatsApp: entrega, conexão e histórico",
+      "category": "WhatsApp: entrega, conexão e histórico",
+      "guide": "Estude o chat como uma sequência de estados observáveis: aceito pelo servidor, persistido, entregue e lido. Desenhe reconexão e múltiplos dispositivos antes de aumentar escala. A descrição aponta atualizações em tempo real; use esse tema para distinguir canal de notificação e histórico durável, incluindo mensagem repetida e cliente que fica offline.",
+      "focus": [
+        "Escolha uma identidade estável da mensagem e a ordem relevante por conversa. Reconexão pode repetir notificações; apresentação deduplicada não substitui persistência correta do histórico.",
+        "Explique como descobrir a conexão do destinatário e recuperar mensagens perdidas. Presença temporária não é prova de entrega e não deve ser a única fonte de estado."
+      ],
+      "challenge": "Como notificar uma transferência no aplicativo mantendo a diferença entre evento persistido, push entregue e saldo realmente disponível para consulta?",
+      "relatedArchitectures": [
+        "partitioned-log",
+        "idempotency",
+        "cqrs"
+      ],
+      "sourceIds": [
+        "video-cr6p0n0N-VA"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Nfa-uUHuFHg",
+      "title": "System Design Interview Walkthrough: Design Twitter",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "23:04",
+      "seconds": 1384,
+      "url": "https://www.youtube.com/watch?v=Nfa-uUHuFHg",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Nfa-uUHuFHg/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Twitter: timeline, busca e fan-out",
+      "category": "Twitter: timeline, busca e fan-out",
+      "guide": "A descrição apresenta uma exploração teórica, útil para comparar serviços de escrita, timeline e busca. Produza sua arquitetura antes do vídeo e marque a origem autoritativa de cada dado. Use o feed para discutir custo de usuários populares e o índice de busca para discutir atraso. Acrescente exclusão e mudança de privacidade ao exercício.",
+      "focus": [
+        "Faça contas distintas para fan-out na publicação e montagem na leitura. Um desenho híbrido precisa declarar como escolhe o caminho e como mantém paginação estável.",
+        "Busca e timeline podem divergir temporariamente da publicação original. Para dados revogados, defina onde a autorização é revalidada e como a remoção alcança as projeções."
+      ],
+      "challenge": "Como montar uma timeline de movimentações sem transformar um índice de busca atrasado na autoridade do saldo ou da autorização do cliente?",
+      "relatedArchitectures": [
+        "cqrs",
+        "search",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-Nfa-uUHuFHg"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "MIJFyUPG4Z4",
+      "title": "Design a Distributed Rate Limiter w/ a Ex-Meta Staff Engineer: System Design Breakdown",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "55:58",
+      "seconds": 3357,
+      "url": "https://www.youtube.com/watch?v=MIJFyUPG4Z4",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/MIJFyUPG4Z4/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Rate limiter distribuído: orçamento e coordenação",
+      "category": "Rate limiter distribuído: orçamento e coordenação",
+      "guide": "Comece pela política: limitar por cliente, recurso, janela e custo da operação. Só então escolha algoritmo e localização do contador. Antes do aprofundamento, compare precisão global com autonomia regional. Force indisponibilidade do armazenamento de limites e escreva explicitamente quais operações bloqueiam, quais degradam e como evitar que o próprio limitador vire gargalo.",
+      "focus": [
+        "Separe rajada permitida de taxa média sustentada. Duas instâncias atualizando o mesmo contador precisam de operação atômica ou protocolo que explicite o excesso possível.",
+        "Defina tratamento de relógios, múltiplas regiões e clientes de custos diferentes. Retornar rejeição útil e preservar capacidade crítica são partes do contrato, além do algoritmo."
+      ],
+      "challenge": "Como proteger uma API de Pix contra um cliente ruidoso sem bloquear consultas essenciais nem conceder orçamento integral em cada região?",
+      "relatedArchitectures": [
+        "rate-limiter",
+        "backpressure",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-MIJFyUPG4Z4"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Zcv_899yqhI",
+      "title": "Design an Ad Click Aggregator w/ a Ex-Meta Staff Engineer System Design Interview",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:02:22",
+      "seconds": 3741,
+      "url": "https://www.youtube.com/watch?v=Zcv_899yqhI",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Zcv_899yqhI/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Agregador de cliques: tempo e deduplicação",
+      "category": "Agregador de cliques: tempo e deduplicação",
+      "guide": "Use a agregação de cliques para praticar o caminho completo entre ingestão, resultado parcial e resultado corrigido. Determine qual relógio define a janela e até quando atrasos são aceitos. Antes de olhar a solução, simule duplicação, evento fora de ordem e reinício do processador. Acrescente distinção entre painel aproximado e faturamento auditável.",
+      "focus": [
+        "Uma janela por tempo do evento precisa de política para atrasos e correções. Watermark é uma estimativa operacional; não significa que o mundo deixou de produzir eventos antigos.",
+        "Deduplicação exige identidade, retenção de estado e limites claros. Um agregado correto no stream não torna automaticamente atômica sua gravação em qualquer destino externo."
+      ],
+      "challenge": "Como agregar transferências por minuto para observabilidade e, separadamente, produzir valores de liquidação que possam ser reconciliados e corrigidos?",
+      "relatedArchitectures": [
+        "streaming",
+        "idempotency",
+        "reconciliation"
+      ],
+      "sourceIds": [
+        "video-Zcv_899yqhI"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "IUrQ5_g3XKs",
+      "title": "System Design Interview: Design YouTube",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "42:39",
+      "seconds": 2559,
+      "url": "https://www.youtube.com/watch?v=IUrQ5_g3XKs",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/IUrQ5_g3XKs/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Sênior",
+      "topic": "YouTube: upload, processamento e distribuição",
+      "category": "YouTube: upload, processamento e distribuição",
+      "guide": "Desenhe duas jornadas independentes: publicar vídeo e reproduzir conteúdo já disponível. Defina estados intermediários e orçamento de processamento antes de adicionar recomendação ou busca. O roteiro publicado separa APIs, desenho geral e aprofundamentos; use essas pausas para justificar filas, variantes de mídia e entrega de bytes com base em volume e latência.",
+      "focus": [
+        "A entrada pode ser aceita enquanto transcodificação e verificação continuam. Defina como o usuário acompanha progresso, como jobs são repetidos e quando uma versão fica visível.",
+        "Estime custo de armazenamento, egress e cache a partir de tamanho e popularidade. Escalar workers de processamento não resolve automaticamente gargalo na distribuição aos clientes."
+      ],
+      "challenge": "Como processar vídeos de verificação cadastral de forma assíncrona, com retenção controlada e acesso restrito, sem bloquear todo o onboarding?",
+      "relatedArchitectures": [
+        "queue",
+        "lakehouse",
+        "durable-workflow"
+      ],
+      "sourceIds": [
+        "video-IUrQ5_g3XKs"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "krsuaUp__pM",
+      "title": "Design a Web Crawler System Design Interview w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:05:04",
+      "seconds": 3904,
+      "url": "https://www.youtube.com/watch?v=krsuaUp__pM",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/krsuaUp__pM/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Web crawler: filas, dedupe e justiça",
+      "category": "Web crawler: filas, dedupe e justiça",
+      "guide": "Trate o crawler como processamento distribuído com descoberta contínua de trabalho. Antes do aprofundamento, proponha identidade para URLs e política de revisita. Separe throughput agregado dos limites por domínio. Aprofunde falhas de workers, respostas lentas e explosão do conjunto de links, sem presumir que uma fila maior resolve crescimento sem limite.",
+      "focus": [
+        "Use agendamento por domínio para impedir que um destino lento ocupe todos os workers. Limite conexões e taxa, considerando políticas públicas de acesso e orçamento de recaptura.",
+        "Canonicalização e deduplicação têm semântica própria: URLs diferentes podem representar conteúdo semelhante. Bloom positivo exige confirmação exata quando descartar uma tarefa seria incorreto."
+      ],
+      "challenge": "Como coletar arquivos públicos de múltiplos parceiros com limites distintos, retomada após falha e evidência de quais versões realmente foram processadas?",
+      "relatedArchitectures": [
+        "queue",
+        "rate-limiter",
+        "bloom-filter"
+      ],
+      "sourceIds": [
+        "video-krsuaUp__pM"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "1xHADtekTNg",
+      "title": "System Design Interview: Design LeetCode (Online Judge) w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:03:34",
+      "seconds": 3814,
+      "url": "https://www.youtube.com/watch?v=1xHADtekTNg",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/1xHADtekTNg/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Online judge: execução isolada e resultados",
+      "category": "Online judge: execução isolada e resultados",
+      "guide": "Use a avaliação de código para exercitar filas e isolamento de trabalho não confiável. Defina recursos por execução, versão dos testes e estados do resultado antes de tratar ranking. No seu desenho, inclua programa infinito, worker interrompido e submissão repetida. Discuta por que uma imagem de container, sozinha, não demonstra isolamento suficiente.",
+      "focus": [
+        "Separe aceitação da submissão e conclusão da avaliação. Resultado precisa apontar versão de código, testes e ambiente; repetir um job não deve duplicar pontuação.",
+        "Aplique limites de CPU, memória, tempo, saída e rede. A política de isolamento depende da ameaça, e tenants maliciosos não podem consumir toda a capacidade compartilhada."
+      ],
+      "challenge": "Como executar regras personalizadas de parceiros para análise financeira sem permitir acesso a segredos, consumo ilimitado de CPU ou resultados não reproduzíveis?",
+      "relatedArchitectures": [
+        "queue",
+        "containers",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-1xHADtekTNg"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "18Fg5Akhkqw",
+      "title": "System Design Interview: Design Tinder w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:13:22",
+      "seconds": 4402,
+      "url": "https://www.youtube.com/watch?v=18Fg5Akhkqw",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/18Fg5Akhkqw/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Tinder: relações, descoberta e reciprocidade",
+      "category": "Tinder: relações, descoberta e reciprocidade",
+      "guide": "Separe descoberta de candidatos, registro de interesse e confirmação de reciprocidade. A primeira jornada pode aceitar ranking e localização atrasados; a última precisa de identidade e regra clara para gerar um único resultado. Exercite bloqueio, exclusão e ações simultâneas. Antes do aprofundamento, explicite quais decisões dependem de dados frescos e quais podem ser projetadas.",
+      "focus": [
+        "Modele o interesse como relação direcionada e o encontro recíproco como fato derivado. Repetição e concorrência não devem gerar duas notificações de negócio incompatíveis.",
+        "A descoberta combina filtros, preferências e disponibilidade. Discuta conjuntos muito populares, custo de paginação e o ponto em que privacidade precisa ser revalidada após o ranking."
+      ],
+      "challenge": "Como combinar propostas de crédito e aceite do cliente sem criar contratos duplicados quando dois canais confirmam a mesma intenção simultaneamente?",
+      "relatedArchitectures": [
+        "graph-model",
+        "idempotency",
+        "optimistic-lock"
+      ],
+      "sourceIds": [
+        "video-18Fg5Akhkqw"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "LjLx0fCd1k8",
+      "title": "System Design Interview: Design Live Comments w/ a Ex-Meta Staff Engineer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "56:15",
+      "seconds": 3375,
+      "url": "https://www.youtube.com/watch?v=LjLx0fCd1k8",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/LjLx0fCd1k8/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Comentários ao vivo: fan-out e espectadores lentos",
+      "category": "Comentários ao vivo: fan-out e espectadores lentos",
+      "guide": "Estude comentários em uma transmissão como problema de distribuição com audiência desigual. Diferencie persistência da mensagem e entrega imediata a espectadores. Projete conexão, retomada e moderação antes de escalar. No seu exercício, imponha um evento com milhões de espectadores e clientes que consomem mensagens mais devagar do que elas chegam.",
+      "focus": [
+        "Defina a ordem exigida por transmissão e uma estratégia de reconexão com cursor. Não prometa ordem global entre todos os canais se o produto não precisa dela.",
+        "Buffers por conexão precisam de limite e política de recuperação. Desconectar cliente lento, resumir eventos ou recuperar histórico são escolhas explícitas, com efeitos diferentes na experiência."
+      ],
+      "challenge": "Como distribuir atualizações de status de uma campanha de pagamentos sem deixar clientes lentos ou uma conta muito popular derrubarem o serviço?",
+      "relatedArchitectures": [
+        "partitioned-log",
+        "backpressure",
+        "load-balancing"
+      ],
+      "sourceIds": [
+        "video-LjLx0fCd1k8"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Qj4-GruzyDU",
+      "title": "Design FB News Feed System Design Interview w/ ex: Meta Senior Manager",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "26:12",
+      "seconds": 1572,
+      "url": "https://www.youtube.com/watch?v=Qj4-GruzyDU",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Qj4-GruzyDU/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "News feed: materialização e usuários populares",
+      "category": "News feed: materialização e usuários populares",
+      "guide": "Use o formato curto para treinar uma resposta enxuta que parte das operações essenciais e aprofunda uma decisão. Desenhe publicação e leitura, depois compare o custo de materializar feeds com o de montar resultados sob demanda. Acrescente usuário popular e paginação concorrente ao seu exercício, deixando recomendação sofisticada fora do primeiro recorte.",
+      "focus": [
+        "Calcule escritas por publicação considerando a distribuição real de seguidores. A média esconde autores extremos, e uma estratégia híbrida precisa de critério operacional de mudança.",
+        "Um cursor deve continuar funcionando quando novas publicações chegam. Explique repetição, itens removidos e frescor percebido sem exigir snapshot infinito de toda a rede."
+      ],
+      "challenge": "Como produzir um feed de atividades financeiras com paginação estável, atualizações rápidas e autorização consistente durante mudanças de vínculo entre contas?",
+      "relatedArchitectures": [
+        "cqrs",
+        "btree",
+        "cache-aside"
+      ],
+      "sourceIds": [
+        "video-Qj4-GruzyDU"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "_K-eupuDVEc",
+      "title": "Google system design interview: Design Spotify (with ex-Google EM)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "42:13",
+      "seconds": 2532,
+      "url": "https://www.youtube.com/watch?v=_K-eupuDVEc",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/_K-eupuDVEc/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "Spotify: catálogo, reprodução e gargalos",
+      "category": "Spotify: catálogo, reprodução e gargalos",
+      "guide": "Use os capítulos de métricas, banco e gargalos para comparar acesso a metadados com distribuição de conteúdo. Antes da entrevista simulada, delimite catálogo, playlists e reprodução; não tente resolver recomendação inteira. Faça estimativas separadas de consultas e bytes. Depois acrescente conteúdo popular, disponibilidade regional e edição concorrente de uma lista.",
+      "focus": [
+        "A reprodução depende de bytes e autorização, enquanto a playlist depende de metadados pequenos e mutáveis. Diferencie cache, validade de acesso e persistência dos dois caminhos.",
+        "Considere hot keys e conexões persistentes ao discutir balanceamento. Aumentar servidores de API não resolve saturação de armazenamento, rede ou serviço compartilhado de identidade."
+      ],
+      "challenge": "Como oferecer extratos e comprovantes de acesso frequente sem confundir cache de conteúdo com permissão atual de visualizar documentos financeiros?",
+      "relatedArchitectures": [
+        "cache-aside",
+        "load-balancing",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-_K-eupuDVEc"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "NHqdG-aZxOk",
+      "title": "Google system design interview: Design TikTok (with ex-Google EM)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "1:09:18",
+      "seconds": 4158,
+      "url": "https://www.youtube.com/watch?v=NHqdG-aZxOk",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/NHqdG-aZxOk/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "TikTok: upload, leitura e feed personalizado",
+      "category": "TikTok: upload, leitura e feed personalizado",
+      "guide": "O roteiro publicado distingue upload, download, metadados e feed. Use essa separação para montar um caminho básico verificável antes de discutir recomendação. Estime capacidade de processamento e distribuição independentemente. Na sua proposta, acrescente vídeo viral, backlog de processamento e retirada urgente de conteúdo, explicitando quais componentes precisam convergir e em quanto tempo.",
+      "focus": [
+        "Uma publicação pode atravessar múltiplas etapas antes de estar disponível. Defina estados e versionamento para impedir que o feed aponte para variantes ainda inexistentes ou inválidas.",
+        "Popularidade muda rapidamente e altera o working set dos caches. Reserve capacidade de origem e limite preenchimento simultâneo para que um pico não vire tempestade de misses."
+      ],
+      "challenge": "Como distribuir uma campanha de educação financeira personalizada preservando autorização, disponibilidade de mídia e retirada rápida de conteúdo incorreto em todos os caches?",
+      "relatedArchitectures": [
+        "durable-workflow",
+        "cache-aside",
+        "cqrs"
+      ],
+      "sourceIds": [
+        "video-NHqdG-aZxOk"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Zvr-ffhvw0Y",
+      "title": "System design interview: Design Robinhood (with ex-Google SWE)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "42:33",
+      "seconds": 2552,
+      "url": "https://www.youtube.com/watch?v=Zvr-ffhvw0Y",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Zvr-ffhvw0Y/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Robinhood: ordens, mercado e estado financeiro",
+      "category": "Robinhood: ordens, mercado e estado financeiro",
+      "guide": "Este tema permite ensaiar uma conversa próxima do domínio financeiro sem assumir detalhes de implementação de uma corretora real. Separe dados de mercado, intenção de ordem, execução externa e posição do cliente. Use o recorte anunciado de camadas para localizar autoridade e limites transacionais. Introduza ordem parcialmente executada, cancelamento concorrente e resposta perdida.",
+      "focus": [
+        "Aceitar uma ordem não significa executá-la nem liquidá-la. Modele estados e identificadores externos; atualização de preço serve como informação, não como confirmação de negociação.",
+        "Reserva de recursos, execução e reconciliação precisam de regras próprias. Eventos podem atrasar ou repetir; não sobrescreva posição apenas porque recebeu o último pacote de rede."
+      ],
+      "challenge": "Como projetar reserva de saldo e reconciliação de uma compra de investimento quando a contraparte executa parcialmente antes de responder ao cancelamento?",
+      "relatedArchitectures": [
+        "reservations",
+        "ledger",
+        "reconciliation"
+      ],
+      "sourceIds": [
+        "video-Zvr-ffhvw0Y"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "3yW856jAbZA",
+      "title": "Twitter system design mock interview (with Senior Software Engineer)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "54:33",
+      "seconds": 3273,
+      "url": "https://www.youtube.com/watch?v=3yW856jAbZA",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/3yW856jAbZA/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Twitter: comunicação e revisão da solução",
+      "category": "Twitter: comunicação e revisão da solução",
+      "guide": "Use esta simulação para praticar evolução do desenho sob perguntas, aproveitando os capítulos publicados sobre workflow, timeline, usuários populares e refinamento. Grave sua resposta de vinte minutos antes de comparar abordagens. A meta é justificar uma revisão quando a distribuição de carga muda, preservando o vínculo entre requisito, modelo e fluxo operacional.",
+      "focus": [
+        "Siga uma publicação da entrada até sua aparição em duas timelines. Marque commits, filas e projeções para revelar onde repetição ou atraso muda o resultado percebido.",
+        "Introduza uma conta com seguidores muito acima da média e revise o plano inicial. Explique custo de fan-out, fallback de leitura e recuperação de backlog sem redesenhar tudo."
+      ],
+      "challenge": "Como mudar a distribuição de eventos de uma conta empresarial muito movimentada sem atrasar o extrato de todos os demais clientes?",
+      "relatedArchitectures": [
+        "cqrs",
+        "partitioned-log",
+        "sharding"
+      ],
+      "sourceIds": [
+        "video-3yW856jAbZA"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "4_qu1F9BXow",
+      "title": "Design file-sharing system like Google Drive / Dropbox  (System design interview with EM)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "48:40",
+      "seconds": 2920,
+      "url": "https://www.youtube.com/watch?v=4_qu1F9BXow",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/4_qu1F9BXow/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Staff",
+      "topic": "Google Drive: contratos entre cliente e servidor",
+      "category": "Google Drive: contratos entre cliente e servidor",
+      "guide": "Os capítulos publicados destacam responsabilidades do cliente, upload, download, versões e regionalidade. Use essa estrutura para deixar claro quem retoma transferências e quem decide o estado definitivo. No seu desenho, trate desconexão, conflito entre dispositivos e falha regional. Avalie também quanto do protocolo precisa continuar funcionando quando uma versão antiga do aplicativo permanece ativa.",
+      "focus": [
+        "Defina upload retomável com identificação de partes e confirmação final. Retentar transferência de bytes não deve publicar versões duplicadas nem alterar silenciosamente o arquivo de outro cliente.",
+        "Arquivos podem ser distribuídos amplamente, mas metadados e autorização têm consistência própria. Localidade de bytes não decide automaticamente qual região pode aceitar mudanças concorrentes."
+      ],
+      "challenge": "Como sincronizar documentos enviados por aplicativo e web mantendo histórico, retomada e uma única versão atual após falha de uma região?",
+      "relatedArchitectures": [
+        "optimistic-lock",
+        "multi-region-passive",
+        "schema-evolution"
+      ],
+      "sourceIds": [
+        "video-4_qu1F9BXow"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "hqa2sfoGRlI",
+      "title": "FAANG system design interview: Design YouTube (with FAANG Senior SWE)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "46:20",
+      "seconds": 2780,
+      "url": "https://www.youtube.com/watch?v=hqa2sfoGRlI",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/hqa2sfoGRlI/hqdefault.jpg",
+      "kind": "Entrevista simulada",
+      "level": "Sênior",
+      "topic": "YouTube: estimativas, dispositivos e busca",
+      "category": "YouTube: estimativas, dispositivos e busca",
+      "guide": "A descrição organiza a conversa em estimativas, upload, dispositivos, reprodução e busca. Use esses recortes para praticar escolha de prioridades em tempo limitado. Calcule bytes e trabalho de processamento com premissas explícitas. Depois desenhe quando o conteúdo entra no índice de busca e como o usuário distingue processamento pendente de falha definitiva.",
+      "focus": [
+        "Variantes para dispositivos diferentes multiplicam armazenamento e custo de processamento. Defina quais são obrigatórias para publicar e como retomar apenas etapas faltantes após falha.",
+        "Busca é uma projeção dos metadados e pode atrasar. Diferencie indisponibilidade do vídeo, atraso de indexação e falta de permissão ao apresentar resultados ao usuário."
+      ],
+      "challenge": "Como disponibilizar gravações de atendimento em formatos diferentes e busca por metadados sem expor conteúdo cuja autorização já foi revogada?",
+      "relatedArchitectures": [
+        "queue",
+        "search",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-hqa2sfoGRlI"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "l38XL9914fs",
+      "title": "Design FB Post Search: System Design Interview breakdown w/ ex Meta Interviewer",
+      "channel": "Hello Interview",
+      "channelUrl": "https://www.youtube.com/@hello_interview",
+      "duration": "1:08:27",
+      "seconds": 4107,
+      "url": "https://www.youtube.com/watch?v=l38XL9914fs",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/l38XL9914fs/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Busca em publicações: índice e consistência",
+      "category": "Busca em publicações: índice e consistência",
+      "guide": "Guia autoral baseado no tema indicado no título verificado: busca em publicações. Prepare uma resposta com escrita da postagem, atualização do índice e execução da consulta. Defina termos, ranking, filtros e paginação antes de escolher tecnologia. No seu exercício, acrescente exclusão, mudança de privacidade e atraso de indexação, separando claramente fonte e projeção.",
+      "focus": [
+        "Índice invertido reduz candidatos por termo, mas ordenação e filtros ainda consomem trabalho. Estime cardinalidade das listas e custo de combinar consultas pouco seletivas.",
+        "Resultados devem respeitar autorização mesmo quando o índice está atrasado. Determine onde revalidar acesso e como impedir que snippets revelem conteúdo removido ou restrito."
+      ],
+      "challenge": "Como pesquisar descrições de movimentações e comprovantes mantendo isolamento entre clientes e sem usar resultados do índice como autoridade do saldo?",
+      "relatedArchitectures": [
+        "search",
+        "cqrs",
+        "oauth-authorization"
+      ],
+      "sourceIds": [
+        "video-l38XL9914fs"
+      ],
+      "verification": "Playlist pública + metadados disponíveis"
+    },
+    {
+      "id": "efaBYHvNvbA",
+      "title": "Google / Meta system design interview: \"Design Google Ads\" (with ex-Meta Staff SWE)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "37:54",
+      "seconds": 2273,
+      "url": "https://www.youtube.com/watch?v=efaBYHvNvbA",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/efaBYHvNvbA/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Google Ads: decisões rápidas e orçamento",
+      "category": "Google Ads: decisões rápidas e orçamento",
+      "guide": "A descrição anuncia requisitos, cálculos, alternativas, modelagem e operação de anúncios patrocinados. Use esse percurso para separar seleção online e contabilização de eventos. Defina o prazo de resposta e a precisão do orçamento exigida antes de escolher mecanismos. Acrescente anunciante dominante, cliques repetidos e atraso de atualização do gasto ao seu próprio desenho.",
+      "focus": [
+        "Seleção rápida pode usar dados pré-calculados, mas orçamento é uma restrição de negócio. Explique quanto excesso é aceitável e onde a autorização de gasto é protegida.",
+        "Impressões e cliques podem chegar repetidos ou fora de ordem. Separe métricas aproximadas de cobrança e preserve evidências para corrigir agregados e reconciliar valores."
+      ],
+      "challenge": "Como distribuir cashback promocional entre milhões de compras sem exceder um orçamento global, mesmo com eventos duplicados e processamento em várias regiões?",
+      "relatedArchitectures": [
+        "streaming",
+        "reservations",
+        "reconciliation"
+      ],
+      "sourceIds": [
+        "video-efaBYHvNvbA"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "Zk15rDp31fk",
+      "title": "System design expert deep dive: “Design Slack” (ex-Apple engineering manager)",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "52:30",
+      "seconds": 3149,
+      "url": "https://www.youtube.com/watch?v=Zk15rDp31fk",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/Zk15rDp31fk/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Staff",
+      "topic": "Slack: canais, WebSockets e isolamento",
+      "category": "Slack: canais, WebSockets e isolamento",
+      "guide": "Use os capítulos de entidades, APIs e WebSocket para praticar contrato entre histórico persistente e eventos ao vivo. Defina workspace, canal e permissão antes de falar de conexões. Aprofunde um workspace muito grande, reconexão e remoção de membro. No exercício, mostre como um cliente recupera mensagens quando perdeu notificações durante uma troca de servidor.",
+      "focus": [
+        "Canal, presença e conexão têm ciclos de vida diferentes. Uma conexão ativa não prova permissão atual, e permissão revogada precisa afetar entrega e leitura posterior.",
+        "Particione carga sem permitir que um workspace consuma todos os buffers e workers. Clientes lentos exigem limites e retomada por histórico, não crescimento ilimitado de memória."
+      ],
+      "challenge": "Como desenhar chat de suporte bancário com agentes e clientes, garantindo revogação de acesso, histórico auditável e isolamento de um atendimento muito movimentado?",
+      "relatedArchitectures": [
+        "partitioned-log",
+        "oauth-authorization",
+        "bulkhead-cells"
+      ],
+      "sourceIds": [
+        "video-Zk15rDp31fk"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    },
+    {
+      "id": "efN9bNDyj3o",
+      "title": "System design walkthrough: How to design a rate limiter, according to an ex-Apple EM",
+      "channel": "IGotAnOffer: Engineering",
+      "channelUrl": "https://www.youtube.com/@IGotAnOffer-Engineering",
+      "duration": "36:31",
+      "seconds": 2191,
+      "url": "https://www.youtube.com/watch?v=efN9bNDyj3o",
+      "verifiedAt": "2026-10-30",
+      "thumbnail": "https://i.ytimg.com/vi/efN9bNDyj3o/hqdefault.jpg",
+      "kind": "Walkthrough",
+      "level": "Sênior",
+      "topic": "Rate limiting: comparação de algoritmos",
+      "category": "Rate limiting: comparação de algoritmos",
+      "guide": "O roteiro publicado compara janelas, token bucket e leaky bucket. Refaça cada algoritmo em uma sequência pequena de requisições próxima à fronteira de tempo. Explique memória, precisão e comportamento de rajada antes de distribuir o estado. Depois inclua duas instâncias concorrentes e defina uma resposta que ajude o cliente a retentar sem sincronizar nova sobrecarga.",
+      "focus": [
+        "Janela fixa pode permitir concentração perto da mudança de janela; janela deslizante e buckets tratam tempo e rajada de maneiras diferentes. Demonstre com números, não apenas nomes.",
+        "Leaky bucket pode representar modelagens distintas de policiamento ou enfileiramento. Declare qual usa, a capacidade, o descarte e como o consumidor percebe espera versus rejeição."
+      ],
+      "challenge": "Qual algoritmo escolher para consultas de saldo e para envio de transferências em lote, considerando rajadas legítimas, custo diferente e orçamento por cliente?",
+      "relatedArchitectures": [
+        "rate-limiter",
+        "backpressure",
+        "retry-backoff"
+      ],
+      "sourceIds": [
+        "video-efN9bNDyj3o"
+      ],
+      "verification": "oEmbed + descrição pública + playlist"
+    }
+  ],
+  "sources": [
+    {
+      "id": "video-cL9If4X7aaE",
+      "title": "Design Google Docs | System Design Interview (with Amazon Engineer, ex-Microsoft)",
+      "url": "https://www.youtube.com/watch?v=cL9If4X7aaE",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-dgawYAH0pO4",
+      "title": "Design Uber Eats | System Design Interview (with Senior Netflix Engineer, Ex-Microsoft)",
+      "url": "https://www.youtube.com/watch?v=dgawYAH0pO4",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-lZ5QuFLCVn0",
+      "title": "System Design Interview - Design a Distributed LRU Cache (Full mock interview with Sr. MAANG SWE)",
+      "url": "https://www.youtube.com/watch?v=lZ5QuFLCVn0",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-MAuLYRcJEr8",
+      "title": "System Design Interview - Design a Web Crawler (Full mock interview with Sr. MAANG SWE)",
+      "url": "https://www.youtube.com/watch?v=MAuLYRcJEr8",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-6fOoXT1HYxk",
+      "title": "Design a Key-Value Store - System Design Mock Interview (with Microsoft Software Engineer)",
+      "url": "https://www.youtube.com/watch?v=6fOoXT1HYxk",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-dUSVIAGxlUw",
+      "title": "Design Ticketmaster - System Design Interview (with Senior Amazon TPM)",
+      "url": "https://www.youtube.com/watch?v=dUSVIAGxlUw",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-iyLqwyFL0Zc",
+      "title": "Design Tinder - System Design Interview (with TikTok Senior Engineer)",
+      "url": "https://www.youtube.com/watch?v=iyLqwyFL0Zc",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-6erP70R_NGs",
+      "title": "System Design Interview - Downloading User Data (with Reforge EM)",
+      "url": "https://www.youtube.com/watch?v=6erP70R_NGs",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-ZwwYgiT9GH0",
+      "title": "Design a Distributed Message Queue - System Design Mock Interview",
+      "url": "https://www.youtube.com/watch?v=ZwwYgiT9GH0",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-I9-PUPYZyiw",
+      "title": "Design ChatGPT - System Design Mock Interview (with eBay EM)",
+      "url": "https://www.youtube.com/watch?v=I9-PUPYZyiw",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-kO0EQNfE2x4",
+      "title": "Design a Hotel Booking Service - System Design Mock Interview (with eBay EM)",
+      "url": "https://www.youtube.com/watch?v=kO0EQNfE2x4",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-_aybyMlU7-E",
+      "title": "System Design Mock Interview: Design Uber Eats (with eBay EM)",
+      "url": "https://www.youtube.com/watch?v=_aybyMlU7-E",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-SgWb6tWx3S8",
+      "title": "System Design Mock Interview: Design a Rate Limiter (with Meta Engineering Manager)",
+      "url": "https://www.youtube.com/watch?v=SgWb6tWx3S8",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-til92X5hYAY",
+      "title": "System Design Interview: Design Amazon Kindle Payments",
+      "url": "https://www.youtube.com/watch?v=til92X5hYAY",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-PuU_0esYyhg",
+      "title": "System Design Interview: Design Amazon Prime Video",
+      "url": "https://www.youtube.com/watch?v=PuU_0esYyhg",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-jMRo9QQKja8",
+      "title": "Amazon System Design Mock Interview: Design Amazon Prime Video (with Uber Software Engineer)",
+      "url": "https://www.youtube.com/watch?v=jMRo9QQKja8",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-0iyLURrWIgQ",
+      "title": "System Design Mock Interview: Design WhatsApp",
+      "url": "https://www.youtube.com/watch?v=0iyLURrWIgQ",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-kIcq1_pBQSY",
+      "title": "Facebook System Design Interview: Design an Analytics Platform (Metrics & Logging)",
+      "url": "https://www.youtube.com/watch?v=kIcq1_pBQSY",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-QF8JNSoJD8E",
+      "title": "Facebook System Design Interview: Design Twitter",
+      "url": "https://www.youtube.com/watch?v=QF8JNSoJD8E",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-y-tA2NW4LNY",
+      "title": "Top-K System Design Interview Breakdown w/ Ex-Meta Senior Manager",
+      "url": "https://www.youtube.com/watch?v=y-tA2NW4LNY",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados públicos verificados em30/10/2026; guia autoral de estudo."
+    },
+    {
+      "id": "video-39eAITqeu7g",
+      "title": "System Design Interview: Design Calendar Application",
+      "url": "https://www.youtube.com/watch?v=39eAITqeu7g",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-1xV5WI0OFkg",
+      "title": "Engineering Manager System Design Interview (Wealthfront EM): Design YouTube",
+      "url": "https://www.youtube.com/watch?v=1xV5WI0OFkg",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-KYExYE_9nIY",
+      "title": "Design Reddit: System Design Mock Interview",
+      "url": "https://www.youtube.com/watch?v=KYExYE_9nIY",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Z-0g_aJL5Fw",
+      "title": "System Design Mock Interview: Design TikTok ft. Google TPM",
+      "url": "https://www.youtube.com/watch?v=Z-0g_aJL5Fw",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-uzeJb7ZjoQ4",
+      "title": "System Design Mock Interview: Design Facebook Messenger",
+      "url": "https://www.youtube.com/watch?v=uzeJb7ZjoQ4",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-VJpfO6KdyWE",
+      "title": "System Design Mock Interview: Design Instagram",
+      "url": "https://www.youtube.com/watch?v=VJpfO6KdyWE",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Aced (formerly Exponent). Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-fhdPyoO6aXI",
+      "title": "System Design Interview: Design Ticketmaster w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=fhdPyoO6aXI",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-lsKU38RKQSo",
+      "title": "Design Uber w/ a Ex-Meta Staff Engineer: System Design Interview breakdown",
+      "url": "https://www.youtube.com/watch?v=lsKU38RKQSo",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-_UZ1ngy-kOI",
+      "title": "Design Dropbox or Google Drive w/ a Ex-Meta Staff Engineer System Design Interview",
+      "url": "https://www.youtube.com/watch?v=_UZ1ngy-kOI",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-iUU4O1sWtJA",
+      "title": "Beginner System Design Interview: Design Bitly w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=iUU4O1sWtJA",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-cr6p0n0N-VA",
+      "title": "Design Whatsapp: System Design Interview w/ a Ex-Meta Senior Manager",
+      "url": "https://www.youtube.com/watch?v=cr6p0n0N-VA",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Nfa-uUHuFHg",
+      "title": "System Design Interview Walkthrough: Design Twitter",
+      "url": "https://www.youtube.com/watch?v=Nfa-uUHuFHg",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-MIJFyUPG4Z4",
+      "title": "Design a Distributed Rate Limiter w/ a Ex-Meta Staff Engineer: System Design Breakdown",
+      "url": "https://www.youtube.com/watch?v=MIJFyUPG4Z4",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Zcv_899yqhI",
+      "title": "Design an Ad Click Aggregator w/ a Ex-Meta Staff Engineer System Design Interview",
+      "url": "https://www.youtube.com/watch?v=Zcv_899yqhI",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-IUrQ5_g3XKs",
+      "title": "System Design Interview: Design YouTube",
+      "url": "https://www.youtube.com/watch?v=IUrQ5_g3XKs",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-krsuaUp__pM",
+      "title": "Design a Web Crawler System Design Interview w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=krsuaUp__pM",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-1xHADtekTNg",
+      "title": "System Design Interview: Design LeetCode (Online Judge) w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=1xHADtekTNg",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-18Fg5Akhkqw",
+      "title": "System Design Interview: Design Tinder w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=18Fg5Akhkqw",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-LjLx0fCd1k8",
+      "title": "System Design Interview: Design Live Comments w/ a Ex-Meta Staff Engineer",
+      "url": "https://www.youtube.com/watch?v=LjLx0fCd1k8",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Qj4-GruzyDU",
+      "title": "Design FB News Feed System Design Interview w/ ex: Meta Senior Manager",
+      "url": "https://www.youtube.com/watch?v=Qj4-GruzyDU",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-_K-eupuDVEc",
+      "title": "Google system design interview: Design Spotify (with ex-Google EM)",
+      "url": "https://www.youtube.com/watch?v=_K-eupuDVEc",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-NHqdG-aZxOk",
+      "title": "Google system design interview: Design TikTok (with ex-Google EM)",
+      "url": "https://www.youtube.com/watch?v=NHqdG-aZxOk",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Zvr-ffhvw0Y",
+      "title": "System design interview: Design Robinhood (with ex-Google SWE)",
+      "url": "https://www.youtube.com/watch?v=Zvr-ffhvw0Y",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-3yW856jAbZA",
+      "title": "Twitter system design mock interview (with Senior Software Engineer)",
+      "url": "https://www.youtube.com/watch?v=3yW856jAbZA",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-4_qu1F9BXow",
+      "title": "Design file-sharing system like Google Drive / Dropbox  (System design interview with EM)",
+      "url": "https://www.youtube.com/watch?v=4_qu1F9BXow",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-hqa2sfoGRlI",
+      "title": "FAANG system design interview: Design YouTube (with FAANG Senior SWE)",
+      "url": "https://www.youtube.com/watch?v=hqa2sfoGRlI",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-l38XL9914fs",
+      "title": "Design FB Post Search: System Design Interview breakdown w/ ex Meta Interviewer",
+      "url": "https://www.youtube.com/watch?v=l38XL9914fs",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por Hello Interview. Metadados públicos verificados em30/10/2026; guia autoral de estudo."
+    },
+    {
+      "id": "video-efaBYHvNvbA",
+      "title": "Google / Meta system design interview: \"Design Google Ads\" (with ex-Meta Staff SWE)",
+      "url": "https://www.youtube.com/watch?v=efaBYHvNvbA",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-Zk15rDp31fk",
+      "title": "System design expert deep dive: “Design Slack” (ex-Apple engineering manager)",
+      "url": "https://www.youtube.com/watch?v=Zk15rDp31fk",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    },
+    {
+      "id": "video-efN9bNDyj3o",
+      "title": "System design walkthrough: How to design a rate limiter, according to an ex-Apple EM",
+      "url": "https://www.youtube.com/watch?v=efN9bNDyj3o",
+      "type": "Vídeo público · YouTube",
+      "summary": "Publicado por IGotAnOffer: Engineering. Metadados e descrição verificados em 30/10/2026; guia de estudo autoral no portal."
+    }
+  ],
+  "verifiedAtLabel": "30 de outubro de 2026"
+}

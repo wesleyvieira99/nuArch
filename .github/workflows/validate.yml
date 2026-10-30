@@ -21,6 +21,9 @@ jobs:
       - name: Validate JavaScript and content
         run: |
           node --check app.js
+          node --check models.mjs
+          node scripts/test_models.mjs
+          node scripts/test_progress_merge.mjs
           python scripts/validate.py
       - name: Exercise ledger invariants and concurrency
         run: python -m unittest discover -s examples/ledger -p 'test_*.py' -v

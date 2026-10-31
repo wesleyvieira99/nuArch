@@ -186,7 +186,7 @@ for material in mindmap['materials']:
 assert mindmap['meta']['embeddedOccurrences']==372 and mindmap['meta']['externalIcons']==4
 # Interview playbook: complete review inventory, reusable steps and progressive boards.
 assert not playbook['meta']['draft'], 'A draft review must never be published'
-assert len(playbook['cases'])==12 and len({c['id'] for c in playbook['cases']})==12
+assert len(playbook['cases'])==13 and len({c['id'] for c in playbook['cases']})==13
 assert len(playbook['stages'])==10
 cursor=0
 for s in playbook['stages']:
@@ -230,14 +230,26 @@ tech_ids={t['id'] for t in a['technologies']}
 for id,concept in playbook['concepts'].items():
     assert all(isinstance(concept[k],str) and len(concept[k])>40 for k in ('whyHere','alternatives','bankingExample')),id
     assert concept['technologyIds'] and set(concept['technologyIds']).issubset(tech_ids),(id,concept['technologyIds'])
-assert len(playbook['decisions'])==26 and len(playbook['interruptions'])==32
+update=playbook['meta']['cacheUpdate']
+assert update['caseId']=='distributed-cache' and len(set(update['materialIds']))==6
+assert len(playbook['decisions'])==26+len(update['decisionIds'])
+assert len(playbook['interruptions'])==32+len(update['interruptionIds'])
+assert len({x['id'] for x in playbook['decisions']})==len(playbook['decisions'])
+assert len({x['id'] for x in playbook['interruptions']})==len(playbook['interruptions'])
+cache_notes=[(c['id'],n) for c in playbook['cases'] for step in c['steps'] for n in step.get('cacheNotes',[])]
+assert len(cache_notes)==update['stepAdditions'] and len(cache_notes)>=6
+assert {id for id,n in cache_notes}==set(update['enrichedCaseIds'])
+for id,n in cache_notes:
+    assert n['title'] and n['sourceIds'],id
+    assert all(isinstance(n[k],str) and len(n[k])>=40 for k in ('say','concept','connect','technology','defend')),(id,n['title'])
+assert {m['id'] for m in playbook['materials'] if m.get('collection')=='distributed-cache'}==set(update['materialIds'])
 for d in playbook['decisions']:
     assert d.get('architectureId') in {x['id'] for x in a['architectures']} or (d.get('diagnostic') and d.get('sourceIds')),d['id']
     assert d['say'] and d['draw'] and d['cost'] and d['remove'],d['id']
 for q in playbook['interruptions']:
     assert 0<=q['stage']<=9 and all(q[k] for k in ('question','answer','redraw','guardrail','principal')),q['id']
-assert len({m['id'] for m in playbook['materials']})==len(playbook['materials'])==40
-assert {kind:sum(m['type']==kind for m in playbook['materials']) for kind in ('PDF','Vídeo','Mapa draw.io')}=={'PDF':35,'Vídeo':4,'Mapa draw.io':1}
+assert len({m['id'] for m in playbook['materials']})==len(playbook['materials'])==46
+assert {kind:sum(m['type']==kind for m in playbook['materials']) for kind in ('PDF','Vídeo','Mapa draw.io')}=={'PDF':41,'Vídeo':4,'Mapa draw.io':1}
 for m in playbook['materials']:
     assert m['reviewStatus'] and m['insights'] and m['application'] and m['limit'] and m['sourceIds'],m['id']
     assert 'andamento' not in m['reviewStatus'],m['id']

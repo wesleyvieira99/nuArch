@@ -597,6 +597,121 @@
         "pb-rfc1034",
         "pb-tech-cf-signed"
       ]
+    },
+    {
+      "id": "cache-negative-coverage",
+      "architectureId": "cache-aside",
+      "family": "Cache · ausência",
+      "title": "Negative cache ou Bloom com cobertura verificável?",
+      "trigger": "Consultas a chaves inexistentes consomem capacidade relevante da origem.",
+      "ask": "Como você distingue ausência confirmada, falha de consulta e filtro que ainda não recebeu uma criação?",
+      "say": "Eu valido formato e autorização antes da consulta, guardo ausências confirmadas com validade curta e só confio no negativo do filtro dentro da cobertura conhecida. Quando o cliente exige dado recém-criado, ultrapasso a cópia atrasada dentro do orçamento ou declaro que não posso responder agora.",
+      "draw": [
+        "Filtro ou ausência cacheada com namespace, geração e validade.",
+        "Caminho de consulta admitida para casos sem cobertura suficiente."
+      ],
+      "cost": "O resumo economiza memória e I/O, mas exige atualização, reconstrução e medição de falsos positivos. Uma resposta negativa incorreta ao domínio pode impedir uma jornada legítima, mesmo que a estrutura probabilística esteja funcionando corretamente.",
+      "remove": "Retiro o filtro se misses de ausência forem raros, se consultas forem baratas ou se manter cobertura correta custar mais que o trabalho evitado.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-bloom",
+        "pb-cache-enrich-aws-caching"
+      ]
+    },
+    {
+      "id": "cache-fill-generation",
+      "architectureId": "cache-aside",
+      "family": "Cache · concorrência",
+      "title": "Quem pode publicar o resultado de um refresh?",
+      "trigger": "Uma leitura lenta ou worker com lease vencida pode publicar depois de uma atualização mais nova.",
+      "ask": "Seu SET verifica uma geração válida ou apenas encontra a chave vazia após a invalidação?",
+      "say": "Eu identifico a versão da fonte e a geração do trabalho. Publicar só é permitido conforme o protocolo; uma invalidação não apaga a evidência necessária para recusar resultados antigos. Se perdermos essa evidência, reconstruo ou consulto a autoridade, sem chamar a ausência de permissão para sobrescrever.",
+      "draw": [
+        "Leitor antigo → commit novo → invalidação → tentativa de fill atrasado.",
+        "Payload por versão e validação individual da versão mínima do solicitante."
+      ],
+      "cost": "Versões, tombstones ou leases cercadas tornam o protocolo mais caro e exigem recuperação. Chaves imutáveis simplificam payloads, mas não resolvem sozinhas a escolha da versão atual nem a limpeza do histórico.",
+      "remove": "Dados estáticos por versão ou uma leitura direta que já atende ao prazo podem dispensar um ponteiro mutável e toda a coordenação de refresh.",
+      "sourceIds": [
+        "arch-cache",
+        "nu-evergreen"
+      ]
+    },
+    {
+      "id": "cache-admission-eviction",
+      "architectureId": "cache-aside",
+      "family": "Cache · memória",
+      "title": "Evictar melhor ou deixar de admitir scans?",
+      "trigger": "Exportações, objetos grandes ou mudanças de popularidade expulsam dados com reutilização útil.",
+      "ask": "O problema está na política de vítima, na capacidade ou na admissão de conteúdo que ninguém relê?",
+      "say": "Eu comparo LRU e LFU com envelhecimento em um trace do produto, mas também testo bypass de scans e orçamento por namespace. Quero reduzir consultas caras à origem, respeitando memória e prazo, em vez de maximizar apenas a quantidade de hits pequenos.",
+      "draw": [
+        "Fluxo interativo separado de exportações sem reutilização.",
+        "Orçamento de bytes e custo por miss, além da contagem de chaves."
+      ],
+      "cost": "Metadados, amostragem e buffers consomem RAM e CPU. LFU adapta-se à frequência com decaimento; LRU reage à recência. Nenhum garante melhor desempenho para todo padrão, e eviction não substitui invalidação por mudança de negócio.",
+      "remove": "Se os resultados forem quase sempre únicos, retiro o cache desse fluxo e invisto em índices, limites e execução assíncrona quando necessária.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-eviction",
+        "pb-cache-enrich-aws-caching"
+      ]
+    },
+    {
+      "id": "cache-miss-envelope",
+      "architectureId": "cache-aside",
+      "family": "Cache · capacidade",
+      "title": "Qual é o limite seguro de misses?",
+      "trigger": "A origem foi dimensionada para o cache quente e pode colapsar durante falha, deploy ou expiração simultânea.",
+      "ask": "Quantas consultas equivalentes ainda cabem depois de reservar capacidade para comandos, refresh e recuperação?",
+      "say": "Eu parto do orçamento da origem e calculo quanto tráfego não cacheado cabe nele. Adiciono limitação de concorrência, coalescing com escopo conhecido e aquecimento gradual. Se a demanda exceder esse limite, a experiência degrada de forma negociada; não abro um bypass ilimitado para o banco.",
+      "draw": [
+        "Miss, refresh, retry e warmup convergindo para o mesmo orçamento.",
+        "Reserva de capacidade e resultado explícito para solicitações não admitidas."
+      ],
+      "cost": "Proteger a origem pode recusar leituras ou aumentar espera. Manter capacidade fria excedente custa dinheiro; servir stale só é alternativa para dados cujo contrato permite isso. A escolha precisa ser visível ao produto e ao plantão.",
+      "remove": "Se a origem suporta toda a carga sem cache com margem comprovada, simplifico o controle de degradação, mas continuo medindo o custo de consultas e o tempo de recuperação.",
+      "sourceIds": [
+        "pb-cache-enrich-aws-caching",
+        "playbook-sre-slos"
+      ]
+    },
+    {
+      "id": "cache-ring-slots-hotkey",
+      "architectureId": "consistent-hashing",
+      "family": "Cache · roteamento",
+      "title": "Rebalancear shards ou distribuir uma hot key?",
+      "trigger": "Há desequilíbrio de carga, mudança de membership ou uma chave responsável por grande parte dos acessos.",
+      "ask": "Você está movendo muitas chaves de um nó cheio ou tentando dividir o tráfego de um único valor?",
+      "say": "Eu separo distribuição de chaves e distribuição de acessos. No anel, virtual nodes ajudam a repartir faixas; no Redis Cluster, opero slots e redirects. Para uma chave quente, avalio cópias de leitura, separação do objeto ou outro modelo, preservando a autoridade da atualização.",
+      "draw": [
+        "Mapa real de roteamento e movimento controlado de propriedade.",
+        "Chave quente ainda concentrada, com cópias somente onde o contrato de frescor permite."
+      ],
+      "cost": "Rebalancear consome rede e pode esfriar caches; replicar leituras gasta memória e coordenação de versões. Forçar chaves ao mesmo slot facilita algumas operações, mas pode recriar exatamente a concentração que tentávamos evitar.",
+      "remove": "Com conjunto de trabalho e taxa pequenos, um nó bem dimensionado ou cache local pode bastar; não construo descoberta e rebalanceamento próprios quando o produto escolhido já os oferece.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-cluster",
+        "pb-cache-enrich-aws-caching"
+      ]
+    },
+    {
+      "id": "cache-write-ack",
+      "architectureId": "outbox",
+      "family": "Cache · confirmação",
+      "title": "Qual escrita determina o resultado da operação?",
+      "trigger": "Uma alteração toca o banco autoritativo e uma cópia de cache, possivelmente com confirmações diferentes.",
+      "ask": "Se o banco confirmou e o cache falhou, o cliente verá operação concluída, pendente ou rejeitada? Por quê?",
+      "say": "Eu identifico o commit que decide a operação de negócio e registro a intenção recuperável para atualizar sua cópia. A leitura segue um contrato de versão ou atraso. Não transformo erro de cache em autorização para repetir o efeito financeiro já confirmado.",
+      "draw": [
+        "Autoridade → commit e identidade duráveis.",
+        "Cache como efeito derivado com atualização ou invalidação recuperável."
+      ],
+      "cost": "Esperar duas chamadas aumenta latência sem, por si só, fornecer atomicidade. Atualização assíncrona assume atraso explícito; exigir leitura imediatamente atual pode demandar consulta à autoridade ou coordenação adicional entre leitores e escritores.",
+      "remove": "Se não houver reutilização relevante após as escritas, retiro a atualização proativa do cache e considero carregar somente leituras úteis, com a política de invalidação correspondente.",
+      "sourceIds": [
+        "arch-outbox",
+        "aws-idempotent",
+        "pb-cache-enrich-redis-wait"
+      ]
     }
   ],
   "interruptions": [
@@ -1190,6 +1305,98 @@
       "guardrail": "Não prometer aprovação nem dizer que toda possibilidade foi coberta; mantenha o desenho consistente com o que foi combinado.",
       "principal": "Uma síntese clara permite que outras pessoas revisem e operem a decisão depois da conversa.",
       "sourceIds": []
+    },
+    {
+      "id": "cache-bloom-new-customer",
+      "stage": 3,
+      "question": "“O Bloom respondeu que não existe, mas o cliente acabou de criar esse recurso. Você devolve 404?”",
+      "answer": "Não sem comprovar que o filtro cobre essa criação. A garantia matemática se refere ao conjunto inserido, não a tudo que existe agora no banco. Confiro geração e requisito de versão; sem cobertura, faço consulta admitida à autoridade ou informo indisponibilidade. Timeout da fonte também não vira ausência cacheada.",
+      "redraw": "Anote a fronteira coberta pelo filtro e um caminho separado para dados recém-criados ou cobertura desconhecida.",
+      "guardrail": "Falso positivo probabilístico e filtro desatualizado são problemas diferentes. Um negativo não autoriza negar recurso atual sem uma hipótese de cobertura válida.",
+      "principal": "Defina quem publica o filtro, reconstrói gerações e desliga a otimização quando ela prejudica jornadas legítimas.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-bloom",
+        "arch-cache"
+      ]
+    },
+    {
+      "id": "cache-old-fill-after-delete",
+      "stage": 5,
+      "question": "“Eu invalidei depois do commit. Como a versão antiga voltou para o cache?”",
+      "answer": "Uma leitura pode ter obtido o estado anterior e publicado depois da invalidação. Uso versão da fonte e publicação condicionada ao protocolo, ou payloads imutáveis por versão. Cada leitor exige a versão adequada; CAS sobre uma chave que foi apagada não lembra o commit mais novo e não prova frescor.",
+      "redraw": "Mostre a linha do tempo leitor antigo, commit novo, DEL e SET atrasado; marque a validação que recusa ou isola esse resultado.",
+      "guardrail": "Lease sem fencing e singleflight sem revalidação por solicitante não oferecem essa garantia; TTL sozinho também não resolve a corrida.",
+      "principal": "Teste a perda do próprio metadado de versão. A recuperação precisa tratar conhecimento perdido como desconhecido, não como autorização para aceitar qualquer valor.",
+      "sourceIds": [
+        "arch-cache",
+        "nu-evergreen"
+      ]
+    },
+    {
+      "id": "cache-percentile-mixture",
+      "stage": 2,
+      "question": "“Tenho p99 do hit e p99 do miss. Posso ponderá-los pelo hit rate para obter o p99 da API?”",
+      "answer": "Não. Essa ponderação vale para médias condicionais; um percentil depende da distribuição combinada. Coleto histogramas compatíveis dos eventos da jornada e calculo a cauda sobre eles. Também verifico fila, timeout e requisições recusadas, porque observar só operações concluídas pode esconder a degradação percebida.",
+      "redraw": "Separe expectativa de latência de percentil e una distribuições de observações, não números de p99.",
+      "guardrail": "Percentil global não é média dos percentis de pods ou caminhos. Uma taxa alta de hit não comprova que a resposta esteja correta ou atual.",
+      "principal": "Escolha objetivo ligado à jornada e declare população, janela e tratamento de erros antes de otimizar uma métrica interna.",
+      "sourceIds": [
+        "pb-cache-enrich-prom-histograms",
+        "playbook-sre-slos"
+      ]
+    },
+    {
+      "id": "cache-lfu-export-scan",
+      "stage": 6,
+      "question": "“A exportação expulsou as páginas úteis. Trocar LRU por LFU resolve?”",
+      "answer": "Pode ajudar, mas primeiro verifico admissão e isolamento do fluxo. Uma exportação que lê cada página uma vez talvez não deva ocupar o mesmo orçamento. Comparo LRU e LFU com decaimento usando acesso real, tamanho dos objetos e custo de miss; Redis implementa aproximações, não uma vitória universal de LFU.",
+      "redraw": "Separe exportações e consultas interativas; anote memória, reutilização e custo da origem por classe.",
+      "guardrail": "LRU mede recência, LFU estima frequência. TTL controla expiração; nenhuma dessas escolhas torna um conteúdo financeiramente atual por si só.",
+      "principal": "Faça um experimento reversível e compare a experiência do usuário, memória e pressão na origem, não apenas a taxa agregada de hits.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-eviction",
+        "pb-cache-enrich-aws-caching"
+      ]
+    },
+    {
+      "id": "cache-hotkey-more-shards",
+      "stage": 6,
+      "question": "“Adicionei dez shards e a chave mais acessada continua lenta. Por quê?”",
+      "answer": "Porque a função de distribuição ainda leva aquela chave ao mesmo destino. Primeiro distingo CPU, rede, tamanho do objeto e refresh. Para leitura tolerante, posso distribuir cópias ou conteúdo comum em caches locais; para escrita concentrada, preciso mudar o modelo ou aceitar coordenação, não apenas aumentar o anel.",
+      "redraw": "Mostre muitas setas chegando à mesma chave e compare migração de propriedade com cópias de leitura.",
+      "guardrail": "Virtual nodes distribuem faixas; hash tags Redis podem concentrar chaves. Sharding não fornece automaticamente replicação ou disponibilidade da chave perdida.",
+      "principal": "Associe cada réplica ao contrato de frescor e ao custo de renovação; uma cópia adicional não pode virar outra autoridade financeira.",
+      "sourceIds": [
+        "pb-cache-enrich-redis-cluster",
+        "pb-cache-enrich-aws-caching"
+      ]
+    },
+    {
+      "id": "cache-writethrough-half-success",
+      "stage": 7,
+      "question": "“Seu write-through gravou o pagamento no SQL e perdeu a conexão com Redis. O pagamento falhou?”",
+      "answer": "Não posso afirmar isso: o commit financeiro já pode estar confirmado. Recupero a operação pela identidade durável, marco a cópia como não confiável e retomo sua atualização pelo mecanismo persistido. Repetir a intenção financeira deve devolver o mesmo resultado; a leitura usa versão, fallback limitado ou pendência explícita.",
+      "redraw": "Separe confirmação do negócio e atualização da cópia; desenhe o crash entre ambas.",
+      "guardrail": "Executar duas escritas sequenciais não oferece commit atômico entre produtos. WAIT não converte Redis em participante da transação SQL nem garante consistência forte.",
+      "principal": "Especifique o significado do retorno parcial e quem repara a projeção, preservando dinheiro e comunicação honesta ao cliente.",
+      "sourceIds": [
+        "arch-outbox",
+        "aws-idempotent",
+        "pb-cache-enrich-redis-wait"
+      ]
+    },
+    {
+      "id": "cache-cold-fleet-restart",
+      "stage": 7,
+      "question": "“Reiniciei todos os nós e o cache está vazio. Posso simplesmente encaminhar todos os misses ao banco?”",
+      "answer": "Somente se o orçamento medido suportar essa carga. Caso contrário, limito taxa e concorrência, aqueço o conjunto mais útil gradualmente e agrupo buscas equivalentes. Priorizo jornadas essenciais e retorno degradação explícita para o restante; um bypass ilimitado pode derrubar também os comandos financeiros.",
+      "redraw": "Mostre cold start, refresh e tráfego normal disputando o mesmo orçamento da origem, com capacidade reservada para trabalho essencial.",
+      "guardrail": "Jitter reduz sincronização, mas não cria capacidade. Rejeições por proteção continuam visíveis na métrica da experiência do usuário.",
+      "principal": "Inclua esse ensaio na capacidade operacional e documente o limite de recuperação antes de reduzir a origem apoiando-se em um hit rate histórico.",
+      "sourceIds": [
+        "pb-cache-enrich-aws-caching",
+        "playbook-sre-slos"
+      ]
     }
   ],
   "sizingCards": [
@@ -1483,7 +1690,22 @@
             "technology": "Exijo transação ou CAS que proteja a invariante; Redis pode acelerar consulta, mas não decide saldo nem deduplicação financeira definitiva.",
             "defend": "Serializar a conta custa contenção; aceito esse custo para impedir gasto concorrente, medindo hotspots antes de distribuir a autoridade."
           },
-          "interviewer": "Duas transferências tentam gastar o mesmo saldo e o celular repete uma delas. Quais garantias precisam valer em um único commit?"
+          "interviewer": "Duas transferências tentam gastar o mesmo saldo e o celular repete uma delas. Quais garantias precisam valer em um único commit?",
+          "cacheNotes": [
+            {
+              "title": "Cache de saldo não autoriza a transferência",
+              "say": "Eu posso acelerar a apresentação de um saldo conhecido, mas disponibilidade para gastar e deduplicação continuam no commit financeiro. Se Redis perder uma chave, isso significa que perdi uma cópia; não significa que o cliente ganhou saldo nem que uma transferência anterior deixou de existir.",
+              "concept": "O contrato do cache permite eviction e reconstrução. O registro de idempotência e a reserva possuem outro contrato: não podem desaparecer silenciosamente e permitir reaplicação. Um snapshot de saldo precisa identificar sua fronteira e ser validado com os fatos posteriores na autoridade.",
+              "connect": "Aplicativo → saldo apresentado com versão; comando → autoridade de operação, reserva e journal. Desenho essas duas leituras separadas para não transformar uma otimização de tela em decisão financeira.",
+              "technology": "PostgreSQL ou o armazenamento transacional escolhido decide a escrita. Redis pode guardar uma representação descartável; o caso público evergreen ilustra cache ligado ao histórico, sem validar qualquer desenho arbitrário de saldo.",
+              "defend": "Prefiro uma leitura um pouco mais cara a uma retirada aprovada sobre estado sem autoridade. Se o armazenamento financeiro não puder decidir com segurança, devolvo indisponibilidade ou pendência segundo o contrato; não uso o cache para inventar confirmação.",
+              "sourceIds": [
+                "nu-evergreen",
+                "aws-idempotent",
+                "pb-cache-enrich-redis-eviction"
+              ]
+            }
+          ]
         },
         {
           "say": "Para dimensionar, vou separar comandos de transferência, consultas de estado e notificações. Como hipótese de treino, podemos testar dois mil comandos por segundo no pico, mas confirmarei esse número antes de adotá-lo. O custo da escrita inclui operação, reserva, lançamentos, índices e intenção; não é apenas um documento. Também quero a distribuição por conta, porque uma conta concentradora pode saturar antes do total de CPU do cluster.",
@@ -1609,7 +1831,22 @@
             "technology": "Replicação/failover dependem do banco escolhido; fencing e restore em quarentena são requisitos, não benefícios automáticos de uma marca.",
             "defend": "Suspender novas autorizações durante perda de autoridade pode preservar dinheiro; manter disponibilidade irrestrita com saldo incerto quebraria a invariante."
           },
-          "interviewer": "O participante concluiu a transferência, mas a resposta se perdeu. O que acontece com a reserva, a tela e a reconciliação?"
+          "interviewer": "O participante concluiu a transferência, mas a resposta se perdeu. O que acontece com a reserva, a tela e a reconciliação?",
+          "cacheNotes": [
+            {
+              "title": "Write-through não cria um commit entre banco e cache",
+              "say": "Suponha que o banco confirme a reserva e a atualização de Redis falhe. Eu recupero o resultado financeiro pela identidade original e trato a cópia como desatualizada. Não devolvo uma rejeição financeira falsa nem executo novamente o débito para consertar o cache.",
+              "concept": "Chamar duas escritas na mesma função não estabelece atomicidade distribuída. Mesmo esperando ambas, existem queda entre efeitos, escritores concorrentes e leitura intermediária. A opção concreta é commit autoritativo, intenção durável de atualização ou invalidação e leitores que respeitam versões.",
+              "connect": "Commit da operação → outbox/invalidação recuperável → cache. Na seta para Redis, marco efeito derivado e passível de repetição; no retorno ao cliente, mantenho a identidade e o resultado já confirmado pela autoridade.",
+              "technology": "Uma transação SQL pode incluir operação e outbox. Redis WAIT melhora confirmação de replicação, mas não transforma Redis em armazenamento fortemente consistente nem participa da transação SQL.",
+              "defend": "Write-through pode ser um protocolo útil quando suas garantias são implementadas e testadas; o nome sozinho não fecha a lacuna. Para dinheiro, prefiro separar autoridade e projeção a condicionar a interpretação do pagamento ao sucesso da cópia.",
+              "sourceIds": [
+                "arch-outbox",
+                "aws-idempotent",
+                "pb-cache-enrich-redis-wait"
+              ]
+            }
+          ]
         },
         {
           "say": "Na operação, eu acompanharia taxa de transferências concluídas dentro do prazo, idade das pendências e diferenças de reconciliação. Latência da API sozinha pode parecer ótima enquanto dinheiro fica preso no processamento. Os logs carregam identificadores correlacionáveis e dados mínimos, com controle de acesso para investigação. Também definiria quem pode executar uma compensação e como essa ação é aprovada e auditada. Metas de disponibilidade seriam propostas de engenharia, separadas de qualquer SLA contratual real.",
@@ -3160,7 +3397,22 @@
             "technology": "Contrato de features inclui tipo, unidade, timestamp e versão; Protobuf/JSON são opções de representação, não garantias de frescor ou snapshot.",
             "defend": "Um mapa de valores sem contexto é compacto e impossível de interpretar com segurança; metadados evitam erros de moeda, tempo e ausência."
           },
-          "interviewer": "Que dados entram na avaliação e que resultado volta ao chamador? Como você representa frescor das features sem expor detalhes sensíveis ao cliente?"
+          "interviewer": "Que dados entram na avaliação e que resultado volta ao chamador? Como você representa frescor das features sem expor detalhes sensíveis ao cliente?",
+          "cacheNotes": [
+            {
+              "title": "Ausência, falha de consulta e Bloom atrasado são estados diferentes",
+              "say": "Se uma feature não existe, posso guardar uma ausência de curta duração. Mas timeout da fonte não vira ausência confirmada. Um Bloom filter de entidades conhecidas ajuda a evitar consultas inúteis; se sua atualização atrasar, um negativo não pode negar silenciosamente uma entidade recém-criada.",
+              "concept": "A ausência de falsos negativos vale para elementos inseridos corretamente no conjunto representado, com filtro íntegro e hashes compatíveis. Um filtro desatualizado pode discordar do banco atual. Positivo pede verificação; negativo só evita consulta quando a cobertura exigida está comprovada ou o contrato tolera essa diferença.",
+              "connect": "Pedido autenticado → namespace e validade da chave → filtro/negative cache → fonte de features admitida. Requisições que exigem uma criação recente podem ultrapassar o filtro; falta de orçamento retorna indisponibilidade segundo a política de risco, não dado inexistente inventado.",
+              "technology": "Redis Bloom pode implementar o resumo, conforme versão suportada. O banco de features guarda valor, versão e tempo de observação; o cache negativo usa TTL curto, escopo correto e invalidação na criação quando disponível.",
+              "defend": "Não uso Bloom como autorização, prova de fraude ou registro de idempotência. Para tráfego adversarial, limite de taxa, validação e orçamento de consulta continuam necessários: positivos falsos e falha do filtro ainda podem gerar trabalho na origem.",
+              "sourceIds": [
+                "pb-cache-enrich-redis-bloom",
+                "pb-cache-enrich-aws-caching",
+                "arch-cache"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu começaria com um motor que carrega regras e modelo previamente e busca um conjunto pequeno de sinais online. O caminho síncrono valida o pedido, resolve a versão aplicável, lê sinais, calcula e registra a decisão conforme o contrato de auditoria. Se um sinal não obrigatório falhar, aplica a política definida. Não coloco treinamento nem consultas analíticas pesadas nessa chamada. Primeiro provamos que esse fluxo responde dentro do prazo e que seu resultado é consistente com o contrato.",
@@ -3244,7 +3496,21 @@
             "technology": "Circuit breaker e deadlines protegem capacidade; a política de risco define ação ao faltar sinal. Não existe fallback universal tecnicamente seguro.",
             "defend": "Resposta tardia não muda retroativamente autorização concluída; uma ação posterior exige workflow próprio e evidência de qual decisão foi utilizada."
           },
-          "interviewer": "A fonte mais lenta desapareceu durante uma avaliação. Qual ação é permitida pelo produto e como você evita gastar o deadline com retries?"
+          "interviewer": "A fonte mais lenta desapareceu durante uma avaliação. Qual ação é permitida pelo produto e como você evita gastar o deadline com retries?",
+          "cacheNotes": [
+            {
+              "title": "Refresh limitado pelo deadline e pela semântica do sinal",
+              "say": "Quando uma feature expira, agrupo buscas simultâneas equivalentes e limito a espera ao deadline da avaliação. Um sinal antigo só pode ser usado se a política de risco permitir sua idade; eu registro versão, idade e fallback na decisão para explicar depois o que foi considerado.",
+              "concept": "Singleflight reduz trabalho duplicado dentro do seu escopo; não garante que o resultado atenda à versão de cada solicitante. TTL com jitter espalha expirações, mas o jitter precisa respeitar o limite máximo de idade. Uma lease vencida não autoriza o worker antigo a sobrescrever uma geração mais nova.",
+              "connect": "Avaliação → leitura com idade máxima → refresh compartilhado limitado → fonte. Após esperar, cada avaliação confere novamente versão e deadline; caso contrário segue a política explícita de feature ausente ou indisponível.",
+              "technology": "Coalescing pode começar no processo; entre processos exige coordenação e publicação condicionada por geração. Redis é uma opção de cache, mas o banco de features e a política versionada continuam determinando quais dados podem sustentar a decisão.",
+              "defend": "Servir stale-while-revalidate é aceitável para alguns atributos, não para toda regra de bloqueio. Não reduzo falso negativo de cache à custa de ocultar informação antiga; comparo custo de refresh com impacto da política aprovada.",
+              "sourceIds": [
+                "pb-cache-enrich-aws-caching",
+                "arch-cache"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu acompanharia decisões dentro do deadline, frequência de fallback, idade das features e distribuição de ações por versão. Também monitoraria resultados de negócio com o time de risco, reconhecendo que labels chegam atrasados e podem ter viés. Uma queda de fraude aparente pode ser simplesmente aumento de bloqueios. O rollout começa limitado, com critérios de interrupção e auditoria. Logs e exemplos usados para investigação precisam de acesso controlado, porque concentram sinais sensíveis sobre comportamento e transações.",
@@ -3557,7 +3823,21 @@
             "technology": "Traces, planos de consulta e taxa de mudança quantificam o custo. Benchmark de composição precede escolha de Redis, Kafka ou novo banco.",
             "defend": "Materializar reduz fan-out de leitura e cria atualização/replay; o ganho precisa superar custo operacional e atraso aceito pelo produto."
           },
-          "interviewer": "Hoje cada abertura consulta seis serviços. Como você estima a carga interna e identifica quem domina a latência de cauda?"
+          "interviewer": "Hoje cada abertura consulta seis serviços. Como você estima a carga interna e identifica quem domina a latência de cauda?",
+          "cacheNotes": [
+            {
+              "title": "O orçamento de misses vem da capacidade da origem",
+              "say": "Vou dimensionar o modo degradado. Como hipótese autoral, vinte mil leituras por segundo com 99% de hits geram duzentos misses; com 90%, geram dois mil. Se a origem só tem orçamento para mil consultas equivalentes, essa queda de hit rate já exige controle de admissão.",
+              "concept": "No modelo simples de uma consulta por miss, Q_origem = Q_leituras × (1 − hit_efetivo) + refreshes adicionais + tentativas extras. Hit efetivo exclui cópia vencida ou incompatível com a versão pedida. Fan-out, coalescing e custos distintos exigem medir o trabalho efetivo, não apenas contar GETs. Os termos adicionais excluem carregamentos já contados como miss, evitando dupla contagem.",
+              "connect": "Cache → caminho de miss → limite de concorrência e taxa → fontes canônicas. Reservo capacidade para confirmações e recuperações; aquecimento, refresh e fallback disputam um orçamento explícito de consultas.",
+              "technology": "Métricas de aplicação e Prometheus medem misses efetivos, consultas à origem e espera no pool. Redis informa hits locais, mas não sabe se a resposta passou nas regras de frescor da jornada.",
+              "defend": "Sem refresh e retry, 95% seria apenas o limite matemático deste exemplo, sem margem. Proponho operar acima dele e limitar fallback; multiplicar bancos para sustentar todo miss possível pode custar mais que degradação negociada.",
+              "sourceIds": [
+                "pb-cache-enrich-aws-caching",
+                "playbook-sre-slos"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu definiria uma resposta com opções, validade e versões necessárias, evitando um campo genérico de atualizado que esconda diferenças. A confirmação recebe identidade da operação e, quando aplicável, a oferta ou versão que o cliente aceitou. A API precisa validar autorização por conta tanto na projeção quanto no fallback. No esquema da visão mantenho dados e progresso juntos. Também defino como versões de eventos e de projeção evoluem, porque reconstruir uma visão antiga com regras novas pode mudar o significado do resultado.",
@@ -3620,7 +3900,22 @@
             "technology": "Outbox/CDC alimenta projetor; Kafka é opção para log com replay. PostgreSQL ou DynamoDB podem armazenar a visão com atualização adequada.",
             "defend": "Dedupe separado do efeito pode perder atualização após crash; atomicidade de ambos custa transação e evita progresso fictício da projeção."
           },
-          "interviewer": "A leitura continua cara e domina a carga. Como você alimenta uma visão materializada e verifica que atualizações repetidas não a corrompem?"
+          "interviewer": "A leitura continua cara e domina a carga. Como você alimenta uma visão materializada e verifica que atualizações repetidas não a corrompem?",
+          "cacheNotes": [
+            {
+              "title": "Uma invalidação não impede o preenchimento atrasado",
+              "say": "Vou testar a corrida: um leitor busca a versão 10, a escrita confirma a 11 e invalida a chave, depois o leitor antigo grava a 10. Apagar a chave após o commit não resolveu esse caso. Preciso definir versão, publicação condicional e o frescor exigido por quem espera.",
+              "concept": "Chaves imutáveis por versão impedem sobrescrever o conteúdo da versão 11, mas a escolha da versão atual continua sendo um problema. Um ponteiro ou watermark precisa de protocolo válido; CAS contra uma chave vazia não conhece uma versão já invalidada. Se o piso de versão for perdido, trato-o como desconhecido.",
+              "connect": "Fonte canônica → versão confirmada → projeção versionada → resposta compatível com o token do solicitante. Cada participante de um singleflight revalida o resultado: a atualização compartilhada pode ter começado antes do commit que ele precisa observar.",
+              "technology": "Redis pode armazenar payload e versão, com atualização condicional local; PostgreSQL ou a fonte escolhida fornece a referência autoritativa. Scripts Redis não tornam a leitura do banco e o SET uma transação conjunta.",
+              "defend": "Se não consigo provar uma versão mínima, espero dentro do deadline, consulto a autoridade com orçamento ou declaro atualização pendente. TTL limita residência, mas não prova que o valor carregado já era atual quando entrou no cache.",
+              "sourceIds": [
+                "arch-cache",
+                "nu-evergreen",
+                "pb-cache-enrich-aws-caching"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu escalaria leitura da visão por chave e isolaria recursos do projetor. Se uma entidade concentra atualizações, mais partições não resolvem automaticamente a contenção dessa chave. Na consulta, coalescing pode juntar recomputações simultâneas; TTL e jitter evitam expiração sincronizada quando houver cache adicional. Também reservaria capacidade de replay e de reconstrução em paralelo ao tráfego normal. A decisão de materializar tudo ou apenas campos caros depende de taxa de mudança, tamanho e impacto de cada informação na experiência.",
@@ -3641,7 +3936,21 @@
             "technology": "Rebuild usa nova geração e checkpoint verificável; cache adicional só entra se a visão ainda for cara. Coalescing reduz recomputação simultânea.",
             "defend": "Mais uma camada de cache adiciona obsolescência; não compro complexidade quando a leitura materializada já atende o objetivo."
           },
-          "interviewer": "Milhares de consultas chegam para a mesma chave desatualizada. Como você limita recomputação sem prometer uma versão que ainda não possui?"
+          "interviewer": "Milhares de consultas chegam para a mesma chave desatualizada. Como você limita recomputação sem prometer uma versão que ainda não possui?",
+          "cacheNotes": [
+            {
+              "title": "Uma chave quente não se divide ao adicionar shards",
+              "say": "Se a sobrecarga vem de um catálogo de condições consultado por todos, mover sua chave só transfere o problema. Eu comparo cópias de leitura locais, coalescing e separação entre conteúdo comum e dados por cliente, com versões e orçamento de atualização para cada parte.",
+              "concept": "Distribuição uniforme de chaves não implica distribuição uniforme de tráfego. Virtual nodes equilibram propriedade de faixas; uma chave indivisível continua tendo um destino de escrita. Replicar leitura reduz concentração, mas amplia memória duplicada e trabalho de invalidar ou renovar cópias.",
+              "connect": "API → pequeno cache local de conteúdo comum versionado → cache compartilhado opcional → origem. Limites por namespace impedem que a oferta de uma campanha expulse todo o conjunto de trabalho de outras jornadas.",
+              "technology": "Uma biblioteca local e Redis são alternativas combináveis. Uso métricas por shard e amostragem controlada de chaves quentes, evitando transformar identificadores de clientes em milhões de séries de telemetria.",
+              "defend": "Não replico livremente o estado mutável que autoriza dinheiro. As cópias atendem leitura dentro do contrato; atualizações frequentes ou exigência de frescor estrito podem tornar melhor consultar a autoridade do que manter vários caches coerentes.",
+              "sourceIds": [
+                "pb-cache-enrich-aws-caching",
+                "pb-cache-enrich-redis-cluster"
+              ]
+            }
+          ]
         },
         {
           "say": "Vou interromper o projetor durante um pico. A API verifica a idade e as versões da visão; campos dentro do contrato continuam disponíveis, enquanto os demais seguem espera limitada, fallback admitido ou resposta explícita de atualização pendente. Não mando todo mundo à fonte ao mesmo tempo. Depois simulo falha da própria visão: a capacidade de fallback é um orçamento que precisa ser respeitado. A confirmação continua consultando a autoridade e não passa a confiar em dado velho só porque a leitura otimizada caiu.",
@@ -3683,7 +3992,21 @@
             "technology": "OpenTelemetry e comparação amostral por versão medem latência e validade; geração separada permite rollout controlado sem efeitos financeiros.",
             "defend": "Comparar versões diferentes gera falsos alarmes; registrar contexto custa metadados e permite distinguir lag legítimo de erro no projetor."
           },
-          "interviewer": "A API devolve 200 rapidamente, mas exibe condições fora da validade. Como seu SLI identifica essa falha e orienta o responsável?"
+          "interviewer": "A API devolve 200 rapidamente, mas exibe condições fora da validade. Como seu SLI identifica essa falha e orienta o responsável?",
+          "cacheNotes": [
+            {
+              "title": "Hit rate e média não substituem a experiência do cliente",
+              "say": "Vou contar como boa apenas uma resposta correta, autorizada, suficientemente atual e dentro do prazo da jornada. Um hit rápido com condição vencida é falha útil de detectar. Também separo a latência de hit, miss, espera por atualização e rejeição por proteção da origem.",
+              "concept": "E[T] = h × E[T_hit] + (1 − h) × E[T_miss] combina médias condicionais, não p99 ou p99,9. Para a cauda, agrego observações em histogramas compatíveis e calculo o percentil da distribuição; não faço média dos percentis dos caminhos.",
+              "connect": "Evento da jornada → resultado válido e prazo → SLI do usuário. Métricas internas explicam o resultado: evictions, idade da fonte, refresh pendente, carga da origem e hits rejeitados por versão.",
+              "technology": "OpenTelemetry registra a duração observada e atributos limitados; Prometheus agrega histogramas e contadores. O denominador inclui as solicitações elegíveis afetadas por sobrecarga, sem maquiar sucesso retirando recusas da população.",
+              "defend": "Uma política com menos misses pode piorar validade, memória ou custo. Comparo políticas pela jornada e pela sobrevivência da origem em falha, com metas hipotéticas do exercício, sem apresentá-las como SLA real do Nubank.",
+              "sourceIds": [
+                "pb-cache-enrich-prom-histograms",
+                "playbook-sre-slos"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu fecharia dizendo que a otimização muda onde o trabalho de leitura acontece, mas não muda quem autoriza dinheiro. Comecei com o caminho canônico e só acrescentei materialização quando a medição justificou. A visão tem contrato de frescor, reconstrução e fallback limitado. O risco principal é combinar versões incompatíveis ou sobrecarregar a autoridade na falha. Meu primeiro experimento compara o baseline com a projeção sob lag e indisponibilidade, verificando resposta útil e proteção da confirmação financeira.",
@@ -3996,7 +4319,22 @@
             "technology": "Cursor opaco assinado protege integridade; autorização continua no servidor. Job registra conta, período, corte e versão de formato independentemente do renderer.",
             "defend": "Snapshot MVCC aberto por horas pressiona retenção de versões; corte lógico ou artefato materializado pode servir melhor a exportações longas."
           },
-          "interviewer": "O que seu cursor precisa carregar ou referenciar? Como você mantém filtros e corte estáveis sem transformar o cursor em autorização permanente?"
+          "interviewer": "O que seu cursor precisa carregar ou referenciar? Como você mantém filtros e corte estáveis sem transformar o cursor em autorização permanente?",
+          "cacheNotes": [
+            {
+              "title": "Cachear páginas de um corte, não misturar históricos",
+              "say": "Uma página pode ser cacheada se a chave representar conta, filtros, ordenação, corte e posição do cursor. Não reutilizo uma página calculada para outro instante apenas porque o número da página coincide. A autorização atual continua sendo verificada antes de devolver os lançamentos.",
+              "concept": "O corte estabiliza o conjunto e a versão evita confundir representações. Incluir tenant na chave reduz colisões, mas não substitui controle de acesso. Dados imutáveis podem ter TTL longo para eficiência; acesso ao histórico ainda obedece à política atual de privacidade e retenção.",
+              "connect": "Identidade autorizada + cursor validado → chave da representação → página do mesmo corte. O journal ou a projeção verificada continua responsável pelos movimentos e pelo saldo; Redis conserva somente os bytes derivados.",
+              "technology": "PostgreSQL fornece consulta por chave e fronteira consistente. Redis ou cache local podem guardar páginas serializadas; o token da resposta identifica a mesma linhagem usada para calcular o saldo do período.",
+              "defend": "Se os filtros forem quase sempre únicos, a reutilização pode ser pequena. Nesse caso preservo o índice e os limites de consulta e retiro a camada de cache, reduzindo custo de memória e risco de chave incompleta.",
+              "sourceIds": [
+                "arch-cache",
+                "nu-evergreen",
+                "playbook-sre-slos"
+              ]
+            }
+          ]
         },
         {
           "say": "Meu baseline seria uma API autorizada e consulta indexada no histórico canônico, com paginação por chave e um corte fixo. Isso já resolve estabilidade sem exigir CQRS. Para o saldo do período, posso usar um saldo de abertura comprovado mais movimentos incluídos, em vez de somar toda a vida da conta a cada página. Vou verificar como esse checkpoint é produzido e validado. Se o banco suporta a carga sem prejudicar escrituras, a solução fica simples e a operação também.",
@@ -4059,7 +4397,21 @@
             "technology": "Pools de consultas e jobs são separados; partição por tempo/conta segue planos reais. CDN privada é opcional para artefatos versionados.",
             "defend": "URL assinada é capacidade válida até expirar; revogação imediata exige mecanismo adicional, e conteúdo estático não significa conteúdo público."
           },
-          "interviewer": "Uma empresa pede anos de histórico no fechamento. Como você limita esse trabalho sem prejudicar páginas recentes de outros clientes?"
+          "interviewer": "Uma empresa pede anos de histórico no fechamento. Como você limita esse trabalho sem prejudicar páginas recentes de outros clientes?",
+          "cacheNotes": [
+            {
+              "title": "LRU, LFU e a exportação que polui o cache",
+              "say": "Uma exportação de anos de extrato pode tocar milhares de páginas uma vez e expulsar as páginas recentes que o aplicativo reutiliza. Eu testo separar o cache de exportações ou não admitir esse fluxo, antes de aumentar RAM ou escolher um algoritmo pelo nome.",
+              "concept": "LRU estima reutilização pela recência; LFU pela frequência, com envelhecimento para esquecer popularidade antiga. Uma implementação didática de LRU usa mapa e lista duplamente ligada, O(1) esperado por acesso com ponteiro conhecido. Redis usa aproximações: não é essa lista exata em cada acesso.",
+              "connect": "Consultas interativas → orçamento de cache; exportação → percurso limitado na fonte ou cache separado. Registro tamanho do objeto, custo de miss e taxa de reutilização, além do hit rate agregado.",
+              "technology": "Comparo políticas Redis com trace representativo, incluindo scan, pico e mudança de popularidade. Dimensiono payload, metadados, fragmentação, buffers e réplicas; maxmemory não é igual ao limite total de RAM do processo.",
+              "defend": "LFU não vence sempre e TTL não escolhe sozinho a melhor vítima sob pressão. Posso manter LRU simples e bloquear admissões de pouca reutilização; a decisão precisa reduzir custo real sem prejudicar prazo e correção das páginas.",
+              "sourceIds": [
+                "pb-cache-enrich-redis-eviction",
+                "pb-cache-enrich-aws-caching"
+              ]
+            }
+          ]
         },
         {
           "say": "Vou pausar o projetor logo após uma transferência confirmada. Se o cliente pedir para ver aquela operação, um token de progresso pode exigir a versão mínima; a API espera de forma limitada ou consulta a autoridade com capacidade reservada. Não mostra saldo atualizado com lista antiga como se fossem um snapshot. Também interrompo um job no meio do arquivo: ele fica incompleto e invisível até recuperar. Após restore, comparo projeção e journal por corte antes de liberar documentos como definitivos.",
@@ -5729,7 +6081,21 @@
             "technology": "Roteamento por diretório oferece controle de migração; hash reduz metadados, mas não elimina o protocolo de corte. Singleflight e admissão limitam pressão de cache miss.",
             "defend": "Eu só adiciono shards após medir o gargalo. Uma chave serial quente continua limitada; salting só ajuda se a semântica permitir dividir e recompor o estado."
           },
-          "interviewer": "Uma partição muda de dono e há rotas em cache. Como você separa diretório e autoridade, e quais leituras podem usar cache?"
+          "interviewer": "Uma partição muda de dono e há rotas em cache. Como você separa diretório e autoridade, e quais leituras podem usar cache?",
+          "cacheNotes": [
+            {
+              "title": "Anel consistente e Redis Cluster são escolhas distintas",
+              "say": "Se o desenho usa anel com virtual nodes, explico a tabela de tokens e sua versão. Se a implementação for Redis Cluster, uso o mecanismo real: 16.384 hash slots, mapa de donos e redirects MOVED ou ASK. Não adiciono um segundo anel próprio que contradiga esse roteamento.",
+              "concept": "O anel clássico pode buscar sucessor em O(log V), para V tokens, enquanto uma tabela de slots usa índice direto; calcular o hash também depende dos bytes da chave. Nenhum desses custos elimina RTT, serialização, redirecionamento ou congestionamento. Um slot quente continua concentrado até mudança efetiva de carga ou cópias permitidas.",
+              "connect": "Cliente de cache → mapa de slots → nó responsável. O KV autoritativo continua com seu protocolo de commit separado; adicionar Redis como cópia de leitura não transfere para ele as garantias fortes prometidas pela API principal.",
+              "technology": "Uso cliente compatível com Redis Cluster e testo migração real. Hash tags podem colocar chaves juntas para operações suportadas no mesmo slot, ao custo de concentração; não criam transação entre slots ou com o banco autoritativo.",
+              "defend": "A implementação mais simples pode continuar sendo uma tabela SQL com atualização condicional e cache opcional. Sharding distribui capacidade, mas replicas, eleição e recuperação precisam de protocolos próprios; não concluo alta disponibilidade apenas por desenhar várias máquinas.",
+              "sourceIds": [
+                "pb-cache-enrich-redis-cluster",
+                "arch-cache"
+              ]
+            }
+          ]
         },
         {
           "say": "Vou testar a queda do líder depois do commit e antes da resposta. O cliente recebe timeout, consulta ou repete o mesmo requestId e descobre o resultado, sem aplicar uma segunda atualização. Depois simulo perda de maioria: a partição pode ficar indisponível para escrita para preservar o contrato. Leituras atrasadas só continuam se o consumidor as pediu explicitamente. Por fim, um disco cheio precisa gerar degradação controlada antes de impedir o protocolo de recuperação.",
@@ -6164,7 +6530,22 @@
             "technology": "CloudFront com assinatura e origem restrita é uma opção AWS; SAS é opção Azure. Um proxy autenticado implementa política online quando a janela residual não é aceitável.",
             "defend": "Eu mantenho tokens fora de logs e analytics. Cache key correta não dispensa autorização; a validação precisa acontecer antes de servir conteúdo já armazenado na borda."
           },
-          "interviewer": "Queremos CDN para os downloads. Como você verifica acesso inclusive em cache hit e o que muda se exigirmos revogação imediata?"
+          "interviewer": "Queremos CDN para os downloads. Como você verifica acesso inclusive em cache hit e o que muda se exigirmos revogação imediata?",
+          "cacheNotes": [
+            {
+              "title": "Cache de bytes não é cache de permissão",
+              "say": "O PDF pode ser imutável e ficar na borda por bastante tempo, mas cada requisição continua sujeita à credencial exigida. Separarei a validade dos bytes, a validade da URL e a política de revogação. Um cache hit não pula a verificação de acesso.",
+              "concept": "No fluxo com URL assinada, a aplicação autoriza a emissão e CloudFront valida assinatura e política antes de servir hit ou buscar a origem. Revogação imediata de uma autorização de domínio exige mecanismo adicional online; expirar a URL não recolhe uma cópia já baixada.",
+              "connect": "Catálogo autorizado → acesso ao objeto e versão exatos → borda com verificação → origem privada. A cache key representa os bytes corretos; a política de acesso governa quem pode obtê-los, inclusive quando o objeto já está próximo.",
+              "technology": "S3 privado e CloudFront são uma implementação possível; um proxy autenticado atende outro compromisso de custo e revogação. PDFs grandes não precisam entrar em Redis: cacheio metadados úteis e avalio reutilização real antes da CDN.",
+              "defend": "A recomendação genérica de escolher Memcached acima de um tamanho não substitui medir distribuição e acesso. Documentos privados exigem acertar o titular e a versão; economizar RTT não compensa um objeto entregue à pessoa errada.",
+              "sourceIds": [
+                "pb-tech-cf-signed",
+                "pb-tech-http-cache",
+                "arch-cache"
+              ]
+            }
+          ]
         },
         {
           "say": "Eu testaria upload incompleto, catálogo indisponível após upload, fila repetida e falha da origem durante download. O cliente vê estado coerente e pode repetir a consulta de status. Se já existir uma versão válida e a política permitir, ela continua disponível com sua identificação; nunca a apresento como a nova versão solicitada. Uma falha de autorização não recebe fallback público. Na recuperação, comparo catálogo e objetos para localizar referências ausentes e arquivos órfãos.",
@@ -6254,6 +6635,531 @@
         {
           "label": "Outbox",
           "href": "#atlas/outbox"
+        }
+      ]
+    },
+    {
+      "id": "distributed-cache",
+      "title": "Cache distribuído: condições financeiras, preenchimento atrasado e recuperação",
+      "tag": "Leitura, cache e consistência",
+      "evidence": {
+        "kind": "Exercício autoral",
+        "summary": "Caso construído a partir dos seis PDFs de cache fornecidos e de documentação primária. As condições financeiras, o tráfego e as metas são hipóteses de treino.",
+        "sourceIds": [
+          "arch-cache",
+          "pb-cache-cluster",
+          "pb-cache-memcache-paper"
+        ],
+        "limits": "Não é pergunta confirmada do Nubank, descrição de seu cache interno nem promessa comercial de condições financeiras. Os PDFs são material didático; suas simplificações sobre consistência, latência e mecanismos de produtos foram corrigidas."
+      },
+      "brief": "Projetar um cache distribuído para consultar condições informativas de parcelamento por cliente e produto, preservar o isolamento entre tenants e resistir a alterações concorrentes, chaves quentes e perda do cache sem derrubar a fonte.",
+      "promise": "A tela informa a validade e a versão das condições; a contratação confirma a decisão na autoridade. Aceleração nunca transforma uma leitura antiga em autorização financeira.",
+      "authority": "O serviço de condições e seu banco transacional são autoridade sobre regras, versões e propostas vinculantes. O cache contém cópias descartáveis para apresentação; saldo, limite disponível, aceite e deduplicação financeira continuam fora dele.",
+      "invariants": [
+        "Nenhuma resposta de cache substitui a validação autoritativa que emite ou aceita uma proposta financeira vinculante.",
+        "Autorização é validada antes da leitura; namespace e chave incluem tenant, identidade/escopo autorizado, versão de esquema e todos os parâmetros relevantes.",
+        "O limite de idade se refere à leitura autoritativa que produziu o valor, não ao momento de um preenchimento atrasado nem a uma renovação automática do TTL.",
+        "Um preenchimento cujo token, geração ou prazo deixou de ser válido não pode recriar uma entrada por SET incondicional; ausência de metadados não equivale à geração inicial.",
+        "Falha ou perda completa do cache não elimina o orçamento de acesso à fonte; excesso de demanda recebe degradação explícita e limitada.",
+        "Invalidação assíncrona e replicação do cache não oferecem linearizabilidade; exigências de frescor estrito usam a autoridade ou um contrato de versão verificado."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "Tela de condições",
+          "detail": "Apresenta versão, validade e caráter informativo; envia a intenção de contratar para confirmação autoritativa.",
+          "role": "actor",
+          "x": 90,
+          "y": 80,
+          "firstStep": 0
+        },
+        {
+          "id": "api",
+          "label": "API autenticada",
+          "detail": "Deriva tenant e identidade das credenciais, valida parâmetros e mantém o orçamento de latência.",
+          "role": "boundary",
+          "x": 310,
+          "y": 80,
+          "firstStep": 3
+        },
+        {
+          "id": "conditions",
+          "label": "Serviço de condições",
+          "detail": "Separa apresentação cacheável de confirmação vinculante; valida envelope e versão mínima solicitada.",
+          "role": "core",
+          "x": 530,
+          "y": 80,
+          "firstStep": 1
+        },
+        {
+          "id": "source",
+          "label": "Fonte + versões",
+          "detail": "Banco transacional mantém regras, propostas e outbox; o cache nunca decide saldo ou autorização.",
+          "role": "authority",
+          "x": 820,
+          "y": 80,
+          "firstStep": 1
+        },
+        {
+          "id": "cache",
+          "label": "Cache descartável",
+          "detail": "Payloads e metadados de preenchimento com geração única, prazo e versão; réplicas podem atrasar.",
+          "role": "read",
+          "x": 530,
+          "y": 280,
+          "firstStep": 4
+        },
+        {
+          "id": "loader",
+          "label": "Coalescer de miss",
+          "detail": "Agrupa carregamentos locais por chave, limita concorrência e só preenche com token ainda válido.",
+          "role": "worker",
+          "x": 310,
+          "y": 280,
+          "firstStep": 4
+        },
+        {
+          "id": "invalidate",
+          "label": "Relay de invalidação",
+          "detail": "Lê outbox durável após commit e invalida versões antigas com tratamento de duplicatas e reordenação.",
+          "role": "worker",
+          "x": 820,
+          "y": 280,
+          "firstStep": 5
+        },
+        {
+          "id": "routing",
+          "label": "Roteamento e shards",
+          "detail": "Cliente conhece slots ou placement do produto; resharding muda o destino sem dividir automaticamente uma hot key.",
+          "role": "boundary",
+          "x": 90,
+          "y": 490,
+          "firstStep": 6
+        },
+        {
+          "id": "budget",
+          "label": "Admissão da fonte",
+          "detail": "Aplica orçamento de recarga, concorrência e fairness; falha do cache não autoriza avalanche no banco.",
+          "role": "core",
+          "x": 530,
+          "y": 490,
+          "firstStep": 7
+        },
+        {
+          "id": "ops",
+          "label": "Operação e épocas",
+          "detail": "Métricas, controles de namespace, quarentena após failover e aquecimento controlado pertencem a um dono operacional.",
+          "role": "ops",
+          "x": 820,
+          "y": 490,
+          "firstStep": 8
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "conditions",
+          "label": "consulta informativa",
+          "detail": "Primeiro desenho do contrato, antes de introduzir a borda autenticada.",
+          "firstStep": 1,
+          "lastStep": 2
+        },
+        {
+          "from": "conditions",
+          "to": "source",
+          "label": "consulta + confirmação",
+          "detail": "Baseline: leitura na fonte; a contratação também é validada pela autoridade.",
+          "firstStep": 1,
+          "lastStep": 3
+        },
+        {
+          "from": "client",
+          "to": "api",
+          "label": "identidade + parâmetros",
+          "detail": "Tenant e cliente vêm do contexto autenticado, não de uma chave de cache fornecida pelo aplicativo.",
+          "firstStep": 3
+        },
+        {
+          "from": "api",
+          "to": "conditions",
+          "label": "contexto autorizado",
+          "detail": "O contrato diferencia leitura informativa e confirmação vinculante.",
+          "firstStep": 3
+        },
+        {
+          "from": "conditions",
+          "to": "source",
+          "label": "confirmar proposta",
+          "detail": "Caminho autoritativo permanece após adicionar cache; não é um bypass para todos os misses.",
+          "firstStep": 4
+        },
+        {
+          "from": "conditions",
+          "to": "cache",
+          "label": "GET + envelope",
+          "detail": "Aceitar somente escopo, versão mínima e prazo compatíveis com o contrato.",
+          "firstStep": 4,
+          "lastStep": 5
+        },
+        {
+          "from": "conditions",
+          "to": "loader",
+          "label": "miss / dado recusado",
+          "detail": "Erro de cache é distinto de miss; ambos passam pela política de recarga.",
+          "firstStep": 4
+        },
+        {
+          "from": "loader",
+          "to": "source",
+          "label": "snapshot com orçamento",
+          "detail": "Recarga limitada já no baseline; mais adiante o gate aparece como componente explícito.",
+          "firstStep": 4,
+          "lastStep": 6
+        },
+        {
+          "from": "loader",
+          "to": "cache",
+          "label": "fill condicional",
+          "detail": "Token obtido antes da leitura precisa ainda existir e coincidir atomicamente no preenchimento.",
+          "firstStep": 4,
+          "lastStep": 5
+        },
+        {
+          "from": "source",
+          "to": "invalidate",
+          "label": "outbox após commit",
+          "detail": "Mudança de regra e intenção de invalidar são persistidas na mesma transação.",
+          "firstStep": 5
+        },
+        {
+          "from": "invalidate",
+          "to": "cache",
+          "label": "versão + invalidação",
+          "detail": "Entrega pode repetir; evento antigo não deve apagar payload comprovadamente mais novo.",
+          "firstStep": 5,
+          "lastStep": 5
+        },
+        {
+          "from": "conditions",
+          "to": "routing",
+          "label": "GET roteado",
+          "detail": "Mapa de slots ou placement da implantação; não muda o contrato de frescor.",
+          "firstStep": 6
+        },
+        {
+          "from": "loader",
+          "to": "routing",
+          "label": "claim / fill",
+          "detail": "Operações condicionais de uma chave usam o mesmo shard e uma geração que não é reiniciada silenciosamente.",
+          "firstStep": 6
+        },
+        {
+          "from": "invalidate",
+          "to": "routing",
+          "label": "invalidar versão",
+          "detail": "Na topologia distribuída, o relay usa o mesmo contrato de roteamento e redirecionamento.",
+          "firstStep": 6
+        },
+        {
+          "from": "routing",
+          "to": "cache",
+          "label": "shard responsável",
+          "detail": "MOVED/ASK no Redis Cluster; outros produtos podem oferecer topologia e proxy diferentes.",
+          "firstStep": 6
+        },
+        {
+          "from": "loader",
+          "to": "budget",
+          "label": "solicitar capacidade",
+          "detail": "Fila e espera limitadas pelo deadline; fairness evita um tenant consumir toda a fonte.",
+          "firstStep": 7
+        },
+        {
+          "from": "budget",
+          "to": "source",
+          "label": "consulta admitida",
+          "detail": "Somente a demanda dentro do limite validado chega ao banco.",
+          "firstStep": 7
+        },
+        {
+          "from": "ops",
+          "to": "cache",
+          "label": "saúde / geração",
+          "detail": "Namespace suspeito é isolado; a recuperação não confia automaticamente em payload ou fence restaurado.",
+          "firstStep": 8
+        },
+        {
+          "from": "ops",
+          "to": "budget",
+          "label": "limites e SLO",
+          "detail": "Rewarm e canário respeitam capacidade da fonte, além de acompanhar experiência do usuário.",
+          "firstStep": 8
+        },
+        {
+          "from": "ops",
+          "to": "source",
+          "label": "lag e reconciliação",
+          "detail": "Verifica versões, atraso do relay e contratos; não reconstrói autoridade a partir do cache.",
+          "firstStep": 8
+        }
+      ],
+      "steps": [
+        {
+          "interviewer": "Milhões de clientes consultam condições de parcelamento. Projete um cache distribuído. Podemos responder qualquer condição disponível para manter a tela rápida?",
+          "say": "Eu começaria definindo o que essa tela promete. Vou assumir uma simulação informativa de parcelamento, não uma oferta irrevogável nem uma autorização de gasto. Quero confirmar quanto envelhecimento podemos tolerar e como o aplicativo o apresenta. Na contratação, consultaremos a autoridade e devolveremos uma proposta identificada, com condições e validade próprias. Se o produto exigir a condição mais recente em toda leitura, a solução e o custo mudam antes de escolhermos Redis ou Memcached.",
+          "ask": [
+            "A consulta é uma simulação ou uma proposta vinculante que precisa ser honrada?",
+            "Qual atraso de atualização é aceitável para apresentação e o que acontece ao contratar?"
+          ],
+          "draw": [
+            "Tela, promessa de frescor e limite entre consultar e contratar.",
+            "Fonte autoritativa fora do cache, ainda sem escolher um mecanismo de distribuição."
+          ],
+          "deepDive": "Minha hipótese de treino é permitir até quinze segundos desde uma leitura autoritativa para apresentação; esse número precisa ser negociado, não deduzido do setor bancário. A interface mostra que as condições serão confirmadas. Se já existir uma proposta vinculante, cacheio a representação daquela proposta imutável pelo seu identificador, respeitando expiração e autorização, em vez de inventar um preço atual. Se o entrevistador pedir saldo disponível, bloqueio de crédito ou aceitação de contrato, retiro esse dado do caminho decisório do cache. A primeira simplificação é preservar uma autoridade única e tornar explícita a semântica do que pode envelhecer.",
+          "check": "Há uma definição verificável de dado informativo, frescor tolerado e confirmação autoritativa.",
+          "memory": {
+            "say": "Eu separo simulação de contratação e negocio o frescor antes da stack. Uma condição na tela não autoriza dinheiro nem substitui uma proposta vinculante.",
+            "concept": "O contrato da leitura determina se uma cópia antiga é aceitável. Um cache com alta disponibilidade não transforma conteúdo vencido em resposta correta.",
+            "connect": "Tela → consulta informativa; contratação → autoridade. Desenho essa separação antes de introduzir RAM, shards, réplicas ou invalidação.",
+            "technology": "Adio Redis e Memcached. Primeiro exijo identidade, autorização, validade e versão da condição; proposta imutável pode simplificar bastante a cópia.",
+            "defend": "Se todas as leituras exigirem atualidade estrita, aceito consultar a autoridade ou reduzir o escopo cacheável, preservando a promessa do produto."
+          }
+        },
+        {
+          "interviewer": "Duas pessoas de empresas diferentes consultam o mesmo produto. Uma regra muda durante a consulta. Quais garantias o cache precisa preservar?",
+          "say": "Eu fixaria três fronteiras: isolamento de identidade, idade da informação e autoridade financeira. O tenant será derivado da autenticação, e a chave incluirá todos os parâmetros que alteram o resultado. Cada valor carregará versão da origem, instante de observação e prazo de uso. Não renovarei a validade só porque o valor foi relido. Se a sessão pedir uma versão mínima que o cache não possui, vou consultar a fonte dentro do orçamento ou informar que não consegui atender ao frescor solicitado.",
+          "ask": [
+            "Quais atributos do cliente e da operação realmente alteram as condições?",
+            "Precisamos garantir read-your-writes depois de alterar uma regra ou aceitar uma condição?"
+          ],
+          "draw": [
+            "Fonte com versão por entidade ou conjunto de regras e envelope de resposta.",
+            "Fronteiras de tenant, identidade e confirmação, deixando explícito o que não é protegido por TTL."
+          ],
+          "deepDive": "Uma chave conceitual é ambiente:serviço:esquema:tenant:cliente:produto:moeda:hashDosParâmetrosCanônicos. Não coloco CPF ou segredo em uma chave visível em logs; uso identificadores internos ou digest apropriado e mantenho autorização em toda leitura. Hash não substitui controle de acesso. A versão precisa ter domínio e linhagem conhecidos; comparar inteiros de entidades diferentes não demonstra atualidade. Um token de sessão mínimo pode exigir origem e versão compatíveis. A validade começa no snapshot autoritativo que originou o payload, com relógio e margem definidos; um carregamento lento não ganha quinze segundos adicionais ao terminar. Em restauração ou incerteza de relógio, recuso a evidência que não consigo validar.",
+          "check": "Consigo demonstrar que um payload correto de outro tenant, moeda, esquema ou versão mínima será recusado.",
+          "memory": {
+            "say": "Eu trato a chave como contrato de isolamento e o envelope como contrato de frescor. A validação financeira continua na fonte.",
+            "concept": "Versão, origem e validade acompanham o payload. Reutilizar ou preencher uma entrada não reinicia a idade da leitura autoritativa.",
+            "connect": "API autenticada → namespace canônico → envelope validado. A confirmação e a leitura com frescor incompatível seguem para a fonte.",
+            "technology": "Começo com versões transacionais no banco e um codec canônico. Tokens de versão por entidade são mais honestos que um timestamp global improvisado.",
+            "defend": "Mais dimensões na chave reduzem hit ratio, mas omiti-las pode misturar clientes ou condições. Só removo uma dimensão após provar equivalência semântica."
+          }
+        },
+        {
+          "interviewer": "Suponha vinte mil consultas por segundo, hit ratio de 95% e valores de dois KiB. Quantos shards você compraria e qual seria o p99?",
+          "say": "Eu não compraria shards a partir de usuários cadastrados nem calcularia p99 pela média dos percentis. Com vinte mil consultas por segundo e noventa e cinco por cento de acertos, esperamos mil recargas por segundo antes de considerar coalescência e retries. No cache frio, a demanda potencial chega a vinte mil. Preciso medir o conjunto ativo, tamanhos reais, concentração por chave e capacidade da fonte. O primeiro dimensionamento produz hipóteses e um teste de carga, não uma promessa de latência.",
+          "ask": [
+            "Quantas chaves distintas são acessadas no intervalo de validade e qual a distribuição por tenant?",
+            "Quanto tráfego a fonte suporta com folga, mantendo o SLO das demais jornadas?"
+          ],
+          "draw": [
+            "QPS de acertos, misses, recargas agrupadas e pior caso de cache frio.",
+            "Orçamento de memória com payload, chaves, metadados, fragmentação, réplicas e buffers."
+          ],
+          "deepDive": "Para um milhão de entradas com payload de dois KiB, somente os valores somam aproximadamente 1,91 GiB; isso não é a RAM da implantação. Acrescento chaves, objetos, metadados, allocator, buffers e margem operacional, depois dimensiono cada primário e réplica. Em regime estável, a média de latência é a combinação das médias condicionais de hit e miss, incluindo todos os caminhos; percentis não obedecem à mesma mistura aritmética. Uso histogramas e traces para p99, especialmente quando misses coincidem com saturação. Uma lista LRU exata mais tabela hash oferece operações médias constantes, mas colisões, redimensionamento, ponteiros e disputa por recência afetam caudas. A fonte precisa suportar o orçamento admitido, não a esperança de um hit ratio constante.",
+          "check": "O cálculo distingue média, percentil, memória de payload, capacidade de recarga e concentração de chaves.",
+          "memory": {
+            "say": "Eu dimensiono working set e recargas. A queda de 95% de acertos para zero multiplica por vinte a demanda potencial na fonte.",
+            "concept": "Tabela hash mais lista duplamente ligada dá LRU exata com operações médias O(1), mas atualizar recência em todo hit gera contenção e acessos dispersos.",
+            "connect": "Entrada → acerto ou miss → recarga admitida. A memória inclui overhead e réplicas; a cauda depende de filas e do caminho completo.",
+            "technology": "Meço distribuição com histogramas e benchmark representativo. Redis usa políticas aproximadas; não projeto sua implementação como uma lista LRU exata universal.",
+            "defend": "Não prometo p99 misturando p99 de cache e banco. Se a fonte não absorver cache frio, a solução precisa limitar demanda ou degradar explicitamente."
+          }
+        },
+        {
+          "interviewer": "Defina GET, atualização e DELETE. Se write-through escreve cache e banco, isso já garante consistência forte?",
+          "say": "Eu manteria o banco como ponto de commit e começaria pelo contrato de leitura. GET de condições retorna payload, versão, validade e informação suficiente para identificar sua origem. Atualizações validam e gravam na fonte; a resposta de escrita pode carregar a versão necessária para a próxima leitura da sessão. DELETE significa remover ou revogar na autoridade, não apenas expulsar uma cópia da RAM. Gravar banco e cache em sequência não cria uma transação entre os dois, portanto não chamarei write-through de consistência forte por si só.",
+          "ask": [
+            "Uma regra removida pode ser recriada com o mesmo identificador e uma nova versão?",
+            "O cliente precisa ver imediatamente a própria alteração ou basta receber a versão confirmada?"
+          ],
+          "draw": [
+            "API autenticada e contratos separados de consulta, mudança e confirmação.",
+            "Modelo mínimo: entity_id, source_version, schema_version, observed_at, valid_until e estado de revogação."
+          ],
+          "deepDive": "O caminho mínimo pode ser uma consulta indexada no PostgreSQL com resposta versionada. Uma remoção autoritativa preserva a informação necessária para distinguir ausência verdadeira de consulta atrasada; uma recriação recebe versão ou identidade que não reutiliza o estado antigo. Na sessão que acabou de mudar a regra, a API aceita min_version vinculada à entidade e busca a fonte quando a cópia não satisfaz. Read-through e cache-aside distribuem a responsabilidade de carregar: no cache-aside, aplicação ou loader coordena a fonte; no read-through, a abstração de cache faz isso. Nenhum nome de padrão resolve sozinho a atomicidade de duas escritas. Pipeline reduz overhead de rede, mas não agrupa automaticamente comandos em uma transação.",
+          "check": "Existe um commit definido para a mudança; invalidar ou preencher cache não é confundido com aceitar a mudança.",
+          "memory": {
+            "say": "Eu defino GET versionado e commit na fonte. Apagar o cache não revoga uma regra; write-through não transforma duas gravações em uma transação.",
+            "concept": "Read-your-writes exige comparar uma versão da mesma entidade e linhagem ou consultar a autoridade; o nome do padrão não fornece essa garantia.",
+            "connect": "API → serviço → banco transacional. Resposta da mudança leva versão; consulta informativa retorna envelope e contratação recebe decisão autoritativa.",
+            "technology": "PostgreSQL é suficiente como baseline. Cache-aside entra somente após medir repetição; read-through é alternativa de encapsulamento, não uma garantia superior automática.",
+            "defend": "Evito write-behind para condições autoritativas e dinheiro: perder ou reordenar a fila de gravação mudaria o significado do commit para o cliente."
+          }
+        },
+        {
+          "interviewer": "Adicione o cache. Cem requisições chegam à mesma chave ausente. Você usa LRU, LFU, TTL ou um lock distribuído?",
+          "say": "Eu adicionaria cache-aside depois de medir a repetição. O serviço valida um hit antes de responder; no miss, um coalescer compartilha o mesmo carregamento entre requisições locais, respeitando seus deadlines. TTL controla validade temporal e LRU ou LFU escolhem o que sai sob pressão de memória; são decisões diferentes. Começaria com limites de recarga e uma política medida, sem um lock distribuído no caminho financeiro. Se várias instâncias ainda fizerem trabalho excessivo para a mesma chave, acrescento uma lease curta de preenchimento como otimização.",
+          "ask": [
+            "O tráfego favorece itens recentes, itens frequentemente acessados ou campanhas com mudança brusca de popularidade?",
+            "É aceitável responder uma cópia ainda válida durante a atualização em segundo plano?"
+          ],
+          "draw": [
+            "Cache, validador de envelope e coalescer no caminho de miss.",
+            "Lease de preenchimento, deadline e limite de concorrência, sem conceder autoridade financeira ao cache."
+          ],
+          "deepDive": "Singleflight em uma instância não elimina carregamentos de todas as instâncias; o orçamento da fonte continua necessário. Um requerente com timeout não deve cancelar indevidamente o trabalho compartilhado de outros, mas o loader também precisa de deadline próprio. A lease tem token de proprietário: somente o proprietário atual pode publicar ou liberar, por comparação atômica. TTL recebe jitter para espalhar expirações, sem exceder o limite contratual de validade. Negative caching usa prazo menor e é escopado, evitando transformar erro transitório ou autorização negada em ausência pública. LRU favorece recência; LFU estima frequência com esquecimento, podendo reagir mais lentamente a mudanças. Redis oferece aproximações dessas políticas; o desenho didático hash mais DLL não deve ser apresentado como seu algoritmo exato.",
+          "check": "Miss, erro, expiração, evicção e recarga simultânea possuem comportamentos distintos e deadlines limitados.",
+          "memory": {
+            "say": "Eu compartilho o miss local, limito a recarga e escolho evicção pela distribuição real. TTL protege o contrato de idade, não substitui LRU ou LFU.",
+            "concept": "Singleflight agrega chamadas locais; uma lease global só reduz trabalho redundante. Token e deadline impedem que um proprietário antigo publique ou libere o novo.",
+            "connect": "Serviço → cache; miss → coalescer → fonte → fill condicional. A contratação mantém sua ligação direta com a autoridade.",
+            "technology": "Go singleflight ou implementação equivalente por processo; Redis com política aproximada medida, ou Memcached para objetos simples e um protocolo de carregamento explícito.",
+            "defend": "Se coalescência local e orçamento já bastarem, retiro a lease distribuída. Ela custa coordenação e não elimina a necessidade de suportar sua própria falha."
+          }
+        },
+        {
+          "interviewer": "Um leitor busca v10, a escrita confirma v11 e apaga a chave; depois o leitor grava v10. E se a tombstone expirar e o contador voltar a zero?",
+          "say": "Esse interleaving invalida a solução de apenas deletar. Eu persistiria a mudança e a intenção de invalidação no mesmo commit, e o relay trabalharia depois. Antes de ler a fonte, o loader recebe um token único da geração atual. O preenchimento compara token, geração e prazo atomicamente; se os metadados desaparecerem, ele falha em vez de fazer SET. Nunca reinicio silenciosamente um contador em zero. Ainda existe atraso entre commit e invalidação: para atualidade estrita, uso a fonte, não uma promessa baseada no relay.",
+          "ask": [
+            "A invalidação deve sobreviver à queda do processo imediatamente após o commit?",
+            "Qual regra define a validade de um loader pausado por mais tempo que a tombstone ou lease?"
+          ],
+          "draw": [
+            "Outbox na fonte e relay de invalidação por entidade e versão.",
+            "Corrida v10/v11 e comparação atômica de token, geração, versão e prazo antes de publicar."
+          ],
+          "deepDive": "Um protocolo didático é: claim cria token aleatório não reutilizável antes da leitura; fill só publica se esse token ainda existe, pertence à geração atual e não venceu. A invalidação elimina o token anterior e mantém informação de versão suficiente para não apagar uma cópia comprovadamente mais nova. Payload e metadados relacionados ficam na mesma chave composta ou slot para que a operação condicional seja atômica. Tombstone expirada ou evictada nunca autoriza um fill antigo; um novo claim gera identidade diferente. Isso evita ABA dentro da história observada daquele shard, mas não prova frescor após todo commit nem sobrevive automaticamente ao rollback de metadados em failover assíncrono. Eventos repetidos ou fora de ordem são filtrados por versão e domínio; se a comparação não for segura, invalidar conservadoramente é preferível a publicar. A entrega durável pode usar polling da outbox, sem Kafka obrigatório.",
+          "check": "O loader antigo é rejeitado após expiração, evicção ou troca de geração; a janela assíncrona e o limite do failover estão explícitos.",
+          "memory": {
+            "say": "Eu rejeito o preenchimento atrasado com token e geração, inclusive se a tombstone sumir. Outbox protege a intenção, mas não elimina o atraso entre commit e invalidação.",
+            "concept": "ABA ocorre quando ausência ou contador reiniciado parece o estado original. Tokens não reutilizados e comparação com metadados existentes impedem essa falsa equivalência local.",
+            "connect": "Commit da fonte → outbox → relay → invalidação versionada; loader → comparação atômica → payload. Metadados ausentes fazem o fill falhar.",
+            "technology": "Uso script curto ou operação condicional no shard; chaves relacionadas precisam de colocação compatível. Polling da outbox é alternativa inicial a um broker.",
+            "defend": "Uma tombstone com TTL finito não protege leitores arbitrariamente pausados sozinha. O fill exige token válido; atualidade estrita continua exigindo a fonte."
+          }
+        },
+        {
+          "interviewer": "O cache cresceu e uma campanha concentra metade das consultas em uma chave. Redis Cluster usa consistent hashing? Acrescentar shards resolve?",
+          "say": "Eu separaria três problemas: localizar a chave, distribuir o conjunto e atender uma chave muito quente. Redis Cluster usa dezesseis mil trezentos e oitenta e quatro slots, não um anel de consistent hashing. Uma solução com clientes e nós independentes pode usar anel com nós virtuais ou rendezvous, mas precisa tratar mudanças de membros. Acrescentar shards move grupos de chaves; não divide magicamente uma chave. Para a campanha, avalio coalescência, cópia local de curta duração ou réplicas de leitura somente dentro do contrato de frescor.",
+          "ask": [
+            "O gargalo da chave quente é CPU, banda, tamanho do objeto, recarga ou sincronização?",
+            "Os clientes suportam redirecionamento e atualização de topologia durante resharding?"
+          ],
+          "draw": [
+            "Roteamento, shards e réplicas com responsabilidade de placement explícita.",
+            "Uma hot key separada da média do cluster e alternativas que preservam o limite de idade."
+          ],
+          "deepDive": "O cliente de Redis Cluster mantém o mapa de slots e trata redirecionamentos; não deve enviar tráfego indiscriminadamente a um nó fixo. Hash tags permitem colocar chaves relacionadas juntas, mas usar todo o tenant como tag pode concentrar seus objetos em um único slot. Num anel ordenado, procurar o sucessor costuma custar O(log V) para V posições virtuais; rendezvous ingênuo compara N destinos e custa O(N). Esses custos de placement são distintos do lookup médio O(1) da tabela local. Uma cópia L1 reduz rede para uma chave quente, porém adiciona outra janela de invalidação: ela preserva valid_until da origem e não renova validade. Réplicas aumentam leituras com risco de atraso; separar um objeto grande em partes só ajuda se o contrato permitir consultá-las independentemente.",
+          "check": "Placement, custo do lookup local e capacidade de uma única chave não foram confundidos.",
+          "memory": {
+            "say": "Eu identifico o recurso saturado antes de adicionar shards. Redis Cluster usa slots; uma hot key continua sendo uma hot key depois do resharding.",
+            "concept": "Anel, rendezvous e slots resolvem placement com mecanismos diferentes. Réplica ou L1 pode aliviar leitura, mas acrescenta atraso e trabalho de invalidação.",
+            "connect": "Serviço, loader e relay → cliente de topologia → shard. Todas as operações da geração de uma entrada precisam alcançar o mesmo domínio condicional.",
+            "technology": "Redis Cluster para slots nativos; Memcached com cliente de placement para objetos simples. Não imponho o protocolo de slots a todo serviço gerenciado.",
+            "defend": "Só introduzo L1 para uma concentração medida e preservo o prazo original. Se ela ocultar mudanças além do contrato, removo-a ou consulto a autoridade."
+          }
+        },
+        {
+          "interviewer": "Perdemos o primário, a réplica está atrasada e o cache volta frio. Posso tratar qualquer erro como miss e mandar tudo ao banco? WAIT resolve a consistência?",
+          "say": "Eu protegeria a fonte antes de tentar preservar hit ratio. No exemplo, cache frio transforma mil recargas potenciais em vinte mil; se a fonte admite duas mil com folga, o excedente precisa de recusa, espera curta ou uma cópia ainda contratualmente válida. Replicação assíncrona pode ressuscitar payloads e tokens antigos. WAIT não transforma Redis em uma autoridade linearizável. Vou classificar o namespace recuperado como suspeito, impedir preenchimentos antigos e reconstruir uma geração confiável, mantendo o orçamento de recarga durante todo o processo.",
+          "ask": [
+            "Qual capacidade de fallback foi realmente validada sem prejudicar contratação e outras jornadas?",
+            "Como detectamos failover e impedimos que um loader da geração anterior volte a publicar?"
+          ],
+          "draw": [
+            "Gate explícito de admissão entre loader e fonte, com fila e deadline limitados.",
+            "Failover → quarentena da geração → invalidação de claims → aquecimento gradual e verificação."
+          ],
+          "deepDive": "A comparação de token protege uma história local, mas uma réplica atrasada pode restaurar justamente o token que já havia sido invalidado. Para exigir rejeição após failover, o controle de geração precisa sobreviver fora daquele rollback e a aplicação deve cercar a geração suspeita: rejeitar a época antiga na admissão das aplicações, cercar o endpoint anterior e só habilitar o novo namespace após uma barreira verificada. O controlador não confirma essa barreira apenas por timeout ou por receber um evento de failover. Se não consigo estabelecer essa barreira, não alego a garantia; desabilito esse namespace e uso a fonte sob limite. Payloads recuperados também precisam de prazo de origem e versão compatíveis. Circuit breaker evita insistência contra cache indisponível, mas não aumenta a capacidade do banco. O orçamento agregado considera toda a frota; semáforos locais recebem cotas cuja soma permanece no limite, com ajuste controlado ao escalar. Reservo capacidade por tenant e separo confirmação de contrato da consulta informativa. Retries são limitados pelo deadline, com jitter e sem multiplicação entre camadas.",
+          "check": "O plano não transforma cache frio em avalanche nem usa replicação ou WAIT como prova de frescor estrito.",
+          "memory": {
+            "say": "Eu limito fallback e isolo a geração suspeita. A recuperação do cache não pode derrubar a autoridade nem ressuscitar um preenchimento antigo.",
+            "concept": "Failover assíncrono pode voltar payload e fence no tempo. Token sozinho não protege esse rollback; geração e barreira de recuperação precisam de controle independente.",
+            "connect": "Miss → admissão → fonte; failover → bloqueio da geração antiga → novo namespace → rewarm limitado. Contratação preserva orçamento próprio.",
+            "technology": "Semáforo e limite de taxa por jornada protegem a fonte. Circuit breaker reduz insistência; WAIT melhora confirmação de réplica sem fornecer linearizabilidade.",
+            "defend": "Aceito indisponibilidade temporária de simulações quando falta capacidade ou frescor. Mostrar uma condição inválida ou saturar a autoridade viola uma promessa mais importante."
+          }
+        },
+        {
+          "interviewer": "Defina um SLO, operação em três ambientes e o teste que provaria a recuperação. Se perdermos todo o cache, qual é o RPO?",
+          "say": "Eu proporia medir a jornada, não apenas a disponibilidade do Redis. Como meta de treino, noventa e nove vírgula nove por cento das consultas elegíveis devem devolver condições válidas dentro de duzentos e cinquenta milissegundos, numa janela de trinta dias; a meta precisa ser validada. Separaria recusas por capacidade, violações de frescor e erros da fonte. Perder cache não pode perder decisões financeiras, porque elas estão na autoridade. O tempo para recuperar atendimento depende do orçamento de fallback e do working set, e será medido em um exercício de perda completa.",
+          "ask": [
+            "Quem é dono do cache, das políticas de validade e do orçamento compartilhado da fonte?",
+            "O SLO inclui períodos de cache frio e tenants de alto volume sem exclusões oportunistas?"
+          ],
+          "draw": [
+            "Observabilidade por jornada: idade, recargas, saturação, erros, fila e concentração por tenant.",
+            "Runbook de perda total, failover com lag e rollout de namespace com rollback compatível."
+          ],
+          "deepDive": "Eu acompanharia hit ratio por requisição e por bytes, evicções, expirações, latência de comandos, rede, memória residente, buffers, fragmentation e atraso do relay. Esses sinais explicam o SLO, mas não o substituem. maxmemory não equivale a limitar todo o RSS. Testo pausa do loader antes do fill, expiração da tombstone, invalidação reordenada, promoção atrasada, chuva de misses e uma hot key com payload grande. RPO de decisões é propriedade do banco autoritativo; cache pode ser descartado, e isso não autoriza afirmar RPO zero para o sistema inteiro. ElastiCache, Azure Managed Redis ou Redis/Memcached operados internamente exigem escolhas próprias de topologia e capacidade. TLS, ACLs, isolamento de rede e minimização de dados acompanham custo e limites. Rollback de software não reabre automaticamente um namespace com esquema ou geração incompatíveis. Consultas elegíveis são pedidos válidos e autorizados; recusas por capacidade e timeouts contam como falha do SLO, sem desaparecer do denominador.",
+          "check": "Há responsável, SLI de resultado correto, orçamento de erro, teste de perda completa e dependências explícitas de recuperação.",
+          "memory": {
+            "say": "Eu contrato uma meta de experiência com frescor e prazo, depois testo perda total. RPO financeiro pertence à fonte; cache descartável não prova RPO zero do sistema.",
+            "concept": "Hit ratio é diagnóstico, não sucesso do usuário. O runbook precisa validar idade, geração, capacidade de fallback e comportamento de clientes antigos.",
+            "connect": "Operação → cache, gate e fonte: correlaciono memória, lag e recargas com respostas válidas. Recuperação e rollout respeitam a mesma autoridade.",
+            "technology": "AWS ElastiCache; Azure Managed Redis; on-prem Redis Cluster ou Memcached. A fonte transacional permanece separada, com TLS, ACLs e capacidade própria.",
+            "defend": "SLO é meta de engenharia; SLA requer compromisso contratual e consequências. Não apresento números ilustrativos de treino como garantia do provedor ou do Nubank."
+          }
+        },
+        {
+          "interviewer": "Você tem quatro minutos. O que manteria no primeiro lançamento, o que removeria e como defenderia a decisão para produto e operação?",
+          "say": "Eu encerraria com o caminho mínimo: fonte transacional, contrato versionado, cache-aside e recarga limitada. A confirmação financeira permanece na autoridade. Acrescento outbox e invalidação quando a frequência de mudança justificar reduzir a janela de TTL; distribuo o cache quando memória, banda ou isolamento medidos exigirem. Não começaria com L1, broker e lease global sem um problema demonstrado. Minha decisão é entregar uma consulta rápida com limite de idade explícito, manter a fonte protegida e testar a pior recuperação antes de ampliar a exposição.",
+          "ask": [
+            "Se reduzirmos o tráfego em dez vezes, quais componentes deixam de ser necessários?",
+            "Qual resultado do canário nos faria suspender a expansão ou abandonar o cache para este endpoint?"
+          ],
+          "draw": [
+            "Desenho final destacando baseline, extensões condicionais e autoridade financeira preservada.",
+            "Tabela verbal de aceitação: correção, capacidade fria, segurança, custo e reversibilidade."
+          ],
+          "deepDive": "Eu pediria um canário por parcela de tráfego e compararia a resposta cacheada com a fonte em uma amostra limitada, sem duplicar toda a carga nem registrar dados pessoais desnecessários. Aceitação inclui nenhum vazamento entre tenants, rejeição comprovada de fills antigos, limites de idade respeitados e fallback que não consome o orçamento da contratação. Se a fonte indexada já atender ao pico com custo aceitável e pouca repetição, retiro cache e sua invalidação. Se a meta exigir frescor estrito e a leitura não puder consultar a autoridade, reformulo o requisito ou proponho outro protocolo, sem renomear eventual como forte. Registro também o custo de memória replicada, operação, rewarm e testes. A equipe ganha critérios de expansão e de remoção, não uma coleção permanente de tecnologias.",
+          "check": "Consigo resumir promessa, autoridade, pior falha, critério de evolução e componente que retiraria quando a hipótese deixar de valer.",
+          "memory": {
+            "say": "Eu entrego cache-aside com contrato e orçamento, mantendo confirmação na fonte. Expansões entram por evidência, e cada uma tem critério de retirada.",
+            "concept": "A revisão Principal compara custo de coordenação com benefício mensurado. Cache pode deixar de compensar quando repetição baixa ou frescor estrito domina.",
+            "connect": "Consulta → envelope validado; miss → fonte admitida; mudança → invalidação durável quando necessária. Nenhum atalho altera a confirmação financeira.",
+            "technology": "Primeiro fonte indexada e cache simples; shards, L1, lease global e broker são extensões condicionais, não requisitos para chamar a solução de distribuída.",
+            "defend": "Se o canário mostrar idade incorreta, fonte saturada ou isolamento falho, paro a expansão. O rollback preserva schema e geração, sem reviver cópias suspeitas."
+          }
+        }
+      ],
+      "closing": "Eu separei apresentação de decisão financeira, defini identidade e validade, dimensionei o cache frio e tratei a corrida de preenchimento sem prometer consistência que o protocolo não fornece. O desenho evolui de cache-aside simples para invalidação, distribuição e recuperação somente quando requisitos medidos justificam essas peças. Minha entrega inclui critérios para recusar, degradar, recuperar e remover o cache.",
+      "deployments": {
+        "aws": "Serviço e loader em ECS/Fargate ou EKS; fonte em RDS/Aurora PostgreSQL com mudança e outbox na mesma transação; relay com polling limitado; ElastiCache para Valkey/Redis OSS ou Memcached conforme recursos necessários. Escolher explicitamente node-based ou serverless e seu contrato de cliente, rede, capacidade e failover. Não assumir que toda opção expõe a mesma topologia Redis Cluster. CloudWatch/OpenTelemetry acompanham recargas e jornada. Multi-AZ do cache não o torna autoridade financeira; o plano de geração, fallback e aquecimento continua necessário.",
+        "azure": "Serviço e relay em Container Apps ou AKS; autoridade em Azure Database for PostgreSQL; Azure Managed Redis para a cópia. Validar configuração de clustering, suporte a comandos/scripts, limites e failover do produto escolhido, sem supor equivalência perfeita com Redis Cluster autogerido. Identidade gerenciada quando suportada, rede privada e TLS reduzem exposição. Azure Monitor/OpenTelemetry correlacionam memória, atraso, recargas e resultado correto. A outbox fica no banco da mudança, e a geração de recuperação não depende exclusivamente de metadados sujeitos ao rollback do cache.",
+        "onprem": "Serviço em processos ou Kubernetes; PostgreSQL operado com backup e recuperação próprios; Redis Cluster para sharding por slots, ou Memcached com placement e redistribuição no cliente quando objetos simples bastarem. Definir capacidade por shard, réplicas quando aplicável, domínio de falha, rede e operador responsável. Lua/condicionais precisam respeitar a colocação das chaves; uma lease continua sendo otimização. Prometheus/OpenTelemetry e testes de perda de nó, atraso, cache frio e fonte saturada são parte da operação. Adotar cache não dispensa testes de restauração da autoridade."
+      },
+      "sourceIds": [
+        "arch-cache",
+        "fund-redis-eviction",
+        "fund-aws-cache",
+        "arch-aws-cache",
+        "arch-az-redis",
+        "pb-cache-cluster",
+        "pb-cache-replication",
+        "pb-cache-wait",
+        "pb-cache-lua",
+        "pb-cache-singleflight",
+        "pb-cache-memcached",
+        "pb-cache-pipeline",
+        "pb-cache-memcache-paper"
+      ],
+      "links": [
+        {
+          "label": "Cache-aside: funcionamento e trade-offs",
+          "href": "#atlas/cache-aside"
+        },
+        {
+          "label": "Fundamentos de caches",
+          "href": "#foundations/caches"
+        },
+        {
+          "label": "Placement e consistent hashing",
+          "href": "#atlas/consistent-hashing"
+        },
+        {
+          "label": "Replicação e limites de failover",
+          "href": "#foundations/replication"
+        },
+        {
+          "label": "Backpressure e proteção da fonte",
+          "href": "#atlas/backpressure"
+        },
+        {
+          "label": "Condições de pagamento: proposta e aceitação",
+          "href": "#playbook/payment-conditions"
         }
       ]
     }
@@ -6498,74 +7404,81 @@
       "bankingExample": "Cem mil consultas de saldo diferem de cem mil débitos concorrentes na mesma conta. Eu mostro essa diferença antes de escolher número de shards ou workers."
     },
     "mm-cache-layers": {
-      "whyHere": "Eu identifico repetição de leitura e alcance da cópia antes de introduzir cache local ou compartilhado no caminho.",
+      "whyHere": "Eu escolho o local da cópia pelo custo evitado e pelo contrato de atualização, incluindo o impacto de reiniciar toda a frota.",
       "technologyIds": [
-        "redis"
+        "redis",
+        "postgres",
+        "s3"
       ],
-      "alternatives": "Cache local evita rede, mas replica estado e invalidação por processo. Redis compartilha capacidade com outra dependência; consultar diretamente um índice pode ser mais simples em baixa repetição.",
-      "bankingExample": "Condições de pagamento podem usar dados estáveis em cache e campos sensíveis com frescor próprio. Eu não aplico a mesma validade a todos os atributos da resposta."
+      "alternatives": "Cache local evita um RTT, mas duplica memória e misses entre processos. Redis compartilhado concentra reutilização com outra dependência; documentos imutáveis podem ir à CDN. Uma consulta indexada suficiente permite remover a cópia inteira.",
+      "bankingExample": "Cenário autoral: um catálogo versionado de tipos de pagamento cabe no processo, enquanto o extrato usa dados por titular. Copiar o catálogo é simples; replicar permissões atuais exige um contrato de revogação separado."
     },
     "mm-ttl": {
-      "whyHere": "Eu combino a janela aceitável de desatualização com a necessidade de expiração lógica e a capacidade de reconstrução.",
-      "technologyIds": [
-        "redis"
-      ],
-      "alternatives": "TTL limita duração da cópia, mas não garante invalidação imediata. Eventos de mudança e versões reduzem outras janelas; leitura autoritativa atende dados que não toleram atraso.",
-      "bankingExample": "Uma oferta expirada não deve continuar elegível só porque o objeto ainda existe em cache. A autorização revalida a condição atual antes de produzir efeito financeiro."
-    },
-    "mm-eviction": {
-      "whyHere": "Eu trato eviction como política de capacidade de memória, separada da regra de validade do dado armazenado.",
-      "technologyIds": [
-        "redis"
-      ],
-      "alternatives": "LRU privilegia recência e LFU frequência conforme a implementação; ambas podem perder eficiência em certos acessos. Mais memória compete com custo e não corrige chaves incorretas ou baixa reutilização.",
-      "bankingExample": "Uma rajada de consultas únicas pode expulsar condições populares. Eu mediria misses e carga na origem, preservando admissão para que a troca de política não derrube o banco."
-    },
-    "mm-cache-invalidation": {
-      "whyHere": "Eu verifico a corrida entre alteração, invalidação e refresh para impedir que uma resposta antiga volte a ser publicada.",
+      "whyHere": "Eu negocio idade máxima por finalidade antes de escolher TTL, porque expirar uma cópia não comprova que a fonte consultada estava atual.",
       "technologyIds": [
         "redis",
         "postgres"
       ],
-      "alternatives": "TTL é simples com janela residual; invalidação por evento precisa de entrega e versão. CAS ou tombstone versionado protege publicação, mas exige definir comparabilidade e recuperação do estado.",
-      "bankingExample": "Um refresh iniciado antes da mudança de limite termina depois. Eu rejeito a versão antiga, em vez de recolocá-la no cache após a invalidação mais recente."
+      "alternatives": "Comparo expiração, invalidação por evento e chave imutável por versão. Jitter distribui renovações, respeitando o limite máximo de idade; sinais críticos podem exigir validação autoritativa. TTL longo reduz misses, mas só cabe no frescor permitido.",
+      "bankingExample": "Cenário autoral: a descrição de um produto aceita atraso, mas o bloqueio de uma conta exige outra política. A cópia registra idade da fonte; renovar sua TTL não transforma informação antiga em nova."
     },
-    "mm-cache-hit": {
-      "whyHere": "Eu uso hit rate para entender economia, mas dimensiono também o cenário em que todas as leituras chegam à origem.",
+    "mm-eviction": {
+      "whyHere": "Eu separo falta de memória, conteúdo sem reutilização e escolha da vítima, para não trocar algoritmos quando o problema real é admissão.",
       "technologyIds": [
         "redis",
         "prometheus"
       ],
-      "alternatives": "Uma taxa alta pode esconder dependência frágil. Coalescing, admissão e degradação limitam misses; aumentar cache não substitui capacidade mínima de operação durante falha e reaquecimento.",
-      "bankingExample": "Se o cache de condições cair, a API restringe fallback conforme a capacidade real. Prefiro recusar consultas secundárias a derrubar a autoridade usada por pagamentos."
+      "alternatives": "LRU favorece recência; LFU com envelhecimento favorece popularidade persistente. Comparo ambos com bypass de scans e orçamento por namespace, medindo bytes e custo de miss. As aproximações do Redis reduzem metadados e mudam o compromisso de CPU.",
+      "bankingExample": "Cenário autoral: exportar dez anos de extrato não deve expulsar todas as páginas recentes do aplicativo. Testo separar os fluxos e só depois avalio se LFU melhora a jornada com a mesma memória."
+    },
+    "mm-cache-invalidation": {
+      "whyHere": "Eu enceno uma leitura antiga terminando depois do commit novo, pois essa corrida revela se nossa política realmente controla a publicação de versões.",
+      "technologyIds": [
+        "redis",
+        "postgres",
+        "debezium"
+      ],
+      "alternatives": "Chaves por versão evitam sobrescrita do payload, mas precisam selecionar a versão apropriada. Ponteiros mutáveis exigem publicação condicionada e recuperação do piso conhecido; invalidação por evento precisa tolerar atraso, duplicação e um preenchimento antigo ainda em execução.",
+      "bankingExample": "Cenário autoral: condições de pagamento mudam enquanto uma composição antiga está em voo. O cliente exige a versão confirmada e rejeita o refresh insuficiente, mesmo que outro solicitante tenha iniciado aquela atualização compartilhada."
+    },
+    "mm-cache-hit": {
+      "whyHere": "Eu converto misses em trabalho da origem e sucesso da jornada, porque um hit rápido pode ser inválido e um cache frio pode derrubar pagamentos.",
+      "technologyIds": [
+        "prometheus",
+        "otel",
+        "redis"
+      ],
+      "alternatives": "Comparo memória adicional com controle de admissão, coalescing e consultas mais eficientes. Defino hit efetivo após validar frescor e versão; meço histogramas da jornada, pois ponderar percentis de hit e miss não produz o percentil global.",
+      "bankingExample": "Cenário autoral: a leitura de ofertas mantém 99% de hits, mas o restante excede o orçamento da origem no pico. Reservo capacidade para confirmações e contabilizo recusas de leitura no SLI correspondente."
     },
     "mm-cache-aside": {
-      "whyHere": "Eu escolho cache-aside quando a aplicação consegue decidir chave, validade e comportamento de miss de forma explícita.",
+      "whyHere": "Eu começo pelo caminho de miss e sua recuperação, deixando explícito quem consulta o banco, publica a cópia e limita trabalho concorrente.",
       "technologyIds": [
         "redis",
         "postgres"
       ],
-      "alternatives": "A aplicação controla população e falha, mas precisa resolver stampede e invalidação. Leitura direta simplifica consistência; write-through exige outra coordenação entre escrita e cópia.",
-      "bankingExample": "Uma consulta de perfil pode buscar PostgreSQL após miss e publicar com versão. Um pedido de leitura mínima não recebe valor antigo apenas porque outro waiter compartilhou o refresh."
+      "alternatives": "Cache-aside na aplicação é simples para leituras repetidas; read-through delega carregamento a um componente que o implemente. Para muitas ausências, avalio negative cache curto ou Bloom com cobertura conhecida, mantendo validação e orçamento da origem.",
+      "bankingExample": "Cenário autoral: consultas repetidas a um identificador inexistente pressionam o cadastro. Uma ausência confirmada pode ser cacheada brevemente; uma criação recente ou timeout da fonte exige tratamento diferente para não negar clientes legítimos."
     },
     "mm-write-through": {
-      "whyHere": "Eu examino o caminho de confirmação quando a proposta diz que uma escrita atualiza banco e cache simultaneamente.",
+      "whyHere": "Eu pergunto qual commit torna a operação verdadeira antes de coordenar duas escritas, evitando interpretar falha de cache como falha do pagamento.",
       "technologyIds": [
+        "postgres",
         "redis",
-        "postgres"
+        "debezium"
       ],
-      "alternatives": "Atualizar ambos antes de responder não cria transação distribuída por si só. Autoridade única com invalidação ou outbox pode ser mais clara; coordenação adicional cobra latência e falhas parciais.",
-      "bankingExample": "Uma mudança de preferência confirma na autoridade e informa sua versão. Se atualizar cache falhar, a política mantém correção e trata a cópia como desatualizada, não como outro registro definitivo."
+      "alternatives": "Comparo atualização síncrona da cópia com commit autoritativo e outbox recuperável. Esperar ambas as chamadas não basta para atomicidade; leitura imediatamente atual exige protocolo adicional ou acesso à autoridade. A escolha depende da promessa observável ao cliente.",
+      "bankingExample": "Cenário autoral: a reserva foi confirmada no banco, mas Redis recusou a atualização. A API recupera o resultado original e repara a cópia; o cliente não recebe autorização para gastar novamente aquele valor."
     },
     "mm-write-behind": {
-      "whyHere": "Eu pergunto o que foi persistido antes do ACK quando a gravação final ocorrerá posteriormente em outro armazenamento.",
+      "whyHere": "Eu verifico onde existe uma cópia durável antes de aceitar uma escrita antecipadamente, distinguindo otimização descartável de obrigação de negócio ainda não persistida.",
       "technologyIds": [
         "redis",
-        "kafka",
-        "postgres"
+        "postgres",
+        "kafka"
       ],
-      "alternatives": "Write-behind pode reduzir latência, mas precisa de log durável, ordem e recuperação. Cache volátil como único aceite arrisca perda; commit direto é mais simples quando a garantia exige durabilidade imediata.",
-      "bankingExample": "Não confirmo uma transferência apenas porque entrou na memória do cache. Se houver aceite assíncrono, mostro pendência e identifico a obrigação durável que sobreviverá ao reinício."
+      "alternatives": "Se perder a escrita for aceitável, um buffer volátil pode bastar. Para obrigação financeira, persisto antes do aceite; log durável com identidade e consumidores recuperáveis é outra arquitetura, cuja confirmação não equivale a uma simples escrita em cache.",
+      "bankingExample": "Cenário autoral: registrar preferência visual pode ter um contrato menos crítico que aceitar uma transferência. Não coloco ambas em write-behind por conveniência; explicito perda tolerada e a evidência durável necessária para cada confirmação."
     },
     "mm-ddd": {
       "whyHere": "Eu começo pela linguagem do negócio para que conta, pagamento e liquidação tenham significado compartilhado antes do desenho.",
@@ -8377,6 +9290,41 @@
       "limit": "É evidência do material recebido pelo candidato, não confirmação pública de que todas as entrevistas atuais tenham formato idêntico. Não identifica o desafio, critérios internos de pontuação, stack obrigatória ou perguntas dos entrevistadores."
     },
     {
+      "id": "1wesHL52cfTrDqXLS5fFV2a-nt5AmN-Ie",
+      "title": "Background of Distributed Cache.pdf",
+      "insights": [
+        "Escolho a política de escrita pelo significado do ACK e pela recuperação de falhas intermediárias; duas escritas aguardadas não formam automaticamente uma transação.",
+        "Trato TTL como limite de uso da cópia e eviction como decisão de capacidade. Uma entrada pode ser removida antes de expirar ou estar logicamente expirada antes da limpeza física.",
+        "Se houver write-behind, preciso localizar a obrigação durável anterior ao aceite; memória sujeita a eviction não pode ser a única prova de um efeito financeiro.",
+        "Hashing distribui chaves e reduz remapeamento sob hipóteses específicas; repetição intensa de uma única chave continua concentrando trabalho.",
+        "Para Bloom, declaro qual conjunto está representado e como é atualizado. Uma cópia incompleta ou perdida não pode justificar ausência na autoridade.",
+        "Cache compartilhado exige namespace e quotas; prefixos evitam colisões lógicas, mas não substituem autorização, isolamento e limites de recursos."
+      ],
+      "application": "Na mudança de uma condição comercial, confirmo a autoridade, publico invalidação recuperável e impeço refresh antigo de substituir versão nova. A consulta expõe frescor; a contratação revalida.",
+      "limit": "O texto exagera a garantia de write-through e mistura distribuição com tolerância a falha. A tabela da página 2 está cortada à direita, limitando a comparação original.",
+      "sourceIds": [
+        "pb-drive-1wesHL52cfTrDqXLS5fFV2a-nt5AmN-Ie",
+        "cache-ref-aws-outbox",
+        "cache-ref-redis-transactions",
+        "cache-ref-redis-eviction",
+        "cache-ref-redis-bloom",
+        "cache-ref-redis-cluster"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
+    },
+    {
       "id": "1lMeqTZbmefegtlZtGnH64PULthRSUlJ8",
       "title": "Data Partitioning.pdf",
       "sourceIds": [
@@ -8494,6 +9442,39 @@
       "limit": "UUID não é obrigatoriamente armazenado como texto. Desempenho depende do tipo binário, versão, índice e distribuição. Alterar módulo de sequências concorrentes exige migração coordenada; simplesmente mudar o incremento pode colidir."
     },
     {
+      "id": "1tAKLgqJb4Ab43Bgsm57SwBm88ijU4nDq",
+      "title": "Detailed Design of a Distributed Cache.pdf",
+      "insights": [
+        "Distingo a configuração usada para encontrar um nó da autoridade que determina se ele pode responder ou aceitar escrita; descoberta sozinha não resolve split-brain.",
+        "Replicar aumenta opções de recuperação, mas o contrato precisa explicar quais cópias reconheceram a escrita e qual delas pode ser promovida.",
+        "Uma implementação didática de LRU combina índice por chave e lista por recência; sob concorrência, atualizar essa ordem também possui custo de coordenação.",
+        "Incluo delete/invalidate para mudanças e remoções da fonte. A corrida entre refresh e invalidação exige regra de publicação, não apenas expiração eventual.",
+        "Ao adicionar capacidade, descrevo migração e redirecionamento. Repartir chaves modifica localização; não atualiza magicamente todos os clientes no mesmo instante."
+      ],
+      "application": "No cache de informações de entrega do cartão, guardo versão da atualização e invalido por evento. Réplica atrasada não pode fazer o aplicativo retroceder silenciosamente de entregue para em trânsito.",
+      "limit": "A figura detalhada da página 10 foi conferida visualmente pela equipe. Seu mecanismo de lista é apresentado como frequência, mas LRU é recência; proximidade das réplicas não prova consistência forte.",
+      "sourceIds": [
+        "pb-drive-1tAKLgqJb4Ab43Bgsm57SwBm88ijU4nDq",
+        "cache-ref-redis-replication",
+        "cache-ref-redis-cluster",
+        "cache-ref-caffeine-design",
+        "cache-ref-redis-transactions"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
+    },
+    {
       "id": "15h5q8GS8iHRktDMkKm6Xa7YI7edMJISy",
       "title": "Detailed Design of a Monitoring System.pdf",
       "sourceIds": [
@@ -8509,6 +9490,38 @@
       ],
       "application": "Desenhar coletores por célula, alertas locais e visão global. Medir atraso do pipeline e limitar cardinalidade por serviço, região e classe de erro; identificadores de clientes ficam fora de rótulos de métricas.",
       "limit": "Pull permite controlar a cadência, mas não garante ausência de congestionamento. A hierarquia também pode concentrar gargalos e ocultar incidentes locais em médias globais."
+    },
+    {
+      "id": "18YcqKdxltJTMFf_hhr5x4BcBRuigyDFZ",
+      "title": "Distributed Cache System Design.pdf",
+      "insights": [
+        "Antes de adicionar cache, identifico repetição de consultas e custo evitável; um índice adequado pode resolver a carga sem criar outra cópia para manter.",
+        "Defino quem carrega um miss. No cache-aside, esse trabalho pertence à aplicação; read-through requer um componente de carregamento explicitamente implementado.",
+        "Se a origem estiver indisponível, só sirvo entradas já existentes e ainda aceitáveis pelo contrato; cache vazio não fabrica dados nem garante continuidade.",
+        "Separo cache compartilhado de cópias locais: economia de rede, memória multiplicada e propagação de mudanças geram decisões diferentes.",
+        "A chave inclui identidade, escopo e versão relevantes. Dois clientes com consultas textualmente iguais não necessariamente podem compartilhar o mesmo resultado."
+      ],
+      "application": "Em condições de pagamento, proponho cache de campos com validade conhecida, deixando a autorização consultar sua autoridade. É exercício fintech, sem atribuição de topologia real ao Nubank.",
+      "limit": "A apresentação é introdutória: distribuir servidores não prova alta disponibilidade. A tabela de camadas na página 8 tem colunas cortadas; não inferi seu conteúdo ausente.",
+      "sourceIds": [
+        "pb-drive-18YcqKdxltJTMFf_hhr5x4BcBRuigyDFZ",
+        "cache-ref-aws-caching",
+        "cache-ref-azure-cacheaside",
+        "cache-ref-memcached-user"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
     },
     {
       "id": "1EdQZaqWTXkIhJw2fhZ1UDBvbW8l7cTrJ",
@@ -8542,6 +9555,39 @@
       ],
       "application": "Dimensionar por bytes e demanda por chave, e reservar capacidade para reconstruir uma réplica enquanto atende tráfego.",
       "limit": "Virtual nodes não tornam uma chave popular paralelizável nem garantem equilíbrio de CPU/bytes. Replicação depende de confirmação, persistência e recuperação; número de cópias isolado não prova RPO."
+    },
+    {
+      "id": "1rZ9NYX0OsJuhVuAwKzNO5RLqiJSlUg4V",
+      "title": "Evaluation of a Distributed Cache's Design.pdf",
+      "insights": [
+        "Avalio hit rate junto do custo por miss, da distribuição de chaves e da idade dos valores; uma taxa global alta pode esconder uma jornada ruim.",
+        "Calculo a média com médias condicionais de hit e miss. Percentis exigem a distribuição combinada; ponderar dois p99,9 não produz o p99,9 do serviço.",
+        "A complexidade do índice não inclui rede, tamanho dos objetos, serialização, contenção ou fila; O(1) não é promessa de tempo constante observado.",
+        "Testo cache frio, perda de nó, failover e reaquecimento além do regime estável. O orçamento de recuperação inclui a capacidade disponível da origem.",
+        "Separar regiões muda latência e domínios de falha, mas a garantia vem do protocolo de confirmação, leitura e promoção, não da distância geográfica."
+      ],
+      "application": "Proponho teste de carga com dados quentes, chaves únicas e queda de cache, medindo conclusão correta da consulta. As metas são hipóteses do exercício, nunca SLA real do Nubank.",
+      "limit": "O exemplo numérico usa valores de cauda numa fórmula de esperança; suas conclusões não devem ser apresentadas como percentil calculado. Replicação síncrona também recebe uma garantia mais forte que o protocolo descrito sustenta.",
+      "sourceIds": [
+        "pb-drive-1rZ9NYX0OsJuhVuAwKzNO5RLqiJSlUg4V",
+        "cache-ref-prometheus-histograms",
+        "cache-ref-memcached-performance",
+        "cache-ref-redis-latency",
+        "cache-ref-redis-wait"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
     },
     {
       "id": "1VZJijbciY7qi74oI8gV8DlutK-_4VZsW",
@@ -8591,6 +9637,39 @@
       ],
       "application": "Em células e multi-região, desenhar roteamento separadamente da promoção do escritor.",
       "limit": "GSLB não garante failover zonal instantâneo nem substitui a recuperação da autoridade de dados. Limites de resposta DNS e TTL são dependentes do protocolo e dos clientes."
+    },
+    {
+      "id": "150WAnLV6nK4haECFEUDGtn5ZLQB2sau-",
+      "title": "High-Level Design of a Distributed Cache.pdf",
+      "insights": [
+        "Transformo adjetivos de qualidade em contratos: latência por percentil, perda tolerável, validade da leitura e comportamento quando não consigo consultar a origem.",
+        "A API precisa distinguir valor, ausência, expiração e indisponibilidade. Timeout do cache não é prova de inexistência do objeto na fonte.",
+        "Dimensiono working set com chaves, valores, metadados, cópias e folga operacional; somente somar payloads subestima memória e trabalho de recuperação.",
+        "O caminho mínimo explicita aplicação, cliente de cache, nós e fonte autoritativa. Descoberta e redirecionamento precisam funcionar também durante mudança de topologia.",
+        "Ao perder uma fração do cache, limito a pressão transferida para o banco. A capacidade de fallback é uma restrição, não uma consequência automática da existência da origem."
+      ],
+      "application": "Numa consulta de extrato, proponho orçamento curto para o cache e concorrência limitada na autoridade. Se o fallback esgotar, a interface comunica indisponibilidade temporária em vez de formar uma fila ilimitada.",
+      "limit": "Requisito de todos os leitores verem o dado mais novo precisa de protocolo concreto. O desenho conceitual não especifica eleição, invalidação concorrente ou RPO; esses pontos continuam abertos.",
+      "sourceIds": [
+        "pb-drive-150WAnLV6nK4haECFEUDGtn5ZLQB2sau-",
+        "cache-ref-redis-eviction",
+        "cache-ref-redis-info",
+        "cache-ref-redis-cluster",
+        "cache-ref-aws-caching"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
     },
     {
       "id": "1gw_jVLt2WdTYGMUemOiQS9smYBNc9c7R",
@@ -8723,6 +9802,43 @@
       ],
       "application": "Perguntar quais operações são necessárias além de get/put antes de projetar um serviço de armazenamento próprio.",
       "limit": "Nem todo key-value store é uma DHT nem toda chave é gerada por hash. KV é modelo/API; distribuição e estrutura interna são decisões separadas."
+    },
+    {
+      "id": "1we6z1zVFKWWhQ3dCveX33RdjRX6e0EDJ",
+      "title": "Memcached versus Redis.pdf",
+      "insights": [
+        "Comparo operações e configuração exigidas: blob reconstruível, estruturas manipuladas no servidor, persistência, replicação e responsabilidades do cliente são critérios distintos.",
+        "Redis Cluster usa hash slots e redirecionamentos; Sentinel atende outra forma de alta disponibilidade. O diagrama genérico com cluster manager não identifica todas as implantações Redis.",
+        "Execução de comandos, threads de I/O e tarefas de persistência são dimensões diferentes. Não descrevo todo processo Redis como limitado para sempre a um único core.",
+        "Pipelining amortiza comunicação de comandos independentes; não cria transação, não elimina erros individuais e precisa de limites para o lote e suas respostas.",
+        "Memcached possui recursos documentados de warm restart e extstore com condições específicas. Isso não o transforma em uma autoridade financeira recuperável após qualquer crash.",
+        "Caffeine é uma alternativa local na JVM com política de admissão e refresh próprios; adicioná-lo como L1 exige discutir cópias por processo e validade, não apenas latência."
+      ],
+      "application": "Para condições lidas repetidamente, comparo Caffeine local, Memcached para objetos e Redis para operações necessárias no servidor. Escolho após medir acesso e frescor; deduplicação financeira continua na autoridade durável.",
+      "limit": "A tabela da página 15 contém apenas a coluna Feature visível: seus resultados não foram reconstruídos. Números históricos do Facebook e recomendações por tamanho não são benchmarks atuais reproduzidos.",
+      "sourceIds": [
+        "pb-drive-1we6z1zVFKWWhQ3dCveX33RdjRX6e0EDJ",
+        "cache-ref-redis-cluster",
+        "cache-ref-redis-info",
+        "cache-ref-redis-pipeline",
+        "cache-ref-memcached-restart",
+        "cache-ref-memcached-extstore",
+        "cache-ref-caffeine-design",
+        "cache-ref-caffeine-refresh"
+      ],
+      "reviewStatus": "Texto integral revisado · fontes primárias conferidas · inspeção visual geral.",
+      "type": "PDF",
+      "collection": "distributed-cache",
+      "links": [
+        {
+          "label": "Praticar o mock de cache",
+          "href": "#playbook/distributed-cache"
+        },
+        {
+          "label": "Fundamentos de cache",
+          "href": "#foundations/caches"
+        }
+      ]
     },
     {
       "id": "1brRfpaxQgrk_nGw1VYK6GhBQtxvAjWiS",
@@ -9640,6 +10756,154 @@
         "pb-report-support-queue",
         "pb-report-scenario-variants"
       ]
+    },
+    {
+      "title": "Write-through não é atomicidade entre dois armazenamentos",
+      "explanation": "Aguardar banco e cache não elimina a falha entre commits nem define o que leitores concorrentes observam. É necessário declarar autoridade e recuperação. Outbox torna durável a intenção de propagar a mudança; não torna a cópia instantaneamente consistente. Essa é uma análise do protocolo, apoiada nos limites documentados de transações e dual write.",
+      "sourceIds": [
+        "cache-ref-redis-transactions",
+        "cache-ref-aws-outbox"
+      ]
+    },
+    {
+      "title": "Read-through e cache-aside têm responsáveis diferentes",
+      "explanation": "No cache-aside, a aplicação busca a origem e preenche o cache. Redis ou Memcached não passam a consultar automaticamente qualquer banco após miss. Um loader ou proxy pode implementar read-through, mas deve aparecer no desenho e no orçamento de falhas.",
+      "sourceIds": [
+        "cache-ref-memcached-user",
+        "cache-ref-azure-cacheaside"
+      ]
+    },
+    {
+      "title": "Sharding não substitui replicação e recuperação",
+      "explanation": "Repartir dados limita o conjunto afetado por um nó, mas não cria outra cópia dessas chaves. O sistema ainda precisa decidir o que acontece com esse subconjunto e se a origem suporta o fallback. A hipótese de replicação deve incluir eleição e domínios de falha.",
+      "sourceIds": [
+        "cache-ref-redis-replication",
+        "cache-ref-aws-caching"
+      ]
+    },
+    {
+      "title": "Uma hot key não se divide ao adicionar shards",
+      "explanation": "Hashing distribui chaves, não as requisições de uma mesma chave. Leituras podem usar coalescing ou cópias adequadas ao frescor; dividir uma mutação exige outro protocolo e possivelmente agregação. Não prescrever salting para uma invariante indivisível, como um saldo autorizado único.",
+      "sourceIds": [
+        "cache-ref-aws-caching",
+        "cache-ref-redis-cluster"
+      ]
+    },
+    {
+      "title": "Redis Cluster não é o anel genérico do exercício",
+      "explanation": "Redis Cluster mapeia chaves para 16.384 slots; os nós possuem subconjuntos de slots, e clientes tratam MOVED/ASK. Não explicar sua distribuição como hash(key) mod número de servidores nem atribuir automaticamente consistent hashing com anel e nós virtuais.",
+      "sourceIds": [
+        "cache-ref-redis-cluster"
+      ]
+    },
+    {
+      "title": "WAIT melhora segurança, sem garantir consistência forte",
+      "explanation": "WAIT se refere às escritas anteriores da mesma conexão e devolve quantas réplicas reconheceram. Verificar o número retornado é obrigatório. O comando não garante promoção de uma cópia adequada em toda falha nem reverte a escrita quando o prazo acaba; não equivale a RPO zero.",
+      "sourceIds": [
+        "cache-ref-redis-wait"
+      ]
+    },
+    {
+      "title": "Sincronismo e proximidade não bastam para linearizabilidade",
+      "explanation": "Definir quais nós confirmam, quando o ACK ocorre, como leitores escolhem uma versão e como um líder é promovido. Estar no mesmo datacenter reduz distância; não prova essas propriedades. A documentação Redis admite perda em failover mesmo quando WAIT foi usado.",
+      "sourceIds": [
+        "cache-ref-redis-replication",
+        "cache-ref-redis-wait"
+      ]
+    },
+    {
+      "title": "TTL, eviction e refresh são mecanismos distintos",
+      "explanation": "TTL define quando a cópia deixa de poder ser usada; eviction libera capacidade; refresh busca outra versão. Em Caffeine, refresh pode retornar o valor antigo enquanto recarrega. Uma jornada com versão mínima exigida deve verificar essa condição mesmo durante um refresh compartilhado.",
+      "sourceIds": [
+        "cache-ref-redis-eviction",
+        "cache-ref-caffeine-refresh"
+      ]
+    },
+    {
+      "title": "LRU acompanha recência, não frequência",
+      "explanation": "A lista do exemplo LRU representa a ordem de acessos recentes; LFU acompanha frequência. Hash map mais lista é uma construção didática, não descrição literal de todo produto. Redis usa aproximações; Caffeine combina admissão e histórico com recência, considerando também custo concorrente.",
+      "sourceIds": [
+        "cache-ref-redis-eviction",
+        "cache-ref-caffeine-design"
+      ]
+    },
+    {
+      "title": "Bloom só prova ausência no conjunto representado",
+      "explanation": "A ausência indicada pelo filtro não cobre inserções ainda não incorporadas, perda de estado ou erro de sincronização. Para negar existência na fonte, o conjunto precisa cobrir todas as entidades válidas. Bloom convencional também não é um registro autoritativo de exclusões.",
+      "sourceIds": [
+        "cache-ref-redis-bloom"
+      ]
+    },
+    {
+      "title": "Média de percentis não é média nem percentil agregado",
+      "explanation": "A fórmula E[T]=h·E[T|hit]+(1−h)·E[T|miss] exige médias condicionais. Substituí-las por p99,9 de cada grupo é incorreto. Para cauda, combinar observações ou histogramas compatíveis e então estimar o quantil. A mistura de distribuições é um cálculo distinto da esperança.",
+      "sourceIds": [
+        "cache-ref-prometheus-histograms"
+      ]
+    },
+    {
+      "title": "O(1) não é latência determinística",
+      "explanation": "Acesso médio ao índice é apenas uma etapa. Colisões, tamanho de chave/valor, alocação, concorrência, rede e filas alteram o custo real. Um anel ordenado pode ter busca O(log V) em V posições virtuais; o algoritmo e sua estrutura precisam ser declarados.",
+      "sourceIds": [
+        "cache-ref-memcached-performance",
+        "cache-ref-caffeine-design"
+      ]
+    },
+    {
+      "title": "Modelo de threads precisa de escopo",
+      "explanation": "A execução usual de comandos Redis é serializada no caminho principal, mas I/O e tarefas auxiliares podem usar threads e processos adicionais. INFO documenta contadores de I/O threaded. Escalar cores ou processos requer medir o gargalo; a frase todo Redis usa apenas um core é imprecisa.",
+      "sourceIds": [
+        "cache-ref-redis-latency",
+        "cache-ref-redis-info"
+      ]
+    },
+    {
+      "title": "Pipeline não é transação ou redução física do RTT",
+      "explanation": "O lote evita aguardar uma resposta para enviar o próximo comando; o RTT da rede não desaparece. Não há atomicidade do lote por esse mecanismo, e respostas ocupam memória. MULTI/EXEC e scripts têm semânticas próprias; erros durante EXEC não implicam rollback geral.",
+      "sourceIds": [
+        "cache-ref-redis-pipeline",
+        "cache-ref-redis-transactions"
+      ]
+    },
+    {
+      "title": "Memcached não deve ser resumido por uma tabela antiga",
+      "explanation": "Warm restart preserva cache sob reinício limpo e compatível; extstore armazena valores em flash com metadados em memória e limites próprios. Nenhum desses recursos autoriza tratá-lo como banco financeiro durável. A escolha também não pode depender de um limiar universal de 100 KB sem benchmark.",
+      "sourceIds": [
+        "cache-ref-memcached-restart",
+        "cache-ref-memcached-extstore",
+        "cache-ref-memcached-performance"
+      ]
+    },
+    {
+      "title": "SSD e tiering dependem do produto escolhido",
+      "explanation": "A documentação ElastiCache descreve data tiering em engines, versões e famílias suportadas, com latência adicional e restrições. Memcached tem extstore próprio. Não transportar esses recursos para qualquer Redis Open Source, nem afirmar disponibilidade de uma modalidade Eager SSD sem documentação específica verificada.",
+      "sourceIds": [
+        "cache-ref-aws-tiering",
+        "cache-ref-memcached-extstore"
+      ]
+    },
+    {
+      "title": "TCP e UDP não são opções equivalentes por serem rápidos",
+      "explanation": "Transportes têm contratos diferentes de entrega e operação. A própria documentação Memcached mantém alerta de amplificação e informa UDP desligado por padrão nas versões indicadas. O cliente Redis usual usa TCP; o desenho deve declarar transporte, isolamento e comportamento de timeout.",
+      "sourceIds": [
+        "cache-ref-memcached-udp",
+        "cache-ref-redis-pipeline"
+      ]
+    },
+    {
+      "title": "Uma invalidação simples não elimina todas as corridas",
+      "explanation": "Um leitor pode buscar estado antigo, observar depois uma invalidação e ainda publicar a cópia antiga. Versão ou tombstone na publicação ajuda, mas seu estado e perda precisam de protocolo. Cache-aside não promete consistência; aplicações que exigem frescor devem validar versão ou consultar a autoridade.",
+      "sourceIds": [
+        "cache-ref-azure-cacheaside",
+        "cache-ref-redis-transactions"
+      ]
+    },
+    {
+      "title": "Alta taxa de hit não comprova segurança no cache frio",
+      "explanation": "Projetar admissão e concorrência do fallback, testar perda do cache e reaquecimento. Coalescing reduz duplicação por chave; não limita sozinho uma rajada de chaves únicas. A experiência degradada precisa ser explícita, sobretudo quando a mesma origem atende decisões financeiras e consultas secundárias.",
+      "sourceIds": [
+        "cache-ref-aws-caching"
+      ]
     }
   ],
   "meta": {
@@ -9647,16 +10911,55 @@
     "date": "2026-10-31",
     "folderUrl": "https://drive.google.com/drive/u/1/folders/1sq6CYjWTOO1NckPcV9Pajce0ob3SiqTW",
     "draft": false,
-    "reviewSummary": "Inventário completo da pasta: 35 PDFs, quatro vídeos e um draw.io. Os 35 textos extraídos foram lidos integralmente. Os vídeos totalizam 1h43min41s; 4/4 têm transcrição automática integral do áudio revisada, com amostragem visual. O draw.io reutiliza a revisão do anexo local, com a limitação da cópia do Drive descrita no inventário.",
+    "reviewSummary": "Inventário completo da pasta: 41 PDFs, quatro vídeos e um draw.io. Os 41 textos extraídos foram lidos integralmente. Os vídeos totalizam 1h43min41s; 4/4 têm transcrição automática integral do áudio revisada, com amostragem visual. O draw.io reutiliza a revisão do anexo local, com a limitação da cópia do Drive descrita no inventário. Atualização de cache distribuído: seis PDFs novos, mock próprio e consultas aplicadas aos cenários existentes.",
     "methodology": [
-      "Material fornecido: leitura integral do texto extraído dos 35 PDFs, com revisão crítica de garantias. Figuras sem texto e colunas perdidas na extração não foram reconstruídas por adivinhação.",
+      "Material fornecido: leitura integral do texto extraído dos 41 PDFs, com revisão crítica de garantias. Figuras sem texto e colunas perdidas na extração não foram reconstruídas por adivinhação.",
       "Vídeos: áudio completo processado localmente por ASR, leitura editorial das transcrições e amostras visuais periódicas + pontos específicos. Termos, unidades e negações podem ter erros; afirmações críticas foram confrontadas com fontes primárias. Não houve inspeção de cada frame.",
       "DSNu.drawio: o anexo local já analisado origina o mapa interativo. A cópia do Drive excede o limite de download do conector; mesmo nome e tamanho não provam identidade de conteúdo.",
       "Relatos públicos: evidência contextual de experiência de candidatos, sem confirmação independente de critérios internos ou de recorrência dos enunciados.",
       "Casos oficiais adaptados: publicações de engenharia motivam exercícios; topologias, hipóteses, perguntas e falas de treino não são o desenho interno oficial.",
       "Contexto dos entrevistadores: fontes profissionais públicas parciais. O acesso direto ao LinkedIn falhou; não há alegação de revisão integral da carreira ou de previsão das perguntas.",
-      "Os 12 cenários cobrem famílias de problema e os 26 critérios de decisão ajudam a adaptar outros enunciados. Não constituem todas as possibilidades nem garantia de aprovação."
-    ]
+      "Os 12 cenários cobrem famílias de problema e os 26 critérios de decisão ajudam a adaptar outros enunciados. Não constituem todas as possibilidades nem garantia de aprovação.",
+      "Atualização de cache distribuído: seis PDFs, 85 páginas. Textos extraídos integralmente revisados, páginas renderizadas e inspecionadas em folhas de contato, com ampliação do diagrama detalhado. Algumas tabelas já têm colunas cortadas na impressão original; não foram reconstruídas. Garantias, comparações de produtos e fórmulas foram confrontadas com documentação primária."
+    ],
+    "cacheUpdate": {
+      "date": "2026-10-31",
+      "materialIds": [
+        "18YcqKdxltJTMFf_hhr5x4BcBRuigyDFZ",
+        "1wesHL52cfTrDqXLS5fFV2a-nt5AmN-Ie",
+        "150WAnLV6nK4haECFEUDGtn5ZLQB2sau-",
+        "1tAKLgqJb4Ab43Bgsm57SwBm88ijU4nDq",
+        "1rZ9NYX0OsJuhVuAwKzNO5RLqiJSlUg4V",
+        "1we6z1zVFKWWhQ3dCveX33RdjRX6e0EDJ"
+      ],
+      "caseId": "distributed-cache",
+      "enrichedCaseIds": [
+        "antifraud",
+        "document-delivery",
+        "kv-store",
+        "payment-conditions",
+        "pix",
+        "statement"
+      ],
+      "stepAdditions": 12,
+      "decisionIds": [
+        "cache-negative-coverage",
+        "cache-fill-generation",
+        "cache-admission-eviction",
+        "cache-miss-envelope",
+        "cache-ring-slots-hotkey",
+        "cache-write-ack"
+      ],
+      "interruptionIds": [
+        "cache-bloom-new-customer",
+        "cache-old-fill-after-delete",
+        "cache-percentile-mixture",
+        "cache-lfu-export-scan",
+        "cache-hotkey-more-shards",
+        "cache-writethrough-half-success",
+        "cache-cold-fleet-restart"
+      ]
+    }
   },
   "sources": [
     {
@@ -9964,8 +11267,8 @@
       "id": "arch-pg-iso",
       "title": "PostgreSQL — Transaction Isolation",
       "url": "https://www.postgresql.org/docs/current/transaction-iso.html",
-      "type": "Documentação oficial",
-      "summary": "Semântica de Read Committed, Repeatable Read e Serializable no PostgreSQL."
+      "type": "documentação primária",
+      "summary": "Define níveis de isolamento e anomalias; serializabilidade pode exigir repetição da transação inteira após conflito."
     },
     {
       "id": "arch-pg-replica",
@@ -10019,10 +11322,158 @@
     },
     {
       "id": "aws-retries",
-      "title": "AWS Builders’ Library — Timeouts, retries, and backoff with jitter",
+      "title": "Timeouts, retries, and backoff with jitter",
       "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
-      "type": "Artigo técnico primário",
-      "summary": "Timeout não prova ausência de efeito; orçamento de tentativas e jitter reduzem amplificação de falhas."
+      "type": "documentação primária",
+      "date": "2019-12-05",
+      "summary": "Marc Brooker explica orçamento de timeout, risco de amplificar carga com retries e como backoff com jitter reduz sincronização de tentativas."
+    },
+    {
+      "id": "cache-ref-aws-caching",
+      "title": "AWS Builders’ Library — Caching challenges and strategies",
+      "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+      "type": "Documentação primária oficial",
+      "summary": "Relato técnico da Amazon sobre dependência operacional de cache, estado frio, coalescing, falhas e seleção de dados adequados."
+    },
+    {
+      "id": "cache-ref-aws-outbox",
+      "title": "AWS Prescriptive Guidance — Transactional outbox",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html",
+      "type": "Documentação primária oficial",
+      "summary": "Explica falhas de dual write e a publicação por registro transacional; consumidores ainda precisam lidar com repetição e ordem."
+    },
+    {
+      "id": "cache-ref-aws-tiering",
+      "title": "AWS — Data tiering in ElastiCache",
+      "url": "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/data-tiering.html",
+      "type": "Documentação primária oficial",
+      "summary": "Detalha armazenamento entre DRAM e SSD em configurações suportadas, incluindo custo de acesso e restrições por família, engine e versão."
+    },
+    {
+      "id": "cache-ref-azure-cacheaside",
+      "title": "Azure Architecture Center — Cache-Aside",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside",
+      "type": "Documentação primária oficial",
+      "summary": "Diferencia carregamento pela aplicação, validade e atualização; explicita que cache-aside não garante consistência com o armazenamento de origem."
+    },
+    {
+      "id": "cache-ref-caffeine-design",
+      "title": "Caffeine — Design",
+      "url": "https://github.com/ben-manes/caffeine/wiki/Design",
+      "type": "Documentação primária oficial",
+      "summary": "O projeto descreve filas de acesso, coordenação concorrente e Window TinyLFU, combinando admissão, recência e estimativas de frequência."
+    },
+    {
+      "id": "cache-ref-caffeine-refresh",
+      "title": "Caffeine — Refresh",
+      "url": "https://github.com/ben-manes/caffeine/wiki/Refresh",
+      "type": "Documentação primária oficial",
+      "summary": "Refresh assíncrono pode servir o valor anterior; elegibilidade por tempo não dispara necessariamente recarga até ocorrer acesso."
+    },
+    {
+      "id": "cache-ref-memcached-extstore",
+      "title": "Memcached — Flash Storage",
+      "url": "https://docs.memcached.org/features/flashstorage/",
+      "type": "Documentação primária oficial",
+      "summary": "Extstore move valores para flash mantendo chaves e metadados em memória; é extensão de cache, com limites operacionais, não banco durável."
+    },
+    {
+      "id": "cache-ref-memcached-performance",
+      "title": "Memcached — Performance and Efficiency",
+      "url": "https://docs.memcached.org/serverguide/performance/",
+      "type": "Documentação primária oficial",
+      "summary": "Discute efeitos de conexões, rede, memória, itens e distribuição sobre o desempenho observado, para além da complexidade dos comandos."
+    },
+    {
+      "id": "cache-ref-memcached-restart",
+      "title": "Memcached — Warm Restart",
+      "url": "https://docs.memcached.org/features/restart/",
+      "type": "Documentação primária oficial",
+      "summary": "Descreve preservação opcional entre reinícios limpos compatíveis, com restrições e risco de perder atualizações durante a parada."
+    },
+    {
+      "id": "cache-ref-memcached-udp",
+      "title": "Memcached — UDP DDoS advisory",
+      "url": "https://docs.memcached.org/advisories/ddos/",
+      "type": "Documentação primária oficial",
+      "summary": "Documenta risco de amplificação e informa UDP desabilitado por padrão nas versões indicadas, recomendando habilitá-lo somente quando necessário."
+    },
+    {
+      "id": "cache-ref-memcached-user",
+      "title": "Memcached — User Guide",
+      "url": "https://docs.memcached.org/userguide/",
+      "type": "Documentação primária oficial",
+      "summary": "Mostra integração explícita na aplicação, serialização, validade e invalidação; o servidor não busca automaticamente o banco de origem."
+    },
+    {
+      "id": "cache-ref-prometheus-histograms",
+      "title": "Prometheus — Histograms and summaries",
+      "url": "https://prometheus.io/docs/practices/histograms/",
+      "type": "Documentação primária oficial",
+      "summary": "Explica média por soma/contagem e distribuições agregáveis; quantis previamente calculados não podem ser promediados para obter um percentil global."
+    },
+    {
+      "id": "cache-ref-redis-bloom",
+      "title": "Redis — Bloom filter",
+      "url": "https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/",
+      "type": "Documentação primária oficial",
+      "summary": "Define teste probabilístico de pertencimento: positivos podem estar errados; a garantia de ausência se refere ao conjunto representado corretamente."
+    },
+    {
+      "id": "cache-ref-redis-cluster",
+      "title": "Redis — Cluster specification",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/",
+      "type": "Documentação primária oficial",
+      "summary": "Especifica 16.384 hash slots, redirecionamentos e eleições; descreve janelas de perda de escritas reconhecidas e limites das operações entre chaves."
+    },
+    {
+      "id": "cache-ref-redis-eviction",
+      "title": "Redis — Key eviction",
+      "url": "https://redis.io/docs/latest/develop/reference/eviction/",
+      "type": "Documentação primária oficial",
+      "summary": "Documenta limites de memória e políticas aproximadas de LRU/LFU; buffers de replicação e persistência também afetam a capacidade física."
+    },
+    {
+      "id": "cache-ref-redis-info",
+      "title": "Redis — INFO",
+      "url": "https://redis.io/docs/latest/commands/info/",
+      "type": "Documentação primária oficial",
+      "summary": "Expõe estatísticas de memória, CPU, replicação e eventos tratados por threads de I/O, além de campos dependentes da versão."
+    },
+    {
+      "id": "cache-ref-redis-latency",
+      "title": "Redis — Diagnosing latency issues",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/",
+      "type": "Documentação primária oficial",
+      "summary": "Distingue custo do comando, rede, sistema operacional, persistência e trabalho auxiliar; ajuda a evitar promessa de latência fixa."
+    },
+    {
+      "id": "cache-ref-redis-pipeline",
+      "title": "Redis — Pipelining",
+      "url": "https://redis.io/docs/latest/develop/using-commands/pipelining/",
+      "type": "Documentação primária oficial",
+      "summary": "Agrupa comandos para amortizar round trips e chamadas de sistema; a aplicação deve limitar lotes e buffers de respostas."
+    },
+    {
+      "id": "cache-ref-redis-replication",
+      "title": "Redis — Replication",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/management/replication/",
+      "type": "Documentação primária oficial",
+      "summary": "Documenta replicação normalmente assíncrona, sincronização parcial ou completa, leitura de réplicas e limites de segurança durante failover."
+    },
+    {
+      "id": "cache-ref-redis-transactions",
+      "title": "Redis — Transactions",
+      "url": "https://redis.io/docs/latest/develop/using-commands/transactions/",
+      "type": "Documentação primária oficial",
+      "summary": "Explica MULTI/EXEC, WATCH e erros: execução isolada no Redis não inclui outros bancos nem rollback de erros de execução."
+    },
+    {
+      "id": "cache-ref-redis-wait",
+      "title": "Redis — WAIT",
+      "url": "https://redis.io/docs/latest/commands/wait/",
+      "type": "Documentação primária oficial",
+      "summary": "WAIT informa quantas réplicas reconheceram escritas anteriores da conexão; não transforma o conjunto em armazenamento fortemente consistente."
     },
     {
       "id": "dynamo-paper",
@@ -10031,6 +11482,20 @@
       "type": "research-paper",
       "date": "2007",
       "summary": "Descreve consistent hashing, nós virtuais, replicação e reconciliação no Dynamo histórico. Reduzir remapeamento ao mudar nós não elimina a concentração de acessos numa única chave. Não equivale à implementação atual do serviço DynamoDB."
+    },
+    {
+      "id": "fund-aws-cache",
+      "title": "AWS Builders’ Library — Caching challenges and strategies",
+      "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+      "type": "Documentação oficial",
+      "summary": "Cache frio, dependência operacional do cache, coalescência de requisições e estratégias de atualização."
+    },
+    {
+      "id": "fund-redis-eviction",
+      "title": "Redis — Key eviction",
+      "url": "https://redis.io/docs/latest/develop/reference/eviction/",
+      "type": "Documentação oficial",
+      "summary": "Políticas de expulsão, aproximações LRU/LFU e memória não contabilizada pelo limite de eviction."
     },
     {
       "id": "giovani-kafka",
@@ -10042,10 +11507,11 @@
     },
     {
       "id": "kafka-design",
-      "title": "Apache Kafka — Design and message delivery semantics",
+      "title": "Apache Kafka 4.1: Design",
       "url": "https://kafka.apache.org/41/design/design/",
-      "type": "Documentação oficial",
-      "summary": "Log particionado, entrega, produtores idempotentes e transações; efeito em banco externo exige coordenação própria."
+      "type": "documentação primária versionada",
+      "date": null,
+      "summary": "Explica persistência, particionamento, replicação, entrega e transações. Conferir o escopo da garantia antes de estendê-la a banco externo ou parceiro FTP."
     },
     {
       "id": "ledger-datomic-index",
@@ -10082,7 +11548,8 @@
       "title": "Managing Cloud Limits",
       "url": "https://building.nu.com/managing-cloud-limits/",
       "type": "oficial Nubank",
-      "summary": "Artigo de abril de 2025 sobre limites de nuvem, evolução para múltiplas contas AWS e unidades de sharding que incluem serviços e mensageria. É evidência do problema de escala; não documenta o protocolo de migração proposto neste exercício."
+      "date": "2025-04-09",
+      "summary": "Evolução para múltiplas contas AWS e unidades de sharding envolvendo serviços e mensageria. Quotas de nuvem, isolamento e previsão de capacidade são limitações concretas."
     },
     {
       "id": "nu-datomic",
@@ -10129,21 +11596,24 @@
       "title": "Scaling fraud defense: How Nubank evolved its risk analysis platform",
       "url": "https://building.nu.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/",
       "type": "oficial Nubank",
-      "summary": "O artigo de julho de 2025 apresenta a Defense Platform, combinando regras, modelos, features e ações. Descreve execução por dependências e avaliação em shadow. Os detalhes e números propostos no exercício não representam sua implementação real."
+      "date": "2025-07-23",
+      "summary": "Defense Platform combina detecção e ação; regras e modelos têm custos diferentes. O artigo descreve alta escala, Clojure, Datomic, Kafka e observabilidade."
     },
     {
       "id": "nu-growth",
       "title": "10 years of engineering at Nubank: Lessons from scaling to 122+ million customers",
       "url": "https://building.nu.com/engineering-lessons-from-scaling-million-customers/",
       "type": "oficial Nubank",
-      "summary": "Retrospectiva de agosto de 2025 sobre evolução da plataforma, sharding e coordenação de engenharia durante o crescimento. Os números do título pertencem à publicação. O exercício abaixo não reproduz a arquitetura privada nem uma entrevista confirmada."
+      "date": "2025",
+      "summary": "Entrevista sobre evolução arquitetural, sharding, plataformas e internacionalização. As cifras descrevem o período publicado, não uma contagem atual garantida."
     },
     {
       "id": "nu-latency",
       "title": "How we reduced critical path latency by 76% at Nubank",
       "url": "https://building.nu.com/how-we-reduced-critical-path-latency-by-76-at-nubank/",
       "type": "oficial Nubank",
-      "summary": "O artigo de janeiro de 2026 relata otimizações locais seguidas de agregação por eventos e uma visão persistida para consultas de condições de pagamento. Informa P90 de aproximadamente 1200 ms para 280 ms. O desenho do exercício é independente."
+      "date": "2026-01-12",
+      "summary": "Caso da Payment Conditions API: menor profundidade de chamadas seguida de agregação por eventos e leitura materializada. O artigo relata P90 de cerca de 1200 ms para 280 ms."
     },
     {
       "id": "outbox-pattern",
@@ -10167,6 +11637,104 @@
       "summary": "Discute orçamento de timeout, custo de repetir chamadas, backoff e dispersão de tentativas para evitar ampliar falhas transitórias."
     },
     {
+      "id": "pb-cache-cluster",
+      "title": "Redis Cluster specification",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/",
+      "type": "Documentação oficial",
+      "summary": "Slots, roteamento, migração e limites de replicação do Redis Cluster."
+    },
+    {
+      "id": "pb-cache-enrich-aws-caching",
+      "title": "Amazon Builders’ Library — Caching challenges and strategies",
+      "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+      "type": "Artigo técnico oficial",
+      "summary": "Dependência do cache, cold start, pressão nas fontes, caches locais, proteção e critérios de uso."
+    },
+    {
+      "id": "pb-cache-enrich-prom-histograms",
+      "title": "Prometheus — Histograms and summaries",
+      "url": "https://prometheus.io/docs/practices/histograms/",
+      "type": "Documentação oficial",
+      "summary": "Agregação de distribuições e limites de quantis pré-calculados; percentis não são combinados pela média dos percentis."
+    },
+    {
+      "id": "pb-cache-enrich-redis-bloom",
+      "title": "Redis — Bloom filter",
+      "url": "https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/",
+      "type": "Documentação oficial",
+      "summary": "Membership probabilístico e ausência no conjunto representado; limites de cobertura assíncrona são análise autoral aplicada ao domínio."
+    },
+    {
+      "id": "pb-cache-enrich-redis-cluster",
+      "title": "Redis — Cluster specification",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/",
+      "type": "Documentação oficial",
+      "summary": "16.384 slots, redirects MOVED/ASK, hash tags, replicação e limites de failover e leitura em réplicas."
+    },
+    {
+      "id": "pb-cache-enrich-redis-eviction",
+      "title": "Redis — Key eviction",
+      "url": "https://redis.io/docs/latest/develop/reference/eviction/",
+      "type": "Documentação oficial",
+      "summary": "LRU aproximado, LFU com contadores probabilísticos e decaimento; maxmemory e memória fora do orçamento de eviction."
+    },
+    {
+      "id": "pb-cache-enrich-redis-wait",
+      "title": "Redis — WAIT",
+      "url": "https://redis.io/docs/latest/commands/wait/",
+      "type": "Documentação oficial",
+      "summary": "Confirmações de réplicas melhoram segurança, mas WAIT não oferece consistência forte nem exclui perda em todos os failovers."
+    },
+    {
+      "id": "pb-cache-lua",
+      "title": "Redis scripting with Lua",
+      "url": "https://redis.io/docs/latest/develop/programmability/eval-intro/",
+      "type": "Documentação oficial",
+      "summary": "Execução atômica de scripts curtos, com custo de bloqueio do servidor."
+    },
+    {
+      "id": "pb-cache-memcache-paper",
+      "title": "Scaling Memcache at Facebook — NSDI 2013",
+      "url": "https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf",
+      "type": "Artigo técnico primário",
+      "summary": "Referência histórica primária sobre leases, preenchimentos obsoletos e rajadas de misses; não descrição de implantação atual."
+    },
+    {
+      "id": "pb-cache-memcached",
+      "title": "Memcached basic protocol",
+      "url": "https://docs.memcached.org/protocols/basic/",
+      "type": "Documentação oficial",
+      "summary": "Chaves, expiração, dados, operações condicionais e CAS."
+    },
+    {
+      "id": "pb-cache-pipeline",
+      "title": "Redis pipelining",
+      "url": "https://redis.io/docs/latest/develop/using-commands/pipelining/",
+      "type": "Documentação oficial",
+      "summary": "Redução de viagens de rede e overhead sem transação implícita."
+    },
+    {
+      "id": "pb-cache-replication",
+      "title": "Redis replication",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/management/replication/",
+      "type": "Documentação oficial",
+      "summary": "Replicação, atraso e implicações de disponibilidade e failover."
+    },
+    {
+      "id": "pb-cache-singleflight",
+      "title": "Go singleflight",
+      "url": "https://pkg.go.dev/golang.org/x/sync/singleflight",
+      "type": "Documentação oficial",
+      "summary": "Supressão de trabalho duplicado dentro de um grupo local."
+    },
+    {
+      "id": "pb-cache-wait",
+      "title": "Redis WAIT",
+      "url": "https://redis.io/docs/latest/commands/wait/",
+      "type": "Documentação oficial",
+      "summary": "Confirmações de replicação não equivalem a consistência forte."
+    },
+    {
       "id": "pb-drive-11j9xVU9-YQ1Olqi9UBBIdt_ed3ChbrK-",
       "title": "Arch_CandidatePrepMaterial_PT (1).pdf",
       "url": "https://drive.google.com/file/d/11j9xVU9-YQ1Olqi9UBBIdt_ed3ChbrK-/view?usp=drivesdk",
@@ -10188,6 +11756,13 @@
       "summary": "Arquivo do acervo indicado pelo usuário. Acesso sujeito às permissões originais; não republicado no portal."
     },
     {
+      "id": "pb-drive-150WAnLV6nK4haECFEUDGtn5ZLQB2sau-",
+      "title": "High-Level Design of a Distributed Cache.pdf",
+      "url": "https://drive.google.com/file/d/150WAnLV6nK4haECFEUDGtn5ZLQB2sau-/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
+    },
+    {
       "id": "pb-drive-15b5e_4JZ9vvN_fwi1IxRNi0V15fGA-3Z",
       "title": "Design of a Key-Value Store.pdf",
       "url": "https://drive.google.com/file/d/15b5e_4JZ9vvN_fwi1IxRNi0V15fGA-3Z/view?usp=drivesdk",
@@ -10207,6 +11782,13 @@
       "url": "https://drive.google.com/file/d/15uONN2GaOXFqNykrrfIGNI16k4E3mHoG/view?usp=drivesdk",
       "type": "Material fornecido · Drive",
       "summary": "Arquivo do acervo indicado pelo usuário. Acesso sujeito às permissões originais; não republicado no portal."
+    },
+    {
+      "id": "pb-drive-18YcqKdxltJTMFf_hhr5x4BcBRuigyDFZ",
+      "title": "Distributed Cache System Design.pdf",
+      "url": "https://drive.google.com/file/d/18YcqKdxltJTMFf_hhr5x4BcBRuigyDFZ/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
     },
     {
       "id": "pb-drive-19U2RPaxr94HS7t1ltfAXE-IY_vVIOWpw",
@@ -10426,11 +12008,39 @@
       "summary": "Arquivo do acervo indicado pelo usuário. Acesso sujeito às permissões originais; não republicado no portal."
     },
     {
+      "id": "pb-drive-1rZ9NYX0OsJuhVuAwKzNO5RLqiJSlUg4V",
+      "title": "Evaluation of a Distributed Cache's Design.pdf",
+      "url": "https://drive.google.com/file/d/1rZ9NYX0OsJuhVuAwKzNO5RLqiJSlUg4V/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
+    },
+    {
+      "id": "pb-drive-1tAKLgqJb4Ab43Bgsm57SwBm88ijU4nDq",
+      "title": "Detailed Design of a Distributed Cache.pdf",
+      "url": "https://drive.google.com/file/d/1tAKLgqJb4Ab43Bgsm57SwBm88ijU4nDq/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
+    },
+    {
       "id": "pb-drive-1uROUyd-vEG5Oj2mHCXr48Gw9GNUMZ4ev",
       "title": "The Do’s and Don’ts of the System Design Interview.pdf",
       "url": "https://drive.google.com/file/d/1uROUyd-vEG5Oj2mHCXr48Gw9GNUMZ4ev/view?usp=drivesdk",
       "type": "Material fornecido · Drive",
       "summary": "Arquivo do acervo indicado pelo usuário. Acesso sujeito às permissões originais; não republicado no portal."
+    },
+    {
+      "id": "pb-drive-1we6z1zVFKWWhQ3dCveX33RdjRX6e0EDJ",
+      "title": "Memcached versus Redis.pdf",
+      "url": "https://drive.google.com/file/d/1we6z1zVFKWWhQ3dCveX33RdjRX6e0EDJ/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
+    },
+    {
+      "id": "pb-drive-1wesHL52cfTrDqXLS5fFV2a-nt5AmN-Ie",
+      "title": "Background of Distributed Cache.pdf",
+      "url": "https://drive.google.com/file/d/1wesHL52cfTrDqXLS5fFV2a-nt5AmN-Ie/view?usp=drivesdk",
+      "type": "Material fornecido · Drive",
+      "summary": "Material novo sobre cache distribuído. Revisão autoral; o original mantém as permissões do Drive."
     },
     {
       "id": "pb-drive-1y-RSJmSgMtJybxV_AfqjO4eoDN6Yzg9s",

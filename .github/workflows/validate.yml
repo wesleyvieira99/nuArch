@@ -23,6 +23,9 @@ jobs:
           node --check app.js
           node --check models.mjs
           node --check mindmap.mjs
+          node --check playbook.mjs
+          node --check playbook-routing.mjs
+          node scripts/test_playbook_routing.mjs
           node scripts/test_models.mjs
           node scripts/test_progress_merge.mjs
           python scripts/validate.py

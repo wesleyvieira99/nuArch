@@ -3,7 +3,7 @@ import json,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 load=lambda n:json.loads((root/'data'/f'{n}.json').read_text())
-a,p,r,l,g,f,v,course,guided,mindmap=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided','mindmap')]
+a,p,r,l,g,f,v,course,guided,mindmap,playbook=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided','mindmap','playbook')]
 assert len(a['architectures'])>=60
 assert len(p['questions'])>1000
 assert len(p['mocks'])>100
@@ -11,7 +11,7 @@ for objects,key in [(a['architectures'],'id'),(p['questions'],'id'),(p['question
     vals=[x[key] for x in objects]
     assert len(vals)==len(set(vals)),f'Duplicate {key}'
 sources={}
-for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']+guided['sources']+mindmap['sources']:
+for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']+guided['sources']+mindmap['sources']+playbook['sources']:
     assert s['id'] not in sources or sources[s['id']]['url']==s['url'],s['id']
     assert s.get('url') is None or s['url'].startswith('https://'),s
     sources[s['id']]=s
@@ -26,7 +26,7 @@ def refs(obj):
             else:refs(value)
     elif isinstance(obj,list):
         for item in obj:refs(item)
-for obj in (a,p,r,g,f,v,course,guided,mindmap):refs(obj)
+for obj in (a,p,r,g,f,v,course,guided,mindmap,playbook):refs(obj)
 for arch in a['architectures']:
     assert arch['title'] and len(arch['steps'])>=2 and len(arch['internals'])>=5,arch['id']
     assert len(arch['code']['text'])>15 and arch['sourceIds'],arch['id']
@@ -184,6 +184,67 @@ for material in mindmap['materials']:
         assert path.is_relative_to(root/'assets'/'mindmap') and path.is_file(),material[field]
         assert path.read_bytes()[:4]==b'RIFF',material[field]
 assert mindmap['meta']['embeddedOccurrences']==372 and mindmap['meta']['externalIcons']==4
+# Interview playbook: complete review inventory, reusable steps and progressive boards.
+assert not playbook['meta']['draft'], 'A draft review must never be published'
+assert len(playbook['cases'])==12 and len({c['id'] for c in playbook['cases']})==12
+assert len(playbook['stages'])==10
+cursor=0
+for s in playbook['stages']:
+    assert s['startMinute']==cursor and s['duration']>0
+    cursor+=s['duration']
+    assert all(s[k] for k in ('title','goal','say','ask','draw','decisionRule','principalLens'))
+assert cursor==60
+for c in playbook['cases']:
+    assert len(c['steps'])==10 and c['evidence']['sourceIds'] and c['evidence']['limits'],c['id']
+    assert len(c['invariants'])>=3 and c['promise'] and c['authority'],c['id']
+    assert len(c['nodes'])>=7 and len({n['id'] for n in c['nodes']})==len(c['nodes']),c['id']
+    nodes={n['id']:n for n in c['nodes']}
+    for n in c['nodes']:
+        assert 80<=n['x']<=920 and 60<=n['y']<=560 and 0<=n['firstStep']<=9,(c['id'],n)
+        assert n['detail'] and n['label'] and n['role']
+    for edge in c['edges']:
+        assert edge['from'] in nodes and edge['to'] in nodes
+        assert max(nodes[x]['firstStep'] for x in (edge['from'],edge['to']))<=edge['firstStep']<=9
+        assert edge.get('lastStep',9)>=edge['firstStep'] and edge.get('lastStep',9)<=9
+        assert edge['label'] and edge['detail']
+    for i,step in enumerate(c['steps']):
+        assert len(step['say'].split())>=50 and len(step['deepDive'].split())>=60,(c['id'],i)
+        assert len(step['interviewer'])>40,(c['id'],i)
+        assert len(step['ask'])>=2 and len(step['draw'])>=2 and step['check'],(c['id'],i)
+        assert all(isinstance(step['memory'][k],str) and len(step['memory'][k])>30 for k in ('say','concept','connect','technology','defend')),(c['id'],i)
+    for provider in ('aws','azure','onprem'):assert len(c['deployments'][provider])>100,(c['id'],provider)
+    for link in c['links']:
+        parts=link['href'][1:].split('?')[0].split('/')
+        assert link['href'].startswith('#')
+        if len(parts)>1 and parts[0] in route_ids:assert parts[1] in route_ids[parts[0]],(c['id'],link)
+assert set(playbook['concepts'])==set(map_nodes), 'Every draw.io concept must be in the consultation'
+assert [s['stage'] for s in playbook['stageConcepts']]==list(range(10))
+consulted=set()
+for section in playbook['stageConcepts']:
+    for group in section['groups']:
+        assert group['label'] and group['conceptIds']
+        assert set(group['conceptIds']).issubset(map_nodes)
+        consulted.update(group['conceptIds'])
+assert consulted==set(map_nodes)
+tech_ids={t['id'] for t in a['technologies']}
+for id,concept in playbook['concepts'].items():
+    assert all(isinstance(concept[k],str) and len(concept[k])>40 for k in ('whyHere','alternatives','bankingExample')),id
+    assert concept['technologyIds'] and set(concept['technologyIds']).issubset(tech_ids),(id,concept['technologyIds'])
+assert len(playbook['decisions'])==26 and len(playbook['interruptions'])==32
+for d in playbook['decisions']:
+    assert d.get('architectureId') in {x['id'] for x in a['architectures']} or (d.get('diagnostic') and d.get('sourceIds')),d['id']
+    assert d['say'] and d['draw'] and d['cost'] and d['remove'],d['id']
+for q in playbook['interruptions']:
+    assert 0<=q['stage']<=9 and all(q[k] for k in ('question','answer','redraw','guardrail','principal')),q['id']
+assert len({m['id'] for m in playbook['materials']})==len(playbook['materials'])==40
+assert {kind:sum(m['type']==kind for m in playbook['materials']) for kind in ('PDF','Vídeo','Mapa draw.io')}=={'PDF':35,'Vídeo':4,'Mapa draw.io':1}
+for m in playbook['materials']:
+    assert m['reviewStatus'] and m['insights'] and m['application'] and m['limit'] and m['sourceIds'],m['id']
+    assert 'andamento' not in m['reviewStatus'],m['id']
+    if m['type']=='Vídeo':
+        assert len(m['chapters'])>=4 and m['corrections'],m['id']
+        for ch in m['chapters']:assert ch['href'].startswith('https://www.youtube.com/watch?v=') and ch['text']
+
 assert len(g['codeFiles'])>=4
 for file in g['codeFiles']:
     assert file['text']==(root/'examples'/'ledger'/file['name']).read_text(),file['name']
@@ -197,5 +258,5 @@ for path in root.rglob('*'):
     if '.git' in path.parts or path.name=='validate.py' or not path.is_file():continue
     if path.suffix in ('.html','.js','.json','.md','.css'):
         text=path.read_text()
-        assert not re.search(r'meet\.google\.com/[a-z-]+|[\w.+-]+@(?:gmail|hotmail|outlook)\.com|/Users/|/Downloads/',text),path
-print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'guided_cases':len(guided['cases']),'guided_steps':sum(len(c['steps']) for c in guided['cases']),'map_groups':len(map_groups),'map_concepts':len(map_nodes),'map_relations':len(mindmap['connections']),'map_images':len(mindmap['materials']),'status':'PASS'},ensure_ascii=False,indent=2))
+        assert not re.search(r'meet\.google\.com/[a-z-]+|@(?:gmail|hotmail|outlook)\.com|/Users/|/Downloads/',text),path
+print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'guided_cases':len(guided['cases']),'guided_steps':sum(len(c['steps']) for c in guided['cases']),'map_groups':len(map_groups),'map_concepts':len(map_nodes),'map_relations':len(mindmap['connections']),'map_images':len(mindmap['materials']),'playbook_cases':len(playbook['cases']),'playbook_steps':sum(len(c['steps']) for c in playbook['cases']),'playbook_concepts':len(playbook['concepts']),'playbook_materials':len(playbook['materials']),'playbook_decisions':len(playbook['decisions']),'playbook_followups':len(playbook['interruptions']),'status':'PASS'},ensure_ascii=False,indent=2))

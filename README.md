@@ -6,6 +6,8 @@ Portal independente, em português, para praticar decisões de system design com
 
 ## O acervo
 
+- **Roteiro do dia: 12 mocks escritos, 120 etapas.** Diálogo entre entrevistador simulado e candidato, bullets em primeira pessoa, desenho progressivo e consulta dos 130 conceitos do draw.io por etapa.
+
 - **Mapa mental navegável do DSNu.drawio:** 16 temas, 130 conceitos, 136 relações conceituais e os 368 recortes únicos do mural. Zoom, pan, tela ampliada, busca, conexões selecionáveis, explicações, trade-offs, alertas técnicos, notas e referências.
 - **Navegação reorganizada:** Orientação, Entender, Praticar e Aprofundar; início com trilhas, retomada do último ponto, índice de seções, modo leitura e ajuste de fonte.
 
@@ -49,12 +51,15 @@ Abra `http://localhost:8080`. Os dados são carregados por `fetch`, por isso a a
 node --check app.js
 node --check models.mjs
 node --check mindmap.mjs
+node --check playbook.mjs
+node --check playbook-routing.mjs
+node scripts/test_playbook_routing.mjs
 node scripts/test_models.mjs
 node scripts/test_progress_merge.mjs
 python3 scripts/validate.py
 ```
 
-Os vídeos foram conferidos em playlists públicas, metadados oEmbed e descrições disponíveis do YouTube. Guias editoriais não são transcrições nem alegam visualização integral. Cargos e empresas nos títulos são apresentados pelos autores; não são entrevistas confidenciais ou arquiteturas oficiais.
+Os 50 vídeos da videoteca original foram conferidos em playlists públicas, metadados oEmbed e descrições disponíveis do YouTube. Guias editoriais não são transcrições nem alegam visualização integral. Cargos e empresas nos títulos são apresentados pelos autores; não são entrevistas confidenciais ou arquiteturas oficiais.
 
 O curso foi catalogado a partir da árvore completa do commit `ae638baca549021f793fb9809582d7d876c08bc4` do repositório público indicado. Os 29 slides e endpoints de incorporação estavam acessíveis; 25/26 artigos retornaram HTTP 200. O artigo de API Gateways retornou 404. Outros links incompletos da origem aparecem na página. Guias são autorais; slides e artigos não são republicados. Não há gravações de aulas no repositório.
 
@@ -72,7 +77,19 @@ Após editar os arquivos do exemplo, execute `python3 scripts/embed_ledger.py` p
 python3 scripts/export.py nuArch-portable.html
 ```
 
-O exportador embute conteúdo, código, CSS, ícones e os 368 recortes do mapa em um único HTML (aproximadamente 64 MB) que pode abrir diretamente no navegador. Não depende de Google Fonts. Links de referência, apresentações Google Slides, miniaturas e players do YouTube continuam externos e exigem conexão. O conteúdo textual, os experimentos e o mapa com suas imagens funcionam offline.
+O exportador embute conteúdo, código, CSS, ícones e os 368 recortes do mapa em um único HTML (aproximadamente 65 MB) que pode abrir diretamente no navegador. Não depende de Google Fonts. Links de referência, apresentações Google Slides, miniaturas e players do YouTube continuam externos e exigem conexão. O conteúdo textual, os experimentos e o mapa com suas imagens funcionam offline.
+
+## Roteiro do dia
+
+A página `#playbook` abre em **Passo a passo**: uma sequência linear de dez etapas para cada um dos 12 cenários. Cada etapa começa com uma fala autoral do entrevistador simulado e continua com bullets do candidato: fala, conceito, conexões no desenho, tecnologia/alternativa, defesa da decisão e checkpoint. O desenho progressivo, a explicação longa e o mecanismo ficam junto da etapa, em um detalhe expansível. A navegação também oferece ensaio com cronômetro de 60 minutos, modo de tentativa antes da resposta, anotações locais, revisão por etapa e download do roteiro com as notas.
+
+Os 12 cenários totalizam 120 etapas adaptadas: Pix, chargeback, entrega de cartão, atendimento, antifraude, condições de pagamento, extrato, migração de célula, monitoramento, IDs, KV e entrega de documentos. Os 130 conceitos do draw.io aparecem nas etapas pertinentes, com tecnologias nomeadas, alternativas, trade-offs e exemplos bancários. Um seletor leva diretamente do conceito ao passo; os mecanismos, limites, fontes e recortes do mapa continuam conectados. Há 26 decisões para escolher peças e 32 interrupções respondidas com alteração do quadro, limite e visão Principal. Os diagramas roteiam setas ao redor de caixas, permitem inspecionar nós/fluxos e removem ligações substituídas durante a evolução.
+
+O inventário da pasta fornecida contém 40 itens: 35 PDFs, quatro vídeos e um draw.io. Os textos extraídos dos 35 PDFs foram lidos integralmente. Os quatro vídeos somam 1h43min41s e foram analisados por transcrição automática integral do áudio, leitura editorial e amostragem visual; isso não equivale a assistir a cada frame nem a uma legenda oficial. Termos técnicos, unidades e negações foram conferidos quando relevantes. A revisão distingue fonte secundária, publicação primária e relato de candidato. O vídeo “100+ conceitos — parte 1” cobre 20 conceitos.
+
+O draw.io reutiliza a análise anterior do anexo local: a cópia do Drive tem o mesmo nome e tamanho, mas excede o limite de 256 MiB do conector e não foi comparada byte a byte. A limitação aparece no inventário. Não são publicados arquivos originais, transcrições ou frames. Os links do Drive mantêm suas permissões de origem. Dados e fontes editoriais ficam em `data/playbook.json`; `playbook.mjs`, `playbook-routing.mjs` e `playbook.css` implementam a experiência.
+
+As contagens, duração dos roteiros, referências, links internos, 40 itens de cobertura e progressão dos grafos entram na validação. Os testes de geometria percorrem todas as etapas e verificam que setas não atravessam outras caixas. Bullets são apoios de memória para uma conversa adaptativa, não respostas para recitar nem promessa de aprovação.
 
 ## Origem do mapa mental
 

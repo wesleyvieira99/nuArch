@@ -22,6 +22,7 @@ jobs:
         run: |
           node --check app.js
           node --check models.mjs
+          node --check mindmap.mjs
           node scripts/test_models.mjs
           node scripts/test_progress_merge.mjs
           python scripts/validate.py

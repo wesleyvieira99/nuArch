@@ -6,6 +6,9 @@ Portal independente, em português, para praticar decisões de system design com
 
 ## O acervo
 
+- **Mapa mental navegável do DSNu.drawio:** 16 temas, 130 conceitos, 136 relações conceituais e os 368 recortes únicos do mural. Zoom, pan, tela ampliada, busca, conexões selecionáveis, explicações, trade-offs, alertas técnicos, notas e referências.
+- **Navegação reorganizada:** Orientação, Entender, Praticar e Aprofundar; início com trilhas, retomada do último ponto, índice de seções, modo leitura e ajuste de fonte.
+
 - Atlas de estilos, padrões de dados, integração, resiliência, segurança e operação, com diagramas animados e nós inspecionáveis.
 - **64 análises de escala, falhas e SLA:** gargalos observáveis, mecanismos físicos, mitigação, limites de escala, dois incidentes por padrão, failover, recuperação, UX e contratos SLI/SLO/RTO/RPO propostos.
 - **Fundamentos distribuídos:** seis capítulos, 34 seções técnicas e seis experimentos sobre CAP/consistência, replicação/quorum/sharding, bancos/índices/pooling, caches, balanceamento e filas/backpressure.
@@ -45,6 +48,7 @@ Abra `http://localhost:8080`. Os dados são carregados por `fetch`, por isso a a
 ```sh
 node --check app.js
 node --check models.mjs
+node --check mindmap.mjs
 node scripts/test_models.mjs
 node scripts/test_progress_merge.mjs
 python3 scripts/validate.py
@@ -54,7 +58,7 @@ Os vídeos foram conferidos em playlists públicas, metadados oEmbed e descriç�
 
 O curso foi catalogado a partir da árvore completa do commit `ae638baca549021f793fb9809582d7d876c08bc4` do repositório público indicado. Os 29 slides e endpoints de incorporação estavam acessíveis; 25/26 artigos retornaram HTTP 200. O artigo de API Gateways retornou 404. Outros links incompletos da origem aparecem na página. Guias são autorais; slides e artigos não são republicados. Não há gravações de aulas no repositório.
 
-A validação verifica contagens, cobertura operacional dos 64 padrões, 50 vídeos únicos, 29 aulas e 341 arquivos únicos do curso, cinco entrevistas guiadas com 50 etapas cronológicas e grafos progressivos, vínculos do acervo, IDs e textos únicos, cronogramas sequenciais de 60 minutos, referências, integridade dos diagramas, três implementações por padrão, existência de ativos e ausência de dados privados conhecidos.
+A validação verifica o mapa (temas, conceitos, relações, fontes, rotas e todos os recortes), contagens, cobertura operacional dos 64 padrões, 50 vídeos únicos, 29 aulas e 341 arquivos únicos do curso, cinco entrevistas guiadas com 50 etapas cronológicas e grafos progressivos, vínculos do acervo, IDs e textos únicos, cronogramas sequenciais de 60 minutos, referências, integridade dos diagramas, três implementações por padrão, existência de ativos e ausência de dados privados conhecidos.
 
 A verificação de UI inclui busca, filtros, expansão de perguntas, favoritos, cronômetro, diagramas, laboratórios e layouts de desktop/celular. Os modelos interativos são didáticos, não benchmarks nem simuladores completos de infraestrutura. Exemplos de código exigem adaptação e revisão antes de qualquer uso produtivo.
 
@@ -68,7 +72,11 @@ Após editar os arquivos do exemplo, execute `python3 scripts/embed_ledger.py` p
 python3 scripts/export.py nuArch-portable.html
 ```
 
-O exportador embute conteúdo, código, CSS e ícones em um único HTML que pode abrir diretamente no navegador. Não depende de Google Fonts. Links de referência, apresentações Google Slides, miniaturas e players do YouTube continuam externos e exigem conexão. O conteúdo textual e os experimentos funcionam offline.
+O exportador embute conteúdo, código, CSS, ícones e os 368 recortes do mapa em um único HTML (aproximadamente 64 MB) que pode abrir diretamente no navegador. Não depende de Google Fonts. Links de referência, apresentações Google Slides, miniaturas e players do YouTube continuam externos e exigem conexão. O conteúdo textual, os experimentos e o mapa com suas imagens funcionam offline.
+
+## Origem do mapa mental
+
+O arquivo fornecido `DSNu.drawio` contém 450 células, 372 ocorrências de imagens embutidas (368 imagens únicas) e quatro ícones externos. Os recortes foram convertidos para WebP e miniaturas; o arquivo original de aproximadamente 275 MiB não é publicado. As imagens carregam sob demanda. OCR auxilia a busca, mas não substitui a leitura do original. Textos, conexões e explicações são curadoria editorial e distinguem simplificações do mural de garantias técnicas. Cada imagem é vinculada a pelo menos um conceito; notas de origem e fontes aparecem na página.
 
 ## Dados e privacidade
 
@@ -78,4 +86,4 @@ Todo progresso fica em `localStorage` no navegador. Não há backend, coleta de 
 
 GitHub Pages serve a branch `main`, diretório raiz. `.nojekyll` mantém a publicação estática. Não são necessários tokens no frontend, serviços pagos ou banco externo. Não publique arquivos privados neste repositório público.
 
-Pesquisa consolidada em **30 de outubro de 2026**. Links e produtos podem mudar: consulte as páginas oficiais antes de extrapolar uma garantia.
+Pesquisa inicial consolidada em **30 de outubro de 2026**; mapa e organização atualizados em **31 de outubro de 2026**. Links e produtos podem mudar: consulte as páginas oficiais antes de extrapolar uma garantia.

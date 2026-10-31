@@ -3,7 +3,7 @@ import json,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 load=lambda n:json.loads((root/'data'/f'{n}.json').read_text())
-a,p,r,l,g,f,v,course,guided=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided')]
+a,p,r,l,g,f,v,course,guided,mindmap=[load(n) for n in ('architectures','practice','research','logos','ledger','foundations','videos','course-linux','guided','mindmap')]
 assert len(a['architectures'])>=60
 assert len(p['questions'])>1000
 assert len(p['mocks'])>100
@@ -11,7 +11,7 @@ for objects,key in [(a['architectures'],'id'),(p['questions'],'id'),(p['question
     vals=[x[key] for x in objects]
     assert len(vals)==len(set(vals)),f'Duplicate {key}'
 sources={}
-for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']+guided['sources']:
+for s in r['sources']+a['sources']+p['sources']+g['sources']+f['sources']+v['sources']+course['sources']+guided['sources']+mindmap['sources']:
     assert s['id'] not in sources or sources[s['id']]['url']==s['url'],s['id']
     assert s.get('url') is None or s['url'].startswith('https://'),s
     sources[s['id']]=s
@@ -26,7 +26,7 @@ def refs(obj):
             else:refs(value)
     elif isinstance(obj,list):
         for item in obj:refs(item)
-for obj in (a,p,r,g,f,v,course,guided):refs(obj)
+for obj in (a,p,r,g,f,v,course,guided,mindmap):refs(obj)
 for arch in a['architectures']:
     assert arch['title'] and len(arch['steps'])>=2 and len(arch['internals'])>=5,arch['id']
     assert len(arch['code']['text'])>15 and arch['sourceIds'],arch['id']
@@ -142,6 +142,48 @@ for case in guided['cases']:
     assert all(id in {arch['id'] for arch in a['architectures']} for id in case['relatedArchitectures'])
     assert all(isinstance(case['deployment'][p],str) and len(case['deployment'][p])>100 for p in ('aws','azure','onprem'))
 
+# Mind map: coverage, graph integrity, references and local media are publication contracts.
+assert len(mindmap['groups'])==16
+map_nodes={n['id']:n for n in mindmap['nodes']}
+map_groups={g['id']:g for g in mindmap['groups']}
+assert len(map_nodes)==len(mindmap['nodes'])>=80
+assert not set(map_nodes).intersection(map_groups)
+map_links=set()
+for edge in mindmap['connections']:
+    assert edge['from'] in map_nodes and edge['to'] in map_nodes,edge
+    assert edge['from']!=edge['to'] and edge['label'] and edge['explanation'],edge
+    map_links.update([edge['from'],edge['to']])
+assert map_links==set(map_nodes),f'Concepts without connections: {set(map_nodes)-map_links}'
+seen=set();pending=[next(iter(map_nodes))]
+while pending:
+    nid=pending.pop()
+    if nid in seen:continue
+    seen.add(nid)
+    for edge in mindmap['connections']:
+        if edge['from']==nid:pending.append(edge['to'])
+        elif edge['to']==nid:pending.append(edge['from'])
+assert seen==set(map_nodes),'The concept graph must be connected'
+route_ids={'atlas':{x['id'] for x in a['architectures']},'foundations':{x['id'] for x in f['chapters']},'ledger':{x['id'] for x in g['sections']},'guided':{x['id'] for x in guided['cases']},'map':set(map_nodes)|set(map_groups)}
+for n in map_nodes.values():
+    assert n['group'] in map_groups and n['label'] and len(n['summary'])>=40,n['id']
+    assert len(n['mechanism'])>=2 and len(n['tradeoffs'])>=2,n['id']
+    assert n['pitfall'] and n['interview'] and n['links'] and n['sourceIds'],n['id']
+    assert n['originCellIds'],f'Missing origin: {n["id"]}'
+    for link in n['links']:
+        assert link['href'].startswith('#'),link
+        parts=link['href'][1:].split('?')[0].split('/')
+        if len(parts)>1 and parts[0] in route_ids:assert parts[1] in route_ids[parts[0]],link
+for gid in map_groups:assert any(n['group']==gid for n in map_nodes.values()),gid
+assert len(mindmap['materials'])==368
+assert len({m['id'] for m in mindmap['materials']})==368
+for material in mindmap['materials']:
+    assert material['group'] in map_groups and material['title'] and material['cellIds'],material['id']
+    assert material['nodeIds'] and set(material['nodeIds']).issubset(map_nodes),material['id']
+    for field in ('path','thumb'):
+        path=(root/material[field]).resolve()
+        assert path.is_relative_to(root/'assets'/'mindmap') and path.is_file(),material[field]
+        assert path.read_bytes()[:4]==b'RIFF',material[field]
+assert mindmap['meta']['embeddedOccurrences']==372 and mindmap['meta']['externalIcons']==4
 assert len(g['codeFiles'])>=4
 for file in g['codeFiles']:
     assert file['text']==(root/'examples'/'ledger'/file['name']).read_text(),file['name']
@@ -156,4 +198,4 @@ for path in root.rglob('*'):
     if path.suffix in ('.html','.js','.json','.md','.css'):
         text=path.read_text()
         assert not re.search(r'meet\.google\.com/[a-z-]+|[\w.+-]+@(?:gmail|hotmail|outlook)\.com|/Users/|/Downloads/',text),path
-print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'guided_cases':len(guided['cases']),'guided_steps':sum(len(c['steps']) for c in guided['cases']),'status':'PASS'},ensure_ascii=False,indent=2))
+print(json.dumps({'architectures':len(a['architectures']),'questions':len(p['questions']),'mocks':len(p['mocks']),'cases':len(r['cases']),'unique_source_urls':len({s['url'] or s['id'] for s in sources.values()}),'official_assets':len(l['entries']),'ledger_sections':len(g['sections']),'ledger_code_files':len(g['codeFiles']),'foundation_chapters':len(f['chapters']),'foundation_sections':sum(len(c['sections']) for c in f['chapters']),'operational_analyses':sum('operations' in x for x in a['architectures']),'videos':len(v['videos']),'course_lessons':len(course['lessons']),'course_files':len(course_files),'guided_cases':len(guided['cases']),'guided_steps':sum(len(c['steps']) for c in guided['cases']),'map_groups':len(map_groups),'map_concepts':len(map_nodes),'map_relations':len(mindmap['connections']),'map_images':len(mindmap['materials']),'status':'PASS'},ensure_ascii=False,indent=2))

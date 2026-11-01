@@ -1,0 +1,54 @@
+{
+  "checkedAt": "2026-11-01",
+  "assets": [
+    {
+      "id": "nubank-official-site",
+      "title": "SVG extraído do cabeçalho oficial de nu.com",
+      "format": "SVG",
+      "sourceUrl": "https://nu.com/pt/sala-de-imprensa",
+      "sourcePage": "https://nu.com/pt/sala-de-imprensa",
+      "official": true,
+      "sha256": "1c5c95aaf27cb4e59080cc053adea73bb7c147ada509e3288432d98ec6634298",
+      "bytes": 1626,
+      "notes": "Mesmo path, viewBox 0 0 36 20 e fill #8D0DE3 da página. Removidos apenas style responsivo e class de layout; nenhuma curva recriada.",
+      "viewBox": "0 0 36 20",
+      "svgSafety": {
+        "scripts": false,
+        "eventHandlers": false,
+        "foreignObject": false,
+        "externalReferences": false,
+        "embeddedRaster": false,
+        "styles": false,
+        "tagCount": 2
+      },
+      "path": "assets/brand/nubank.svg"
+    },
+    {
+      "path": "assets/brand/nuarch-symbol.svg",
+      "official": false,
+      "title": "Marca autoral nuArch: hierarquia de três nós",
+      "usage": "Símbolo próprio do portal e favicon, independente da marca bancária."
+    }
+  ],
+  "sources": [
+    {
+      "id": "nu-official-press-kit",
+      "title": "Nu — Kit de imprensa",
+      "url": "https://nu.com/pt/sala-de-imprensa/kit-de-imprensa",
+      "finding": "Publica a pasta de arquivos de marca no Google Drive, além de outras categorias de imprensa."
+    },
+    {
+      "id": "nu-brand-system",
+      "title": "Building Nubank — A Nu way of guidance: Meet the Nu Brand System",
+      "url": "https://building.nu.com/nu-brand-system/",
+      "finding": "Artigo de março/2023 apresenta a plataforma pública de diretrizes e distingue conteúdos restritos. Não acessei área privada."
+    },
+    {
+      "id": "nu-brand-refresh",
+      "title": "Blog Nubank — Brand Refresh: como renovamos a identidade visual do Nubank",
+      "url": "https://blog.nubank.com.br/brand-refresh-como-renovamos-a-identidade-visual-do-nubank/",
+      "finding": "Artigo publicado em 10/06/2026 descreve refinamento da identidade e preferência pelo símbolo em container roxo. Referência editorial, não manual completo nem licença de uso."
+    }
+  ],
+  "usage": "O logo Nubank mantém seu desenho e cor original em contexto de preparação independente. Não é uma identidade corporativa oficial do portal."
+}

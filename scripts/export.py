@@ -19,12 +19,18 @@ js=js.replace("import {createProgressStore} from './progress-merge.mjs';",(root/
 js=re.sub(r"import \{createMindMap\} from './mindmap\.mjs(?:\?[^']*)?';",lambda _: (root/'mindmap.mjs').read_text().replace('export function ','function '),js)
 js=re.sub(r"import \{createPlaybook\} from './playbook\.mjs(?:\?[^']*)?';",lambda _: (root/'playbook.mjs').read_text().replace('export function ','function '),js)
 js=re.sub(r"import \{routeDiagram\} from './playbook-routing\.mjs(?:\?[^']*)?';",lambda _: (root/'playbook-routing.mjs').read_text().replace('export function ','function '),js)
+js=re.sub(r"import \{renderStudyVideo,installStudio\} from './studio\.mjs(?:\?[^']*)?';",lambda _: (root/'studio.mjs').read_text().replace('export function ','function '),js)
+js=re.sub(r"import \{renderStudyVideo\} from './studio\.mjs(?:\?[^']*)?';",'',js)
 html=(root/'index.html').read_text()
-for name in ('styles.css','mindmap.css','playbook.css'):
+for name in ('styles.css','mindmap.css','playbook.css','studio.css'):
     css=re.sub(r'^@import[^\n]*\n','',(root/name).read_text(),flags=re.M)
     html=re.sub(r'<link rel="stylesheet" href="'+re.escape(name)+r'(?:\?[^"\s]*)?">',lambda _:'<style>'+css+'</style>',html)
 favicon='data:image/svg+xml;base64,'+base64.b64encode((root/'assets/favicon.svg').read_bytes()).decode()
-html=html.replace('assets/favicon.svg',favicon)
+html=re.sub(r'assets/favicon\.svg(?:\?[^"\s]*)?',lambda _:favicon,html)
+for asset in ('assets/brand/nubank.svg','assets/brand/nuarch-symbol.svg'):
+    embedded='data:image/svg+xml;base64,'+base64.b64encode((root/asset).read_bytes()).decode()
+    html=html.replace(asset,embedded)
+    js=js.replace(asset,embedded)
 payload=json.dumps(data,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')
 html=re.sub(r'<script type="module" src="app\.js(?:\?[^"\s]*)?"></script>',lambda _:'<script>window.__NUARCH_DATA__='+payload+';</script><script type="module">'+js.replace('</script','<\\/script')+'</script>',html)
 out.parent.mkdir(parents=True,exist_ok=True);out.write_text(html)

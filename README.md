@@ -110,3 +110,11 @@ Todo progresso fica em `localStorage` no navegador. Não há backend, coleta de 
 GitHub Pages serve a branch `main`, diretório raiz. `.nojekyll` mantém a publicação estática. Não são necessários tokens no frontend, serviços pagos ou banco externo. Não publique arquivos privados neste repositório público.
 
 Pesquisa inicial consolidada em **30 de outubro de 2026**; mapa e organização atualizados em **31 de outubro de 2026**. Links e produtos podem mudar: consulte as páginas oficiais antes de extrapolar uma garantia.
+
+## Identidade visual e movimento
+
+A camada `studio.css` refina as superfícies, a hierarquia, o contraste claro/escuro e a leitura móvel. A marca autoral do nuArch usa nós conectados, também presentes no favicon. O símbolo Nubank mantém o SVG e a cor do cabeçalho oficial, em uma assinatura de preparação independente; a procedência e o checksum estão em `assets/brand/provenance.json` ([sala de imprensa oficial](https://nu.com/pt/sala-de-imprensa)).
+
+`studio.mjs` oferece entradas breves por rota, pausa global de animações, preferência de movimento reduzido e suspensão de fluxos SVG fora de tela. Não anima notas, filtros ou relógios. Os vídeos contextuais da abertura, das 15 conexões do Nubank e dos quatro vídeos do acervo carregam o player somente após um clique, sem autoplay. Fechar o tópico encerra seu player; o link externo permanece disponível. Em arquivos abertos diretamente por `file://`, o YouTube pode recusar a incorporação por ausência de Referer; a versão HTTP e o link externo são as alternativas.
+
+O exportador inclui a camada visual, o módulo de interação e os ativos de marca no HTML portátil. Conferência: celular de 390px, desktop de 1440px, tema escuro, pausa de movimento, player contextual com timestamp, fechamento e restauração de foco, conteúdo e rotas de diagramas.

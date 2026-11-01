@@ -1,0 +1,731 @@
+import { renderStudyVideo } from '../../ui/studio.mjs?v=20261101-structure1';
+import { routeDiagram } from './diagram-routing.mjs?v=20261101-structure1';
+/** Interview workspace: one explicit contract, a progressive drawing and adaptive decisions. */
+export function createPlaybook({
+  escape: e,
+  sources,
+  architectures,
+  mindmap,
+  technologies,
+  readNote,
+  writeNote,
+  isDone,
+  toggleDone,
+  onNavigate,
+}) {
+  let data,
+    host,
+    abort,
+    interval,
+    caseId,
+    step = 0,
+    view = 'steps',
+    rehearse = false,
+    revealed = false,
+    challenge = '',
+    filter = '',
+    materialType = '',
+    materialCollection = '',
+    topicId = '';
+  let timer = { caseId: '', elapsed: 0, started: 0, running: false };
+  const $ = (s) => host?.querySelector(s);
+  const textList = (xs) => `<ul>${(xs || []).map((x) => `<li>${e(x)}</li>`).join('')}</ul>`;
+  const norm = (s) =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  const selected = () => data.cases.find((x) => x.id === caseId) || data.cases[0];
+  const elapsed = () =>
+    Math.min(3600, timer.elapsed + (timer.running ? (Date.now() - timer.started) / 1000 : 0));
+  const noteKey = () => `playbook:${caseId}:step:${step}`;
+  const button = (action, label, extra = '') =>
+    `<button class="button small" data-pb-action="${action}" ${extra}>${label}</button>`;
+  function url() {
+    history.replaceState(
+      null,
+      '',
+      `#playbook/${caseId}?step=${step + 1}${view !== 'steps' ? `&view=${view}` : ''}${rehearse ? '&mode=rehearse' : ''}${view === 'evidence' && materialCollection ? '&collection=' + materialCollection : ''}${view === 'nubank' && topicId ? '&topic=' + topicId : ''}`,
+    );
+    onNavigate(caseId, selected().title);
+  }
+  function html(d, id) {
+    data = d;
+    caseId = data.cases.some((x) => x.id === id) ? id : data.cases[0].id;
+    const params = new URLSearchParams(location.hash.split('?')[1]);
+    step = Math.max(0, Math.min(9, (parseInt(params.get('step'), 10) || 1) - 1));
+    view = ['steps', 'walk', 'decisions', 'pressure', 'evidence', 'nubank'].includes(
+      params.get('view'),
+    )
+      ? params.get('view')
+      : 'steps';
+    rehearse = params.get('mode') === 'rehearse';
+    revealed = false;
+    challenge = '';
+    filter = '';
+    materialType = '';
+    materialCollection = (data.meta.materialCollections || []).some(
+      (x) => x.id === params.get('collection'),
+    )
+      ? params.get('collection')
+      : '';
+    topicId = data.nubankContext?.topics.some((x) => x.id === params.get('topic'))
+      ? params.get('topic')
+      : '';
+    if (timer.caseId !== caseId) timer = { caseId, elapsed: 0, started: 0, running: false };
+    return `<section class="playbook-page" id="playbook-root">${markup()}</section>`;
+  }
+  function markup() {
+    return `<header class="pb-hero"><div><span class="studio-signature"><img src="assets/brand/nubank.svg" alt="Nubank" width="38" height="23"><i aria-hidden="true"></i>Roteiro do dia · estudo independente</span><h1>Seu passo a passo.<br>Do enunciado à defesa.</h1><p>Uma entrevista escrita para consultar: falas, passos, tecnologias, patterns e trade-offs, do primeiro esclarecimento ao desenho final.</p></div><div class="pb-hero-stats"><strong>10<small>etapas</small></strong><strong>${data.cases.length}<small>cenários</small></strong><strong>${data.materials.length}<small>itens do Drive</small></strong></div></header>
+    <div class="pb-orientation"><strong>Um método para adaptar.</strong><span>Escolha o cenário mais próximo, confirme as hipóteses e acompanhe as respostas. Os roteiros são autorais; relatos públicos e casos oficiais têm rótulos próprios. Os tempos orientam o ensaio e podem mudar na conversa.</span></div>
+    ${cacheUpdate()}<nav class="pb-tabs" aria-label="Áreas do roteiro">${[
+      ['steps', '01', 'Passo a passo'],
+      ['walk', '02', 'Ensaiar e desenhar'],
+      ['decisions', '03', 'Escolher as peças'],
+      ['pressure', '04', 'Responder a mudanças'],
+      ['evidence', '05', 'Acervo e evidências'],
+      ['nubank', '06', 'Nubank na conversa'],
+    ]
+      .map(
+        ([id, n, label]) =>
+          `<button data-pb-view="${id}" aria-pressed="${view === id}"><small>${n}</small>${label}</button>`,
+      )
+      .join('')}</nav>
+    ${view === 'steps' ? memory() : view === 'walk' ? walk() : view === 'decisions' ? decisions() : view === 'pressure' ? pressure() : view === 'nubank' ? nubankContext() : evidence()}`;
+  }
+  function cacheUpdate() {
+    const update = data.meta.latestUpdate;
+    if (!update) return '';
+    return `<aside class="pb-update"><div><span class="eyebrow">ACERVO ATUALIZADO · 01 NOV 2026</span><strong>As mesmas dez etapas. Mais conexões com o Nubank.</strong><p>${update.materialIds.length} novos materiais: eventos, rate limiting, objetos, busca, logs, contadores e IA. ${update.stepAdditions} consultas aplicadas e contexto público do Nubank ligado a cada etapa.</p></div><div class="actions"><button class="button small" data-pb-view="nubank">Conectar ao Nubank →</button><button class="button small" data-pb-collection="nov-2026">Ver os materiais novos</button></div></aside>`;
+  }
+  const consultBullets = (n) =>
+    `<ul class="pb-consult-bullets">${[
+      ['say', 'Eu diria'],
+      ['concept', 'O mecanismo'],
+      ['connect', 'Eu ligaria no desenho'],
+      ['technology', 'Tecnologia e alternativa'],
+      ['defend', 'Eu defenderia assim'],
+    ]
+      .map(([key, label]) => `<li><strong>${label}:</strong> ${e(n[key])}</li>`)
+      .join('')}</ul>`;
+  function newConsult(a) {
+    return (a.studyNotes || [])
+      .map(
+        (n) =>
+          `<details class="pb-cache-note pb-study-note"><summary>Do novo acervo · ${e(n.title)}</summary>${consultBullets(n)}${sources(n.sourceIds)}</details>`,
+      )
+      .join('');
+  }
+  function nubankConsult(index) {
+    const n = data.nubankContext?.stageNotes.find((x) => x.stage === index);
+    if (!n) return '';
+    return `<aside class="pb-nubank-note"><span class="eyebrow">NUBANK NESTA ETAPA · CONTEXTO PÚBLICO</span><h3>${e(n.title)}</h3><p class="pb-nu-say">${e(n.say)}</p><details><summary>Conceitos, desenho, tecnologias e defesa da decisão</summary>${consultBullets(n)}<div class="actions">${n.topicIds
+      .map((id) => {
+        const t = data.nubankContext.topics.find((t) => t.id === id);
+        return `<button class="chip" data-pb-topic="${e(id)}">${e(t.title)} ↗</button>`;
+      })
+      .join(
+        '',
+      )}</div>${sources(n.sourceIds)}<p class="pb-source-note">Fala autoral para adaptar ao cenário. Consulte a data e o limite das evidências; isto não é a arquitetura interna completa de 2026.</p></details></aside>`;
+  }
+  function nubankContext() {
+    const ctx = data.nubankContext;
+    return `<section class="pb-section-intro"><span class="eyebrow">VÍDEO → EVIDÊNCIA → DECISÃO</span><h2 id="pb-view-heading" tabindex="-1">Use o contexto do Nubank para aprofundar o seu desenho.</h2><p>${e(ctx.overview)}</p></section><section class="panel pb-nu-roadmap"><h3>Conecte o contexto às dez etapas</h3><p>Este é um mapa de leitura. Selecione uma etapa para abrir a fala e o desenho do cenário atual: <strong>${e(selected().title)}</strong>.</p><ol>${data.stages
+      .map((s, i) => {
+        const n = ctx.stageNotes.find((n) => n.stage === i);
+        return `<li><button data-pb-context-stage="${i}"><b>${String(i + 1).padStart(2, '0')}</b><span><strong>${e(s.shortTitle)}</strong><small>${e(
+          n.topicIds
+            .map((id) => ctx.topics.find((t) => t.id === id)?.title)
+            .slice(0, 2)
+            .join(' · '),
+        )}</small></span><i aria-hidden="true">→</i></button></li>`;
+      })
+      .join(
+        '',
+      )}</ol></section><div class="pb-evidence-key"><span>Vídeo: o que foi narrado</span><span>Fonte primária: o que está documentado</span><span>Aplicação: o que eu proponho no exercício</span></div><label class="pb-filter">Buscar uma conexão<input id="pb-filter" type="search" value="${e(filter)}" placeholder="Kafka, células, Datomic, contratos, logs…"></label><div class="actions"><button class="button small" data-pb-topic="">Ver todas as ${ctx.topics.length} conexões</button></div><div id="pb-filter-results">${contextCards()}</div><details class="panel pb-method-bridge"><summary>${e(data.methodBridge.title)}</summary><p>${e(data.methodBridge.intro)}</p><ul>${data.methodBridge.items.map((x) => `<li><strong>${e(x.label)}:</strong> ${e(x.reminder)} <span class="actions">${x.stages.map((i) => `<button class="chip" data-pb-context-stage="${i}">Passo ${i + 1}: ${e(data.stages[i].shortTitle)}</button>`).join('')}</span></li>`).join('')}</ul>${sources(data.methodBridge.sourceIds)}</details>`;
+  }
+  function contextCards() {
+    const ctx = data.nubankContext,
+      all = ctx.topics.filter(
+        (t) => (!topicId || t.id === topicId) && norm(JSON.stringify(t)).includes(norm(filter)),
+      );
+    return `<p class="pb-count">${all.length} conexões com evidência</p><div class="pb-context-list">${all
+      .map(
+        (t) =>
+          `<details class="panel pb-context-card" ${topicId === t.id ? 'open' : ''}><summary><strong>${e(t.title)}</strong><small>Vídeo ${e(t.videoEvidence.time)} · fonte, limite e aplicação</small></summary><div class="pb-context-evidence"><section><span class="eyebrow">O VÍDEO DESCREVE</span><p>${e(t.videoEvidence.claim)}</p>${renderStudyVideo(t.videoEvidence.href, t.videoEvidence.label, `Trecho ${t.videoEvidence.time}. A síntese do vídeo é comparada à fonte primária ao lado.`)}</section><section><span class="eyebrow">O QUE A FONTE PRIMÁRIA CONFIRMA</span><p>${e(t.verified)}</p>${sources(t.sourceIds)}</section></div><p class="pb-source-note"><strong>Limite da evidência:</strong> ${e(t.limit)}</p><h4>Onde eu usaria na conversa</h4><div class="actions">${ctx.stageNotes
+            .filter((n) => n.topicIds.includes(t.id))
+            .map(
+              (n) =>
+                `<button class="button small" data-pb-context-stage="${n.stage}">Passo ${n.stage + 1} · ${e(data.stages[n.stage].shortTitle)} →</button>`,
+            )
+            .join('')}</div></details>`,
+      )
+      .join('')}</div>`;
+  }
+  function cacheConsult(a) {
+    return (a.cacheNotes || [])
+      .map(
+        (n) =>
+          `<details class="pb-cache-note"><summary>Cache neste passo · ${e(n.title)}</summary><ul class="pb-consult-bullets">${[
+            ['say', 'Eu diria'],
+            ['concept', 'O mecanismo'],
+            ['connect', 'Eu ligaria no desenho'],
+            ['technology', 'Tecnologia e alternativa'],
+            ['defend', 'Eu defenderia assim'],
+          ]
+            .map(([key, label]) => `<li><strong>${label}:</strong> ${e(n[key])}</li>`)
+            .join(
+              '',
+            )}</ul>${sources(n.sourceIds)}<a class="button small" href="#playbook/distributed-cache">Praticar o caso completo de cache →</a></details>`,
+      )
+      .join('');
+  }
+  function consult(index) {
+    const section = data.stageConcepts?.find((s) => s.stage === index);
+    if (!section) return '';
+    const ids = section.groups.flatMap((g) => g.conceptIds),
+      nodes = mindmap().nodes;
+    return `<section class="pb-consultation"><span class="eyebrow">LEMBRE DO SEU DRAW.IO NESTE PASSO</span><p class="pb-consultation-intro">${ids.length} conceitos para consultar. Use a condição de entrada, compare a alternativa e volte à decisão deste cenário.</p><div class="pb-concept-preview">${ids
+      .slice(0, 8)
+      .map((id) => `<span>${e(nodes.find((n) => n.id === id)?.label)}</span>`)
+      .join(
+        '',
+      )}${ids.length > 8 ? `<span>+ ${ids.length - 8} conceitos na consulta</span>` : ''}</div><details class="pb-consultation-open"><summary>Consultar tecnologias, patterns, porquês e trade-offs</summary>${section.groups
+      .map(
+        (g) =>
+          `<section class="pb-concept-group"><h3>${e(g.label)}</h3>${g.conceptIds
+            .map((id) => {
+              const n = nodes.find((x) => x.id === id),
+                c = data.concepts[id],
+                ts = c.technologyIds
+                  .map((t) => technologies().find((x) => x.id === t))
+                  .filter(Boolean);
+              return `<details class="pb-concept" data-pb-concept="${e(n.id)}"><summary>${e(n.label)}<small>${e(ts.map((t) => t.name).join(' · '))}</small></summary><ul class="pb-consult-bullets"><li><strong>Por que lembrar agora:</strong> ${e(c.whyHere)}</li><li><strong>O conceito:</strong> ${e(n.summary)}</li><li><strong>Como aplicar:</strong> ${e(n.mechanism.join(' '))}</li><li><strong>Alternativa e trade-off:</strong> ${e(c.alternatives)}</li><li><strong>Cenário bancário:</strong> ${e(c.bankingExample)}</li></ul><h4>Ferramentas relacionadas e suas responsabilidades</h4><div class="pb-tech-options">${ts.map((t) => `<a href="${e(t.url || '#sources')}" ${t.url ? 'target="_blank" rel="noopener"' : ''}>${t.logo ? `<img src="${e(t.logo)}" alt="" loading="lazy" width="22" height="22">` : ''}<span><strong>${e(t.name)}</strong><small>${e(t.role)}</small></span></a>`).join('')}</div><details class="pb-concept-deeper"><summary>Limites do mecanismo e pergunta para testar minha explicação</summary>${textList(n.tradeoffs)}<p><strong>Atenção:</strong> ${e(n.pitfall)}</p><p><strong>Eu preciso responder:</strong> ${e(n.interview)}</p></details><div class="actions"><a class="button small" href="#map/${e(n.id)}">Ver conexões e recortes no mapa ↗</a>${n.links.map((l) => `<a class="chip" href="${e(l.href)}">${e(l.label)} ↗</a>`).join('')}</div>${sources(n.sourceIds)}</details>`;
+            })
+            .join('')}</section>`,
+      )
+      .join('')}</details></section>`;
+  }
+
+  function memory() {
+    const c = selected();
+    return `<section class="pb-memory-intro panel"><span class="eyebrow">MOCK ESCRITO · PRIMEIRA PESSOA · LISTA DE CONSULTA</span><h2 id="pb-view-heading" tabindex="-1">Se eu conduzisse esta entrevista, faria assim.</h2><p>Leia o diálogo do início ao fim: o entrevistador propõe a questão e eu conduzo a resposta. As perguntas são simulações autorais. Cada bullet é uma fala ou decisão para lembrar: o que eu perguntaria, como construiria o desenho e por que escolheria uma alternativa. Consulte os conceitos do seu draw.io na própria etapa e ajuste a resposta ao enunciado.</p><label>Aplicar o passo a passo a<select id="pb-case" aria-label="Cenário do roteiro">${data.cases.map((x) => `<option value="${e(x.id)}" ${x.id === caseId ? 'selected' : ''}>${e(x.title)}</option>`).join('')}</select></label><p class="pb-memory-brief">${e(c.brief)}</p><div class="pb-memory-promise"><strong>Proteja isto:</strong> ${e(c.promise)}</div><div class="actions">${button('download', 'Baixar os passos para revisar')}<button class="button small" data-pb-view="walk">Ensaiar com cronômetro e desenho →</button></div><p class="pb-source-note">${e(c.evidence.kind)} · ${e(c.evidence.summary)} ${e(c.evidence.limits)}</p></section>
+    ${
+      data.stageConcepts
+        ? `<label class="pb-concept-jump">Lembrar um conceito e ir à etapa certa<select id="pb-concept-jump"><option value="">Procure um conceito do draw.io…</option>${data.stageConcepts
+            .flatMap((s) =>
+              s.groups.flatMap((g) =>
+                g.conceptIds.map((id) => ({
+                  id,
+                  stage: s.stage,
+                  label: mindmap().nodes.find((n) => n.id === id).label,
+                })),
+              ),
+            )
+            .filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i)
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
+            .map(
+              (x) =>
+                `<option value="${e(x.id)}" data-stage="${x.stage}">${e(x.label)} · passo ${x.stage + 1}</option>`,
+            )
+            .join('')}</select></label>`
+        : ''
+    }
+    <nav class="pb-memory-index" aria-label="Pular para um passo">${data.stages.map((s, i) => `<button data-pb-jump="${i}"><b>${String(i + 1).padStart(2, '0')}</b> ${e(s.shortTitle)}</button>`).join('')}</nav>
+    <ol class="pb-memory-list">${data.stages
+      .map((s, i) => {
+        const a = c.steps[i],
+          m = a.memory || {
+            say: a.say,
+            concept: a.deepDive,
+            connect: a.draw.join(' → '),
+            technology: s.decisionRule,
+            defend: s.principalLens,
+          },
+          done = isDone(`playbook:${caseId}:step:${i}`);
+        return `<li class="panel pb-memory-card" data-pb-memory="${i}"><header><span class="pb-memory-number">${String(i + 1).padStart(2, '0')}</span><div><span class="eyebrow">${s.startMinute}–${s.startMinute + s.duration} MIN · ${e(s.shortTitle)}</span><h2 id="pb-memory-${i}" tabindex="-1">${e(s.title)}</h2></div></header><div class="pb-interviewer"><span class="eyebrow">ENTREVISTADOR · SIMULAÇÃO</span><p>“${e(a.interviewer || s.goal)}”</p></div><ul class="pb-memory-bullets"><li><strong>Eu diria</strong><p>“${e(m.say)}”</p></li><li><strong>Eu verificaria</strong><p>${e(m.concept)}</p></li><li><strong>Eu desenharia</strong><p>${e(m.connect)}</p></li><li><strong>Eu escolheria</strong><p>${e(m.technology)}</p></li><li><strong>Eu justificaria</strong><p>${e(m.defend)}</p></li><li class="pb-memory-check"><strong>Antes de avançar</strong><p>${e(a.check)}</p></li></ul><div class="pb-memory-questions"><h3>Eu perguntaria ao entrevistador</h3>${textList(a.ask)}</div>${nubankConsult(i)}${newConsult(a)}${cacheConsult(a)}${consult(i)}<details class="pb-memory-drawing" data-pb-drawing="${i}"><summary>Ver o desenho deste passo e aprofundar a explicação</summary><div data-pb-drawing-content></div><div class="pb-node-detail" aria-live="polite"><strong>Selecione uma peça ou uma seta para explicar sua responsabilidade.</strong></div><h3>Como construir no quadro</h3><ol>${a.draw.map((x) => `<li>${e(x)}</li>`).join('')}</ol><h3>A fala completa, se pedirem mais detalhe</h3><blockquote>${e(a.say)}</blockquote><h3>Por dentro do mecanismo</h3><p>${e(a.deepDive)}</p><p class="pb-principal"><strong>Visão Principal:</strong> ${e(s.principalLens)}</p></details><div class="actions"><button class="button small" data-pb-memory-done="${i}" aria-pressed="${done}">${done ? '✓ Consigo explicar' : 'Marcar: consigo explicar'}</button><button class="button small" data-pb-practice="${i}">Ensaiar este passo →</button></div></li>`;
+      })
+      .join('')}</ol>
+    <section class="panel pb-memory-close"><span class="eyebrow">A ÚLTIMA FALA · AMARRE AS DECISÕES</span><blockquote>${e(c.closing)}</blockquote><h3>Se o enunciado mudar, repita esta sequência</h3><ul><li>Reformule a nova restrição e confirme sua interpretação.</li><li>Preserve a invariante e localize a peça afetada.</li><li>Compare a solução atual com uma alternativa concreta.</li><li>Altere o desenho, diga o custo e o risco residual.</li><li>Defina a métrica ou o teste que comprova a nova decisão.</li></ul><div class="actions"><button class="button" data-pb-view="decisions">${data.decisions.length} decisões para escolher as peças →</button><button class="button" data-pb-view="pressure">Treinar mudanças de cenário →</button></div>${sources(c.sourceIds)}</section>`;
+  }
+
+  function walk() {
+    const c = selected(),
+      s = data.stages[step],
+      a = c.steps[step],
+      hidden = rehearse && !revealed,
+      done = isDone(noteKey());
+    return `<section class="pb-case-bar panel"><label>Escolha a situação<select id="pb-case" aria-label="Cenário do roteiro">${data.cases.map((x) => `<option value="${e(x.id)}" ${x.id === caseId ? 'selected' : ''}>${e(x.title)}</option>`).join('')}</select></label><div><span class="chip">${e(c.evidence.kind)}</span><p>${e(c.brief)}</p></div></section>
+    <details class="panel pb-contract"><summary>Antes do desenho: fixe o contrato deste cenário</summary><div class="pb-contract-grid"><section><h3>O que significa sucesso</h3><p>${e(c.promise)}</p><h3>Quem decide a verdade</h3><p>${e(c.authority)}</p></section><section><h3>Invariantes do exercício</h3>${textList(c.invariants)}</section></div><p class="pb-source-note">${e(c.evidence.summary)} ${e(c.evidence.limits)}</p>${sources(c.evidence.sourceIds)}<label>Meu contrato confirmado com o entrevistador<textarea data-pb-contract rows="3" placeholder="Ator / resultado / invariante / prazo / escala / autoridade / o que ficou fora…">${e(readNote(`playbook:${caseId}:contract`))}</textarea></label></details>
+    <div class="pb-session"><div><span class="eyebrow">TEMPO DO ENSAIO</span><strong id="pb-clock">60:00</strong></div><div class="actions">${button('timer', timer.running ? 'Pausar' : 'Iniciar')}${button('reset', 'Reiniciar')}</div><label class="pb-rehearse"><input id="pb-rehearse" type="checkbox" ${rehearse ? 'checked' : ''}> Ensaiar antes de revelar</label><span class="pb-session-hint">A cada ~10 minutos, resuma e confirme a direção.</span></div>
+    <nav class="pb-timeline" aria-label="Etapas da entrevista">${data.stages.map((s, i) => `<button data-pb-step="${i}" ${i === step ? 'aria-current="step"' : ''}><small>${String(s.startMinute).padStart(2, '0')}–${s.startMinute + s.duration} min</small><strong>${String(i + 1).padStart(2, '0')}</strong><span>${e(s.shortTitle || s.title)}</span>${isDone(`playbook:${caseId}:step:${i}`) ? '<b aria-label="Etapa revisada">✓</b>' : ''}</button>`).join('')}</nav>
+    <div class="pb-step-heading"><div><span class="eyebrow">ETAPA ${step + 1} DE 10 · ${s.duration} MINUTOS</span><h2 id="pb-step-title" tabindex="-1">${e(s.title)}</h2><p>${e(s.goal)}</p></div><div class="actions">${button('prev', '← Anterior', step === 0 ? 'disabled' : '')}${button('next', step === 9 ? 'Concluído' : 'Próxima →', step === 9 ? 'disabled' : '')}</div></div>
+    <div class="pb-workspace"><section class="pb-coach panel">${hidden ? `<div class="pb-hidden"><span class="eyebrow">PRIMEIRO, A SUA VERSÃO</span><h3>Explique a decisão em voz alta.</h3><p>${e(s.ask[0])}</p><p>Use seu próprio quadro. Diga a hipótese, a garantia e a evidência que faria você mudar de escolha.</p>${button('reveal', 'Revelar fala e desenho')}</div>` : `<span class="eyebrow">FALE ASSIM · ADAPTE À RESPOSTA</span><blockquote>${e(a.say)}</blockquote><details class="pb-method"><summary>A estrutura por trás desta fala</summary><p>${e(s.say)}</p><p>${e(s.decisionRule)}</p></details><h3>Pergunte e escute</h3>${textList(a.ask)}<h3>Desenhe agora</h3><ol class="pb-draw-instructions">${a.draw.map((x) => `<li>${e(x)}</li>`).join('')}</ol><div class="pb-checkpoint"><strong>Antes de avançar</strong><p>${e(a.check)}</p></div>`}</section>
+    <section class="pb-board panel" aria-label="Quadro progressivo"><header><div><span class="eyebrow">O QUADRO NESTE MOMENTO</span><h3>${e(c.title)}</h3></div>${button('final', step === 9 ? 'Voltar à primeira etapa' : 'Ver desenho completo')}</header>${hidden ? '<div class="pb-drawing-hidden">O desenho aparece quando você revelar a etapa.</div>' : diagram(c)}<div class="pb-node-detail" id="pb-node-detail" aria-live="polite"><strong>Inspecione uma peça ou um fluxo.</strong><p>As caixas aparecem conforme o raciocínio avança. Setas tracejadas destacam fluxos acrescentados nesta etapa; o tipo e a garantia estão na descrição de cada fluxo.</p></div><div class="pb-board-legend"><span><i></i> Peça já discutida</span><span><i class="new"></i> Acrescentada nesta etapa</span><span>Desenho de treino · não é arquitetura interna confirmada</span></div></section></div>
+    ${hidden ? '' : `<section class="panel pb-deep"><span class="eyebrow">SUSTENTE A ESCOLHA</span><h3>O mecanismo que você precisa conseguir explicar</h3><p>${e(a.deepDive)}</p><div class="pb-principal"><strong>Eleve a conversa a Principal</strong><p>${e(s.principalLens)}</p></div>${nubankConsult(step)}${newConsult(a)}${cacheConsult(a)}</section>${challengePanel()}${step === 9 ? `<section class="panel pb-closing"><span class="eyebrow">FECHAMENTO EM 60–90 SEGUNDOS</span><blockquote>${e(c.closing)}</blockquote></section>` : ''}`}
+    <section class="panel pb-notes"><label>Minha explicação desta etapa<textarea id="pb-note" rows="4" placeholder="Minha decisão → motivo → custo → falha → teste que comprova…">${e(readNote(noteKey()))}</textarea></label><div class="actions">${button('done', done ? '✓ Etapa revisada' : 'Marcar etapa revisada', `aria-pressed="${done}"`)}${button('download', 'Baixar roteiro deste cenário')}</div><small>Notas e revisão ficam neste navegador; o download inclui suas notas deste cenário.</small></section>
+    <details class="panel pb-implement"><summary>Como implementar as responsabilidades em AWS, Azure ou on-premises</summary><div class="pb-three">${['aws', 'azure', 'onprem'].map((k) => `<section><h3>${{ aws: 'AWS', azure: 'Azure', onprem: 'On-premises' }[k]}</h3><p>${e(c.deployments[k])}</p></section>`).join('')}</div><p>São opções de implementação para o exercício. Os serviços têm garantias e custos diferentes; trocar um logo não preserva automaticamente o contrato.</p></details>
+    <section class="panel pb-links"><h3>Aprofunde este cenário</h3><div class="actions">${(c.links || []).map((l) => `<a class="chip" href="${e(l.href)}">${e(l.label)} ↗</a>`).join('')}</div>${sources(c.sourceIds)}</section>`;
+  }
+  function lines(s, max = 20) {
+    const result = [''];
+    for (const word of s.split(' ')) {
+      if (result.at(-1).length + word.length > max) result.push(word);
+      else result[result.length - 1] += (result.at(-1) ? ' ' : '') + word;
+    }
+    return result;
+  }
+  function diagram(c, phase = step) {
+    const ns = c.nodes.filter((n) => n.firstStep <= phase),
+      ids = new Set(ns.map((n) => n.id)),
+      es = c.edges.filter(
+        (r) =>
+          r.firstStep <= phase &&
+          (r.lastStep == null || phase <= r.lastStep) &&
+          ids.has(r.from) &&
+          ids.has(r.to),
+      );
+    const map = new Map(ns.map((n) => [n.id, n]));
+    return `<div class="pb-svg-wrap"><svg class="pb-svg" viewBox="0 0 1000 620" role="group" aria-label="Desenho de ${e(c.title)}, etapa ${phase + 1}"><defs><marker id="pb-arrow-${phase}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker><pattern id="pb-grid-${phase}" width="25" height="25" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1"/></pattern></defs><rect width="1000" height="620" fill="url(#pb-grid-${phase})"/>${routeDiagram(
+      ns,
+      es,
+    )
+      .map((r, i) => {
+        const edgeIndex = c.edges.indexOf(es[i]);
+        if (r.error) return '';
+        const labelLength = Math.max(0, Math.floor(r.labelMaxWidth / 7)),
+          label =
+            r.label.length > labelLength
+              ? r.label.slice(0, Math.max(0, labelLength - 1)) + '…'
+              : r.label;
+        return `<g class="pb-edge ${r.firstStep === phase ? 'is-new' : ''}" data-pb-edge="${edgeIndex}" role="button" tabindex="0" aria-label="Fluxo: ${e(r.label)}"><path d="${r.points.map((p, j) => (j ? 'L' : 'M') + p.x + ',' + p.y).join(' ')}" marker-end="url(#pb-arrow-${phase})"/><title>${e(r.label)} — ${e(r.detail)}</title>${r.labelPoint && labelLength > 5 ? `<text x="${r.labelPoint.x}" y="${r.labelPoint.y}" text-anchor="middle">${e(label)}</text>` : ''}</g>`;
+      })
+      .join('')}${ns
+      .map((n) => {
+        const ls = lines(n.label);
+        return `<g class="pb-node ${n.firstStep === phase ? 'is-new' : ''} role-${e(n.role)}" data-pb-node="${e(n.id)}" role="button" tabindex="0" aria-label="${e(n.label)}"><rect x="${n.x - 70}" y="${n.y - 33}" width="140" height="66" rx="14"/>${ls.map((l, j) => `<text x="${n.x}" y="${n.y - (ls.length - 1) * 9 + j * 18 + 5}" text-anchor="middle">${e(l)}</text>`).join('')}<title>${e(n.detail)}</title></g>`;
+      })
+      .join(
+        '',
+      )}</svg></div><div class="pb-flow-index"><details><summary>Fluxos desta etapa em texto (${es.length})</summary><ol>${es.map((r) => `<li><button class="quiet" data-pb-edge="${c.edges.indexOf(r)}">${e(map.get(r.from).label)} → ${e(map.get(r.to).label)} · ${e(r.label)}</button></li>`).join('')}</ol></details></div>`;
+  }
+  function challengePanel() {
+    const choices = data.interruptions.filter((x) => x.stage <= step);
+    const c = choices.find((x) => x.id === challenge);
+    return `<section class="panel pb-challenge"><div><span class="eyebrow">O ENTREVISTADOR MUDA UMA RESTRIÇÃO</span><h3>Treine a adaptação do desenho</h3><p>Uma pergunta de treino, sem atribuição a uma pessoa específica.</p></div><label>Escolha a interrupção<select id="pb-challenge"><option value="">Selecione uma mudança…</option>${choices.map((x) => `<option value="${e(x.id)}" ${challenge === x.id ? 'selected' : ''}>${e(x.question)}</option>`).join('')}</select></label>${c ? `<blockquote>${e(c.answer)}</blockquote><div class="pb-two"><section><h4>Mude o quadro</h4><p>${e(c.redraw)}</p></section><section><h4>O limite que precisa ficar explícito</h4><p>${e(c.guardrail)}</p></section></div><p class="pb-principal">${e(c.principal)}</p>${sources(c.sourceIds)}` : '<p class="pb-source-note">A lista cresce conforme você avança: primeiro requisitos; depois estado, desempenho, falhas e evolução.</p>'}</section>`;
+  }
+  function decisions() {
+    return `<section class="pb-section-intro"><h2 id="pb-view-heading" tabindex="-1">Uma peça entra porque resolve um problema.</h2><p>Use o sinal para decidir o que acrescentar, onde colocar a garantia e quando a complexidade deixa de compensar.</p></section><label class="pb-filter">Encontrar uma decisão<input id="pb-filter" type="search" value="${e(filter)}" placeholder="Buscar cache, fila, consistência, recuperação…"></label><div id="pb-filter-results">${decisionCards()}</div><section class="panel pb-sizing"><h2>Dimensione apenas o que muda a decisão</h2><p>As contas são hipóteses de treino. Use pico, distribuição por chave, tamanho real e capacidade medida; população não equivale a requisições por segundo.</p><div class="pb-sizing-inputs"><label>Operações por dia<input data-pb-size="ops" type="number" min="1" max="1000000000000" value="10000000"></label><label>Fator de pico<input data-pb-size="peak" type="number" min="1" max="1000" value="10"></label><label>Bytes por operação<input data-pb-size="bytes" type="number" min="1" max="1000000000" value="1024"></label><label>Indisponibilidade (min)<input data-pb-size="outage" type="number" min="0" max="10080" value="15"></label></div><div class="pb-sizing-results" id="pb-sizing-results" aria-live="polite"></div><p class="pb-source-note">Armazenamento é payload bruto por dia, antes de réplicas, índices, WAL, eventos derivados e retenção. Backlog usa pico constante durante toda a falha, sem processamento; é um cenário conservador declarado.</p><div class="pb-two">${data.sizingCards.map((x) => `<article><h3>${e(x.name)}</h3><code>${e(x.formula)}</code><p>${e(x.warning)}</p><small>Decisão afetada: ${e(x.changesDecision)}</small></article>`).join('')}</div></section>`;
+  }
+  function decisionCards() {
+    const all = data.decisions.filter((x) => norm(JSON.stringify(x)).includes(norm(filter)));
+    return `<p class="pb-count">${all.length} decisões encontradas</p><div class="pb-card-grid">${all
+      .map((d) => {
+        const a = architectures().find((x) => x.id === d.architectureId);
+        return `<article class="panel pb-decision"><span class="eyebrow">${e(d.family)}</span><h3>${e(d.title)}</h3><p><strong>Quando aparece:</strong> ${e(d.trigger)}</p><p class="pb-question">${e(d.ask)}</p><blockquote>${e(d.say)}</blockquote><details><summary>Como colocar no desenho e defender a escolha</summary><h4>Acrescente ou altere</h4>${textList(d.draw)}<h4>Preço e alternativa</h4><p>${e(d.cost)}</p><h4>Quando simplificar</h4><p>${e(d.remove)}</p>${a ? `<h4>Diagnóstico antes de escalar</h4><p>${e(a.operations.bottlenecks[0].signal)} ${e(a.operations.bottlenecks[0].cause)}</p><h4>Como demonstrar a garantia</h4><p>${e(a.operations.serviceLevel.validation)}</p><a class="button small" href="#atlas/${e(a.id)}?tab=operations">Mecanismos, falhas e implementação ↗</a>${sources(a.sourceIds)}` : d.diagnostic ? `<h4>Diagnóstico e prova</h4><p>${e(d.diagnostic)}</p>${sources(d.sourceIds)}` : ''}</details></article>`;
+      })
+      .join('')}</div>`;
+  }
+  function pressure() {
+    return `<section class="pb-section-intro"><h2 id="pb-view-heading" tabindex="-1">A resposta muda. O raciocínio continua explícito.</h2><p>Repita a restrição, preserve a invariante, compare alternativas, faça a menor mudança e explique o risco residual.</p></section><section class="panel pb-principal-grid"><h3>Uma conversa no nível Principal</h3><div class="pb-three">${data.principalDecisionFrame.dimensions.map((x) => `<article><strong>${e(x.label)}</strong><p>${e(x.question)}</p></article>`).join('')}</div></section><label class="pb-filter">Encontrar uma pergunta<input id="pb-filter" type="search" value="${e(filter)}" placeholder="Buscar timeout, particionamento, custo, migração…"></label><div id="pb-filter-results">${pressureCards()}</div><section class="panel"><h2>Onde o contexto dos entrevistadores ajuda</h2>${data.people.map((p) => `<article class="pb-person"><h3>${e(p.name)}</h3><p>${e(p.verified)}</p><p><strong>Como usar na preparação:</strong> ${e(p.preparation)}</p><p class="pb-source-note">${e(p.limit)}</p>${sources(p.sourceIds)}</article>`).join('')}</section>`;
+  }
+  function pressureCards() {
+    const all = data.interruptions.filter((x) => norm(JSON.stringify(x)).includes(norm(filter)));
+    return `<p class="pb-count">${all.length} perguntas de treino</p><div class="pb-pressure-list">${all.map((x) => `<details class="panel"><summary>${e(x.question)}</summary><blockquote>${e(x.answer)}</blockquote><div class="pb-two"><section><h4>O que mudar no desenho</h4><p>${e(x.redraw)}</p></section><section><h4>Evite prometer</h4><p>${e(x.guardrail)}</p></section></div><p class="pb-principal">${e(x.principal)}</p>${sources(x.sourceIds)}</details>`).join('')}</div>`;
+  }
+  function evidence() {
+    return `<section class="pb-section-intro"><h2 id="pb-view-heading" tabindex="-1">O que foi analisado — e como virou roteiro.</h2><p>${e(data.meta.reviewSummary)}</p></section><details class="panel"><summary>Como cada material foi analisado</summary>${textList(data.meta.methodology)}<p class="pb-source-note">Os arquivos originais e as transcrições não são republicados. Os links do Drive mantêm as permissões de origem. Vídeos secundários descrevendo o Nubank não confirmam a arquitetura interna atual.</p></details><details class="panel"><summary>Correções e limites técnicos encontrados no acervo</summary><div class="pb-corrections">${data.corrections.map((x) => `<article><h4>${e(x.title)}</h4><p>${e(x.explanation)}</p>${sources(x.sourceIds)}</article>`).join('')}</div></details><div class="actions pb-material-types">${[
+      ['', `Todos · ${data.materials.length}`],
+      ['PDF', `PDFs · ${data.materials.filter((x) => x.type === 'PDF').length}`],
+      ['Vídeo', `Vídeos · ${data.materials.filter((x) => x.type === 'Vídeo').length}`],
+      ['Mapa draw.io', 'Mapa draw.io'],
+      [
+        'Google Doc',
+        `Google Docs · ${data.materials.filter((x) => x.type === 'Google Doc').length}`,
+      ],
+    ]
+      .map(
+        ([kind, label]) =>
+          `<button class="button small" data-pb-kind="${e(kind)}" aria-pressed="${!materialCollection && materialType === kind}">${label}</button>`,
+      )
+      .join(
+        '',
+      )}${(data.meta.materialCollections || []).map((c) => `<button class="button small" data-pb-collection="${e(c.id)}" aria-pressed="${materialCollection === c.id}">${e(c.label)} (${data.materials.filter((x) => x.collection === c.id).length})</button>`).join('')}</div><label class="pb-filter">Buscar no inventário<input id="pb-filter" type="search" value="${e(filter)}" placeholder="Título, tema ou aplicação…"></label><div id="pb-filter-results">${materialCards()}</div>`;
+  }
+  function materialCards() {
+    const all = data.materials.filter(
+      (x) =>
+        (!materialType || x.type === materialType) &&
+        (!materialCollection || x.collection === materialCollection) &&
+        norm(JSON.stringify(x)).includes(norm(filter)),
+    );
+    return `<p class="pb-count">${all.length} de ${data.materials.length} itens</p><div class="pb-card-grid">${all.map((m) => `<article class="panel pb-material"><span class="chip">${e(m.type)}</span><h3>${e(m.title)}</h3><p class="pb-review-status">${e(m.reviewStatus)}</p><details><summary>O que este material acrescentou ao roteiro</summary>${textList(m.insights)}${norm(m.insights.join(' ')).includes(norm(m.application)) ? '' : `<p><strong>Aplicação:</strong> ${e(m.application)}</p>`}<p class="pb-source-note">${e(m.limit)}</p>${m.type === 'Vídeo' && m.chapters?.length ? renderStudyVideo(m.chapters[0].href, m.title, 'Vídeo do acervo fornecido. Use os capítulos e as ressalvas da revisão para orientar seu estudo.') : ''}${m.chapters?.length ? `<h4>Reveja por trecho</h4><ol class="pb-chapters">${m.chapters.map((c) => `<li><a href="${e(c.href)}" target="_blank" rel="noopener">${e(c.time)} · ${e(c.label)} ↗</a><p>${e(c.text)}</p></li>`).join('')}</ol>` : ''}${m.corrections?.length ? `<h4>Ressalvas desta gravação</h4>${m.corrections.map((c) => `<article class="pb-video-correction"><strong>${e(c.title)}</strong><p>${e(c.text)}</p>${sources(c.sourceIds)}</article>`).join('')}` : ''}</details>${m.links?.map((l) => `<a class="button small" href="${e(l.href)}">${e(l.label)} ↗</a>`).join('') || ''}${sources(m.sourceIds)}</article>`).join('')}</div>`;
+  }
+  function paint(focusId) {
+    if (!host?.isConnected) return;
+    host.innerHTML = markup();
+    tick();
+    size();
+    if (focusId)
+      requestAnimationFrame(() => {
+        if (!host?.isConnected) return;
+        const el = $('#' + focusId);
+        el?.scrollIntoView({ block: 'start' });
+        el?.focus({ preventScroll: true });
+      });
+  }
+  function size() {
+    if (!$('#pb-sizing-results')) return;
+    const val = (k) => {
+      const el = $(`[data-pb-size="${k}"]`);
+      return el.value.trim() === '' ? NaN : Number(el.value);
+    };
+    const ops = val('ops'),
+      peak = val('peak'),
+      bytes = val('bytes'),
+      outage = val('outage');
+    if (
+      ![ops, peak, bytes, outage].every(Number.isFinite) ||
+      ops < 1 ||
+      ops > 1e12 ||
+      peak < 1 ||
+      peak > 1000 ||
+      bytes < 1 ||
+      bytes > 1e9 ||
+      outage < 0 ||
+      outage > 10080
+    ) {
+      $('#pb-sizing-results').textContent =
+        'Use operações de 1 a 10¹², pico de 1 a 1.000, bytes de 1 a 10⁹ e indisponibilidade de 0 a 10.080 min.';
+      return;
+    }
+    const rate = ops / 86400,
+      fmt = (n) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(n);
+    $('#pb-sizing-results').innerHTML = [
+      [fmt(rate), 'operações/s em média'],
+      [fmt(rate * peak), 'operações/s no pico'],
+      [fmt((ops * bytes) / 1e9) + ' GB', 'payload bruto por dia'],
+      [fmt(rate * peak * outage * 60), 'operações acumuladas na falha'],
+    ]
+      .map(([v, l]) => `<div><strong>${v}</strong><span>${l}</span></div>`)
+      .join('');
+  }
+  function tick() {
+    const n = Math.max(0, Math.ceil(3600 - elapsed()));
+    if ($('#pb-clock'))
+      $('#pb-clock').textContent =
+        `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+    if (n === 0 && timer.running) {
+      timer.elapsed = 3600;
+      timer.running = false;
+      const b = $('[data-pb-action="timer"]');
+      if (b) b.textContent = 'Concluído';
+    }
+  }
+  function inspectNode(el) {
+    const c = selected(),
+      n = c.nodes.find((x) => x.id === el.dataset.pbNode),
+      edge = c.edges[Number(el.dataset.pbEdge)];
+    const detail =
+      el.closest('[data-pb-memory]')?.querySelector('.pb-node-detail') || $('#pb-node-detail');
+    if (!detail) return;
+    if (n) detail.innerHTML = `<strong>${e(n.label)}</strong><p>${e(n.detail)}</p>`;
+    else if (edge) detail.innerHTML = `<strong>${e(edge.label)}</strong><p>${e(edge.detail)}</p>`;
+  }
+  function download() {
+    const c = selected();
+    const out = [
+      `NUARCH — ROTEIRO: ${c.title}`,
+      `Exercício autoral. ${c.evidence.limits}`,
+      `CONTRATO: ${readNote(`playbook:${caseId}:contract`)}`,
+      `PROMESSA: ${c.promise}`,
+      `AUTORIDADE: ${c.authority}`,
+      ...c.invariants.map((x) => 'INVARIANTE: ' + x),
+    ];
+    data.stages.forEach((s, i) => {
+      const a = c.steps[i];
+      out.push(
+        `\n${i + 1}. ${s.startMinute}–${s.startMinute + s.duration}min — ${s.title}`,
+        `ENTREVISTADOR (SIMULAÇÃO): ${a.interviewer || s.goal}`,
+        ...(a.memory
+          ? Object.entries(a.memory).map(
+              ([k, v]) =>
+                `${{ say: 'FALE', concept: 'CONCEITO', connect: 'LIGUE NO DESENHO', technology: 'TECNOLOGIA E ALTERNATIVA', defend: 'DEFENDA A ESCOLHA' }[k]}: ${v}`,
+            )
+          : []),
+        `FALA COMPLETA: ${a.say}`,
+        `PERGUNTAS: ${a.ask.join('\n')}`,
+        `DESENHE: ${a.draw.join('\n')}`,
+        `MECANISMO: ${a.deepDive}`,
+        `CRITÉRIO: ${a.check}`,
+        `MINHAS NOTAS: ${readNote(`playbook:${caseId}:step:${i}`)}`,
+      );
+      for (const n of a.cacheNotes || [])
+        out.push(
+          `CACHE NESTE PASSO: ${n.title}`,
+          `FALE: ${n.say}`,
+          `MECANISMO: ${n.concept}`,
+          `LIGUE: ${n.connect}`,
+          `TECNOLOGIA: ${n.technology}`,
+          `DEFENDA: ${n.defend}`,
+        );
+      for (const n of [
+        ...(a.studyNotes || []),
+        ...(data.nubankContext?.stageNotes.filter((n) => n.stage === i) || []),
+      ])
+        out.push(
+          `CONSULTA ADICIONAL: ${n.title}`,
+          `FALE: ${n.say}`,
+          `MECANISMO: ${n.concept}`,
+          `LIGUE: ${n.connect}`,
+          `TECNOLOGIA: ${n.technology}`,
+          `DEFENDA: ${n.defend}`,
+        );
+      const ids =
+        data.stageConcepts?.find((x) => x.stage === i)?.groups.flatMap((g) => g.conceptIds) || [];
+      if (ids.length)
+        out.push(
+          'CONSULTE NO SEU DRAW.IO:',
+          ...ids.map((id) => {
+            const n = mindmap().nodes.find((n) => n.id === id),
+              x = data.concepts[id];
+            return `• ${n.label}: ${x.whyHere}\n  Alternativas: ${x.alternatives}\n  Exemplo bancário: ${x.bankingExample}\n  Mapa: https://wesleyvieira99.github.io/nuArch/#map/${id}`;
+          }),
+        );
+    });
+    out.push('\nFECHAMENTO: ' + c.closing);
+    const url = URL.createObjectURL(
+        new Blob([out.join('\n\n')], { type: 'text/plain;charset=utf-8' }),
+      ),
+      a = document.createElement('a');
+    a.href = url;
+    a.download = `nuarch-roteiro-${caseId}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function bind() {
+    destroy();
+    host = document.querySelector('#playbook-root');
+    if (!host) return;
+    abort = new AbortController();
+    const listen = (ev, fn) => host.addEventListener(ev, fn, { signal: abort.signal });
+    listen('click', (ev) => {
+      const t = ev.target.closest('button,[data-pb-node],[data-pb-edge]');
+      if (!t) return;
+      if (t.hasAttribute('data-pb-topic')) {
+        view = 'nubank';
+        topicId = t.dataset.pbTopic;
+        filter = '';
+        materialCollection = '';
+        url();
+        paint('pb-view-heading');
+        return;
+      }
+      if (t.hasAttribute('data-pb-context-stage')) {
+        step = Number(t.dataset.pbContextStage);
+        view = 'walk';
+        revealed = false;
+        topicId = '';
+        url();
+        paint('pb-step-title');
+        return;
+      }
+      if (t.hasAttribute('data-pb-collection')) {
+        view = 'evidence';
+        materialCollection = t.dataset.pbCollection;
+        materialType = '';
+        filter = '';
+        url();
+        paint('pb-view-heading');
+        return;
+      }
+      if (t.hasAttribute('data-pb-kind')) {
+        materialCollection = '';
+        materialType = t.dataset.pbKind;
+        url();
+        host
+          .querySelectorAll('[data-pb-kind]')
+          .forEach((b) =>
+            b.setAttribute('aria-pressed', String(b.dataset.pbKind === materialType)),
+          );
+        host
+          .querySelectorAll('[data-pb-collection]')
+          .forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        $('#pb-filter-results').innerHTML = materialCards();
+        return;
+      }
+      if (t.hasAttribute('data-pb-jump')) {
+        const el = $('#pb-memory-' + t.dataset.pbJump);
+        el?.scrollIntoView({ block: 'start' });
+        el?.focus({ preventScroll: true });
+        return;
+      }
+      if (t.hasAttribute('data-pb-memory-done')) {
+        const k = `playbook:${caseId}:step:${t.dataset.pbMemoryDone}`;
+        toggleDone(k);
+        const done = isDone(k);
+        t.textContent = done ? '✓ Consigo explicar' : 'Marcar: consigo explicar';
+        t.setAttribute('aria-pressed', String(done));
+        return;
+      }
+      if (t.hasAttribute('data-pb-practice')) {
+        step = Number(t.dataset.pbPractice);
+        view = 'walk';
+        revealed = false;
+        url();
+        paint('pb-step-title');
+        return;
+      }
+      if (t.dataset.pbView) {
+        view = t.dataset.pbView;
+        filter = '';
+        materialCollection = '';
+        topicId = '';
+        url();
+        paint(view === 'walk' ? 'pb-case' : 'pb-view-heading');
+        return;
+      }
+      if (t.hasAttribute('data-pb-step')) {
+        step = Number(t.dataset.pbStep);
+        revealed = false;
+        challenge = '';
+        url();
+        paint('pb-step-title');
+        return;
+      }
+      if (t.hasAttribute('data-pb-node') || t.hasAttribute('data-pb-edge')) {
+        inspectNode(t);
+        return;
+      }
+      const a = t.dataset.pbAction;
+      if (a === 'prev' || a === 'next') {
+        step = Math.max(0, Math.min(9, step + (a === 'next' ? 1 : -1)));
+        revealed = false;
+        challenge = '';
+        url();
+        paint('pb-step-title');
+      } else if (a === 'reveal') {
+        revealed = true;
+        paint('pb-step-title');
+      } else if (a === 'final') {
+        step = step === 9 ? 0 : 9;
+        revealed = false;
+        url();
+        paint('pb-step-title');
+      } else if (a === 'timer') {
+        if (elapsed() >= 3600) return;
+        if (timer.running) {
+          timer.elapsed = elapsed();
+          timer.running = false;
+        } else {
+          timer.started = Date.now();
+          timer.running = true;
+        }
+        t.textContent = timer.running ? 'Pausar' : 'Iniciar';
+        tick();
+      } else if (a === 'reset') {
+        timer = { caseId, elapsed: 0, started: 0, running: false };
+        tick();
+        const b = $('[data-pb-action="timer"]');
+        if (b) b.textContent = 'Iniciar';
+      } else if (a === 'done') {
+        toggleDone(noteKey());
+        const done = isDone(noteKey());
+        t.textContent = done ? '✓ Etapa revisada' : 'Marcar etapa revisada';
+        t.setAttribute('aria-pressed', String(done));
+        const b = $(`[data-pb-step="${step}"]`);
+        b?.querySelector('b')?.remove();
+        if (done && b) {
+          const check = document.createElement('b');
+          check.textContent = '✓';
+          check.setAttribute('aria-label', 'Etapa revisada');
+          b.append(check);
+        }
+      } else if (a === 'download') download();
+    });
+    listen('change', (ev) => {
+      if (ev.target.id === 'pb-concept-jump' && ev.target.value) {
+        const el = host.querySelector(`[data-pb-concept="${CSS.escape(ev.target.value)}"]`);
+        if (el) {
+          el.closest('.pb-consultation-open').open = true;
+          el.open = true;
+          el.scrollIntoView({ block: 'start' });
+          el.querySelector('summary').focus({ preventScroll: true });
+        }
+        return;
+      }
+      if (ev.target.id === 'pb-case') {
+        caseId = ev.target.value;
+        step = 0;
+        revealed = false;
+        challenge = '';
+        timer = { caseId, elapsed: 0, started: 0, running: false };
+        url();
+        paint(view === 'steps' ? 'pb-view-heading' : 'pb-step-title');
+      }
+      if (ev.target.id === 'pb-rehearse') {
+        rehearse = ev.target.checked;
+        revealed = false;
+        url();
+        paint('pb-step-title');
+      }
+      if (ev.target.id === 'pb-challenge') {
+        challenge = ev.target.value;
+        const y = scrollY;
+        paint();
+        scrollTo(0, y);
+        $('#pb-challenge')?.focus({ preventScroll: true });
+      }
+    });
+    listen('input', (ev) => {
+      if (ev.target.id === 'pb-note') writeNote(noteKey(), ev.target.value);
+      if (ev.target.hasAttribute('data-pb-contract'))
+        writeNote(`playbook:${caseId}:contract`, ev.target.value);
+      if (ev.target.id === 'pb-filter') {
+        filter = ev.target.value;
+        if (view === 'nubank' && topicId) {
+          topicId = '';
+          url();
+        }
+        $('#pb-filter-results').innerHTML =
+          view === 'decisions'
+            ? decisionCards()
+            : view === 'pressure'
+              ? pressureCards()
+              : view === 'nubank'
+                ? contextCards()
+                : materialCards();
+      }
+      if (ev.target.hasAttribute('data-pb-size')) size();
+    });
+    listen('keydown', (ev) => {
+      const t = ev.target.closest('[data-pb-node],[data-pb-edge]');
+      if (t && (ev.key === 'Enter' || ev.key === ' ')) {
+        ev.preventDefault();
+        inspectNode(t);
+      }
+    });
+    host.addEventListener(
+      'toggle',
+      (ev) => {
+        const el = ev.target;
+        if (!el.hasAttribute('data-pb-drawing') || !el.open) return;
+        const box = el.querySelector('[data-pb-drawing-content]');
+        if (box && !box.firstElementChild)
+          box.innerHTML = diagram(selected(), Number(el.dataset.pbDrawing));
+      },
+      { capture: true, signal: abort.signal },
+    );
+    interval = setInterval(tick, 1000);
+    tick();
+    size();
+  }
+  function destroy() {
+    abort?.abort();
+    abort = null;
+    clearInterval(interval);
+    interval = null;
+    host = null;
+  }
+  return { html, bind, destroy };
+}

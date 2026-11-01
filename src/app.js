@@ -1,0 +1,2967 @@
+import { loadPortalData } from './core/content-loader.mjs';
+import { renderStudyVideo, installStudio } from './ui/studio.mjs?v=20261101-structure1';
+import { createPlaybook } from './features/playbook/playbook.mjs?v=20261101-structure1';
+import { createMindMap } from './features/mindmap/mindmap.mjs?v=20261101-structure1';
+import { createProgressStore } from './core/progress-store.mjs';
+import {
+  quorumModel,
+  queueModel,
+  cacheBurstModel,
+  poolModel,
+  tokenBucketModel,
+} from './domain/simulation-models.mjs';
+const $ = (s, r = document) => r.querySelector(s),
+  $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const e = (v) =>
+  String(v ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+const plain = (v) =>
+  typeof v === 'string'
+    ? v
+    : Array.isArray(v)
+      ? v.map(plain).join(' · ')
+      : v
+        ? Object.values(v).map(plain).join(' · ')
+        : '';
+const arr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+const list = (v) =>
+  `<ul>${arr(v)
+    .map((x) => `<li>${e(plain(x))}</li>`)
+    .join('')}</ul>`;
+const normalize = (s) =>
+  String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+const matches = (x, q) => normalize(JSON.stringify(x)).includes(normalize(q));
+const icons = {
+  playbook: 'M5 3h14v18H5zM9 7h6M9 11h6M9 15l2 2 4-4',
+  map: 'M12 9V3M5 9H3v6h6V9H5M15 9h6v6h-6zM9 12h6M12 15v6M9 3h6M9 21h6',
+  guided: 'M3 3h18v13H3zM12 16v6M7 22l5-6 5 6M7 8h6M7 12h10',
+  course: 'M3 4h18v14H3zM7 22l5-4 5 4M7 8h10M7 12h6',
+  videos: 'M3 5h18v14H3zM10 9l5 3-5 3z',
+  foundations: 'M4 20V9l8-6 8 6v11M8 20v-7h8v7M3 20h18',
+  ledger: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h3',
+  home: 'M3 11 12 3l9 8M5 10v11h5v-7h4v7h5V10',
+  atlas: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  questions: 'M7 9a5 5 0 0 1 10 0c0 3-5 3-5 6M12 19h.01M4 3h16v19H4z',
+  mocks: 'M9 2h6M12 5v7l4 2M19 6l2-2M21 13a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+  lab: 'M9 3h6M10 3v7L4 20h16l-6-10V3M7 15h10',
+  cases: 'M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 11v3h4v-3',
+  people:
+    'M16 21v-3c0-5-12-5-12 0v3M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M18 4a3 3 0 0 1 0 6M19 15c3 0 3 3 3 6',
+  plan: 'M4 4h16v17H4zM8 2v5M16 2v5M4 10h16M8 14h2M14 14h2M8 18h2',
+  sources: 'M3 4c4-1 6-1 9 1 3-2 5-2 9-1v16c-4-1-6-1-9 1-3-2-5-2-9-1zM12 5v16',
+  arrow: 'M5 12h14M14 7l5 5-5 5',
+  layers: 'm12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5',
+  check: 'm5 12 4 4L19 6',
+  code: 'm8 6-6 6 6 6M16 6l6 6-6 6M14 3l-4 18',
+};
+const icon = (n = 'layers') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(
+    icons[n] || icons.layers
+  )
+    .split('|')
+    .map((d) => `<path d="${d}"/>`)
+    .join('')}</svg>`;
+const fmt = (n) => new Intl.NumberFormat('pt-BR').format(n);
+const chip = (text, type = '') => `<span class="chip ${type}">${e(text)}</span>`;
+const progressStore = createProgressStore({
+  storage: {
+    getItem: (key) => localStorage.getItem(key),
+    setItem: (key, value) => localStorage.setItem(key, value),
+  },
+  onError: () =>
+    toast('Não foi possível salvar no navegador. Exporte seu progresso antes de sair.'),
+});
+let progress = progressStore.load();
+function save() {
+  const persisted = progressStore.save(progress);
+  if (persisted) progress = progressStore.snapshot();
+  return persisted;
+}
+let cloud = 'aws',
+  diagramModel = null;
+let D = {
+    architectures: [],
+    technologies: [],
+    questions: [],
+    mocks: [],
+    sources: [],
+    research: {},
+  },
+  sourceMap = {},
+  filter = { q: '', category: '', level: '', priority: '', saved: false, page: 1 },
+  currentRoute = '',
+  currentId = '',
+  tab = 'overview',
+  compare = [],
+  timer = { id: null, elapsed: 0, running: false, start: 0 },
+  activeFlash = 0;
+let resumePlace = null,
+  requestedResumeY = null,
+  activeHash = '',
+  resumeDebounce;
+try {
+  const v = JSON.parse(localStorage.getItem('nuarch-last-place') || 'null');
+  if (
+    v &&
+    typeof v.hash === 'string' &&
+    /^#[a-z][a-z0-9-/]*(\?.*)?$/.test(v.hash) &&
+    typeof v.title === 'string' &&
+    Number.isFinite(v.y)
+  )
+    resumePlace = v;
+} catch {}
+const mindMap = createMindMap({
+  escape: e,
+  sources: refs,
+  readNote: (id) => progress.notes[`map:${id}`] || '',
+  writeNote: (id, value) => {
+    progress.notes[`map:${id}`] = value;
+    save();
+  },
+  isRead: (id) => progress.checks.includes(`map:${id}`),
+  toggleRead: (id) => toggle(progress.checks, `map:${id}`),
+  onSelect: (id) => {
+    currentId = id;
+    activeHash = location.hash;
+    rememberPlace();
+    document.title = `${D.mindmap.nodes.find((n) => n.id === id)?.label || D.mindmap.groups.find((g) => g.id === id)?.label || 'Mapa mental'} · nuArch`;
+  },
+});
+const playbook = createPlaybook({
+  escape: e,
+  sources: refs,
+  architectures: () => D.architectures,
+  mindmap: () => D.mindmap,
+  technologies: () => D.technologies,
+  readNote: (key) => progress.notes[key] || '',
+  writeNote: (key, value) => {
+    progress.notes[key] = value;
+    save();
+  },
+  isDone: (key) => progress.checks.includes(key),
+  toggleDone: (key) => toggle(progress.checks, key),
+  onNavigate: (id, name) => {
+    currentId = id;
+    activeHash = location.hash;
+    rememberPlace();
+    document.title = `${name} · Roteiro do dia · nuArch`;
+  },
+});
+function rememberPlace() {
+  if (!activeHash || !currentRoute || currentRoute === 'home') return;
+  const name =
+    currentRoute === 'map'
+      ? D.mindmap?.nodes.find((n) => n.id === currentId)?.label ||
+        D.mindmap?.groups.find((g) => g.id === currentId)?.label ||
+        'Mapa mental'
+      : currentRoute === 'playbook'
+        ? D.playbook?.cases.find((c) => c.id === currentId)?.title || 'Roteiro do dia'
+        : currentRoute === 'guided'
+          ? D.guided?.cases.find((c) => c.id === currentId)?.title || 'Entrevistas guiadas'
+          : $('#main h1')?.textContent;
+  resumePlace = {
+    hash: activeHash,
+    title: name || nav.find((x) => x[0] === currentRoute)?.[1] || 'Seu estudo',
+    y: Math.max(0, Math.round(scrollY)),
+  };
+  try {
+    localStorage.setItem('nuarch-last-place', JSON.stringify(resumePlace));
+  } catch {}
+}
+function enhanceReading() {
+  const main = $('#main');
+  main.dataset.route = currentRoute;
+  const headings = $$('h2', main).filter(
+    (h) => !h.closest('.guided-transcript,.map-page') && h.textContent.trim(),
+  );
+  if (!['home', 'map', 'playbook'].includes(currentRoute) && headings.length >= 3) {
+    const navEl = document.createElement('nav');
+    navEl.className = 'page-outline';
+    navEl.setAttribute('aria-label', 'Índice da página');
+    navEl.innerHTML = `<label>Nesta página<select id="page-outline-select"><option value="">Escolha uma seção…</option>${headings.map((h, i) => `<option value="${i}">${e(h.textContent)}</option>`).join('')}</select></label><button id="back-top">↑ Início</button>`;
+    main.prepend(navEl);
+    $('#page-outline-select').onchange = (ev) => {
+      if (ev.target.value === '') return;
+      const h = headings[Number(ev.target.value)];
+      let p = h.parentElement;
+      while (p && p !== main) {
+        if (p.tagName === 'DETAILS') p.open = true;
+        p = p.parentElement;
+      }
+      h.tabIndex = -1;
+      h.classList.add('outline-target');
+      h.scrollIntoView({ block: 'start' });
+      h.focus({ preventScroll: true });
+    };
+    $('#back-top').onclick = () => {
+      scrollTo({ top: 0, behavior: 'auto' });
+      main.focus({ preventScroll: true });
+    };
+  }
+  if (currentRoute !== 'map' && currentRoute !== 'home' && currentId) {
+    const related = D.mindmap.nodes
+      .filter((n) => n.links.some((l) => l.href.split('?')[0] === `#${currentRoute}/${currentId}`))
+      .slice(0, 4);
+    if (related.length) {
+      const context = document.createElement('div');
+      context.className = 'map-context-bar';
+      context.innerHTML = `<span>Relacione no mapa</span>${related.map((n) => `<a href="#map/${e(n.id)}">${e(n.label)} ↗</a>`).join('')}`;
+      main.prepend(context);
+    }
+  }
+  document.title = `${currentRoute === 'map' ? D.mindmap.nodes.find((n) => n.id === currentId)?.label || 'Mapa mental' : main.querySelector('h1')?.innerText.replace(/\s+/g, ' ') || 'Architecture Lab'} · nuArch`;
+  $$('[data-resume]', main).forEach(
+    (a) =>
+      (a.onclick = () => {
+        requestedResumeY = resumePlace?.y || 0;
+      }),
+  );
+}
+window.addEventListener(
+  'scroll',
+  () => {
+    clearTimeout(resumeDebounce);
+    resumeDebounce = setTimeout(rememberPlace, 450);
+  },
+  { passive: true },
+);
+window.addEventListener('pagehide', rememberPlace);
+const navGroups = [
+  {
+    label: 'Orientação',
+    description: 'Encontre seu ponto de partida e o que priorizar.',
+    items: [
+      ['home', 'Início'],
+      ['map', 'Mapa mental'],
+      ['plan', 'Plano de estudo'],
+      ['people', 'Contexto da entrevista'],
+    ],
+  },
+  {
+    label: 'Entender',
+    description: 'Conecte conceitos, mecanismos e escolhas de arquitetura.',
+    items: [
+      ['foundations', 'Fundamentos distribuídos'],
+      ['atlas', 'Atlas de arquiteturas'],
+      ['ledger', 'Ledger bancário'],
+    ],
+  },
+  {
+    label: 'Praticar',
+    description: 'Transforme leitura em decisões e explicações em voz alta.',
+    items: [
+      ['playbook', 'Roteiro do dia'],
+      ['guided', 'Entrevistas guiadas'],
+      ['mocks', 'Simulados de 60 min'],
+      ['questions', 'Perguntas & revisão'],
+      ['lab', 'Laboratório'],
+    ],
+  },
+  {
+    label: 'Aprofundar',
+    description: 'Aprenda com casos, aulas e fontes para cada tema.',
+    items: [
+      ['cases', 'Nubank na prática'],
+      ['videos', 'Videoteca'],
+      ['course', 'Curso LINUXtips'],
+      ['sources', 'Biblioteca & fontes'],
+    ],
+  },
+];
+const nav = navGroups.flatMap((g) => g.items);
+function navRender() {
+  $('#nav').innerHTML = navGroups
+    .map(
+      (g) =>
+        `<section class="nav-group"><h2>${g.label}</h2>${g.items.map(([id, name]) => `<a href="#${id}" class="nav-item ${currentRoute === id ? 'active' : ''}" ${currentRoute === id ? 'aria-current="page"' : ''}>${icon(id)}<span>${name}</span>${id === 'questions' ? `<span class="nav-count">${fmt(D.questions.length)}</span>` : id === 'mocks' ? `<span class="nav-count">${D.mocks.length}</span>` : ''}</a>`).join('')}</section>`,
+    )
+    .join('');
+  $('#crumb').textContent = nav.find((x) => x[0] === currentRoute)?.[1] || 'Comparar';
+  $('#section-crumb').textContent =
+    navGroups.find((g) => g.items.some((x) => x[0] === currentRoute))?.label || 'Entender';
+}
+
+function refs(ids) {
+  return `<div class="source-links">${arr(ids)
+    .map((id) => sourceMap[id])
+    .filter(Boolean)
+    .map((s) =>
+      s.url
+        ? `<a href="${e(s.url)}" target="_blank" rel="noopener">↗ ${e(s.title)}</a>`
+        : `<a href="#sources">${e(s.title)} · material fornecido</a>`,
+    )
+    .join('')}</div>`;
+}
+function title(eyebrow, h, p, action = '') {
+  return `<div class="page-title"><div><div class="eyebrow"><span class="dot"></span>${e(eyebrow)}</div><h1>${e(h)}</h1><p>${e(p)}</p></div>${action}</div>`;
+}
+function toast(s) {
+  $('#toast').textContent = s;
+  $('#toast').classList.add('show');
+  setTimeout(() => $('#toast').classList.remove('show'), 3000);
+}
+function paginate(items, render, size = 18) {
+  const pages = Math.ceil(items.length / size) || 1;
+  filter.page = Math.min(filter.page, pages);
+  return `${
+    items.length
+      ? items
+          .slice((filter.page - 1) * size, filter.page * size)
+          .map(render)
+          .join('')
+      : '<div class="empty">Nenhum resultado. Experimente outro filtro.</div>'
+  }${pages > 1 ? `<div class="pagination"><button data-page="${filter.page - 1}" ${filter.page === 1 ? 'disabled' : ''}>← Anterior</button><span>${filter.page} / ${pages}</span><button data-page="${filter.page + 1}" ${filter.page === pages ? 'disabled' : ''}>Próxima →</button></div>` : ''}`;
+}
+function options(items, selected, label) {
+  return `<option value="">${label}</option>${[...new Set(items.filter(Boolean))]
+    .sort()
+    .map((x) => `<option value="${e(x)}" ${selected === x ? 'selected' : ''}>${e(x)}</option>`)
+    .join('')}`;
+}
+function filters(items, placeholder, extra = '') {
+  return `<div class="filters"><input type="search" id="filter-q" placeholder="${e(placeholder)}" aria-label="Pesquisar conteúdo" value="${e(filter.q)}"><select id="filter-category" aria-label="Filtrar categoria">${options(
+    items.map((x) => x.category || x.domain),
+    filter.category,
+    'Todas as categorias',
+  )}</select><select id="filter-level" aria-label="Filtrar nível">${options(
+    items.map((x) => x.level),
+    filter.level,
+    'Todos os níveis',
+  )}</select>${
+    items.some((x) => x.priority)
+      ? `<select id="filter-priority" aria-label="Filtrar prioridade">${options(
+          items.map((x) => String(x.priority)),
+          filter.priority,
+          'Todas as prioridades',
+        )}</select>`
+      : ''
+  }${extra}</div>`;
+}
+function filtered(items) {
+  return items.filter(
+    (x) =>
+      (!filter.q || matches(x, filter.q)) &&
+      (!filter.category || (x.category || x.domain) === filter.category) &&
+      (!filter.level || x.level === filter.level) &&
+      (!filter.priority || String(x.priority) === filter.priority),
+  );
+}
+function heroArt() {
+  return `<figure class="studio-illustration" aria-label="Mapa de estudo ilustrativo: um desenho conecta contrato, eventos e estado"><svg viewBox="0 0 460 400" role="img"><title>Conecte contrato, eventos e estado no seu desenho</title><defs><linearGradient id="studio-card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#f2e5fc"/></linearGradient><linearGradient id="studio-core" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b24dee"/><stop offset="1" stop-color="#6912b5"/></linearGradient></defs><circle cx="231" cy="199" r="143" fill="none" stroke="#dac2ed" stroke-opacity=".55"/><circle cx="231" cy="199" r="105" fill="none" stroke="#dac2ed" stroke-opacity=".4"/><path class="studio-orbit-line" d="M90 138L230 200 374 138M230 200V324"/><g class="studio-node"><rect x="153" y="141" width="154" height="123" rx="24" fill="url(#studio-core)" stroke="#bb6aee"/><rect x="164" y="152" width="132" height="101" rx="18" fill="none" stroke="#ffffff20"/><image href="assets/brand/nuarch-symbol.svg" x="211" y="166" width="38" height="38"/><text x="230" y="228" fill="white" text-anchor="middle" font-family="Manrope,sans-serif" font-size="16" font-weight="650">Seu desenho</text><text x="230" y="246" fill="#ebceff" text-anchor="middle" font-family="sans-serif" font-size="8" letter-spacing="1.5">EXPLIQUE CADA DECISÃO</text></g><g class="studio-node node-b"><rect x="16" y="76" width="140" height="86" rx="17" fill="url(#studio-card)" stroke="#ffffff"/><circle cx="39" cy="98" r="4" fill="#a550da"/><text x="53" y="102" fill="#53246f" font-family="Manrope,sans-serif" font-size="12" font-weight="650">Contrato</text><text x="32" y="127" fill="#735881" font-family="sans-serif" font-size="10">intenção → garantia</text><path d="M32 143h56m5 0h26" stroke="#ddc7ed" stroke-width="3" stroke-linecap="round"/></g><g class="studio-node node-c"><rect x="313" y="76" width="135" height="86" rx="17" fill="url(#studio-card)" stroke="#ffffff"/><circle cx="335" cy="98" r="4" fill="#a550da"/><text x="349" y="102" fill="#53246f" font-family="Manrope,sans-serif" font-size="12" font-weight="650">Eventos</text><text x="329" y="127" fill="#735881" font-family="sans-serif" font-size="10">efeito → recuperação</text><path d="M329 143h39m5 0h34" stroke="#ddc7ed" stroke-width="3" stroke-linecap="round"/></g><g class="studio-node node-b"><rect x="156" y="301" width="149" height="72" rx="17" fill="url(#studio-card)" stroke="#ffffff"/><path d="M177 323v17m7-21v21m7-13v13" stroke="#a550da" stroke-width="3" stroke-linecap="round"/><text x="206" y="328" fill="#53246f" font-family="Manrope,sans-serif" font-size="12" font-weight="650">Estado</text><text x="175" y="353" fill="#735881" font-family="sans-serif" font-size="9">autoridade · versão · histórico</text></g><circle class="packet" r="3" fill="#9e38d7"><animateMotion dur="7s" repeatCount="indefinite" path="M90 138L230 200 374 138"/></circle><circle class="packet" r="3" fill="#9e38d7"><animateMotion dur="5s" repeatCount="indefinite" path="M230 200V324"/></circle><circle cx="101" cy="255" r="4" fill="#cea3e9"/><circle cx="372" cy="264" r="3" fill="#cea3e9"/><path d="M230 28v11m-5-6h10" stroke="#c9a1e5" stroke-width="1.5"/></svg><figcaption>MAPA DE ESTUDO · FLUXO ILUSTRATIVO</figcaption></figure>`;
+}
+function studioVideos() {
+  const v = D.videos.videos.find((x) => x.id === 'til92X5hYAY');
+  return `<section class="studio-video-section"><div class="studio-video-heading"><div><span class="eyebrow">DO VÍDEO AO SEU RACIOCÍNIO</span><h2>Assista. Pause. Desenhe.</h2><p>Entre pela arquitetura, depois pratique a conversa. Vídeos e roteiro ficam a um clique.</p></div><a href="#videos">Explorar a videoteca com 50 vídeos ↗</a></div><div class="studio-video-grid">${renderStudyVideo('https://www.youtube.com/watch?v=YaNeSFOVNCE', 'Desenhando o sistema do Nubank', 'Síntese externa do vídeo fornecido. Compare os mecanismos com as fontes datadas na área Nubank na conversa.')}${v ? renderStudyVideo(v.url, v.title, `${v.channel} · ${v.kind}. Pause antes da resposta e formule sua própria decisão.`) : ''}</div><div class="actions" style="margin-top:18px"><a class="button small" href="#playbook/pix?view=nubank">Conectar o vídeo às dez etapas →</a></div></section>`;
+}
+
+function home() {
+  const descriptions = {
+    playbook: `10 etapas adaptadas a ${D.playbook.cases.length} cenários, com fala, desenho e decisões a cada passo.`,
+    map: 'Seu draw.io em um mapa de conceitos, conexões e material de origem.',
+    plan: 'Prioridades e sessões para organizar o tempo de preparação.',
+    people: 'Formato, sinais de avaliação e contexto profissional público.',
+    foundations: 'Consistência, bancos, caches, tráfego e processamento assíncrono.',
+    atlas: '64 padrões com mecanismos, falhas e opções de implementação.',
+    ledger: 'Partidas dobradas, imutabilidade, engine e recuperação.',
+    guided: '5 conversas completas com fala e desenho evoluindo juntos.',
+    mocks: '120 roteiros para ensaiar desenho, incidentes e evolução.',
+    questions: '1.200 perguntas comentadas para testar o raciocínio.',
+    lab: 'Experimentos interativos com garantias e limites.',
+    cases: 'Casos de engenharia e relatos com origem identificada.',
+    videos: '50 vídeos com perguntas de estudo e notas.',
+    course: '29 aulas, 26 cases e 341 arquivos do curso LINUXtips.',
+    sources: 'Documentação e publicações para conferir e aprofundar.',
+  };
+  return `<section class="study-hero"><div><span class="studio-signature"><img src="assets/brand/nubank.svg" alt="Nubank" width="38" height="23"><i aria-hidden="true"></i>Preparação independente</span><h1>Entenda as peças.<br><span class="gradient-text">Conecte as decisões.</span></h1><p>Do mapa mental à conversa de arquitetura. Explore o mecanismo, compare os custos e treine a explicação que sustenta sua escolha.</p><div class="actions"><a class="button primary" href="#playbook">Abrir meu roteiro de entrevista →</a><a class="button" href="#map">Explorar o mapa mental ↗</a></div><div class="studio-hero-note"><span aria-hidden="true"></span>Conceitos conectados. Decisões explicadas. Prática em voz alta.</div></div>${heroArt()}</section>${resumePlace?.hash ? `<section class="resume-card"><div><span class="eyebrow">CONTINUE DE ONDE PAROU</span><h2>${e(resumePlace.title)}</h2><p>Seu ponto de leitura está salvo neste navegador.</p></div><a class="button primary" href="${e(resumePlace.hash)}" data-resume>Retomar estudo →</a></section>` : `<section class="resume-card"><div><span class="eyebrow">UM CAMINHO PARA COMEÇAR</span><h2>Escolha um problema. Siga suas consequências.</h2><p>Comece pelo mapa para situar os conceitos. Depois abra um mecanismo e use uma entrevista guiada para colocá-lo à prova.</p></div><a class="button" href="#plan">Organizar meu estudo →</a></section>`}<div class="stats">${[
+    [D.mindmap.nodes.length, 'Conceitos no seu mapa', 'map'],
+    [D.architectures.length, 'Padrões de arquitetura', 'atlas'],
+    [D.questions.length, 'Perguntas comentadas', 'questions'],
+    [D.mocks.length, 'Simulados de 60 min', 'mocks'],
+  ]
+    .map(
+      ([n, t, i]) =>
+        `<div class="stat"><div class="stat-icon">${icon(i)}</div><div><strong>${fmt(n)}</strong><span>${t}</span></div></div>`,
+    )
+    .join('')}</div><div class="study-paths">${[
+    [
+      '01',
+      'Encontre as conexões',
+      'Abra um tema do seu mural e acompanhe como rede, dados e falhas se influenciam.',
+      'map',
+      'Explorar o mapa',
+    ],
+    [
+      '02',
+      'Aprofunde uma decisão',
+      'Localize a garantia, o gargalo, a alternativa e a condição que faria você mudar de ideia.',
+      'atlas',
+      'Estudar arquiteturas',
+    ],
+    [
+      '03',
+      'Explique e adapte',
+      'Conduza uma entrevista em voz alta, desenhe por etapa e responda às mudanças de cenário.',
+      'playbook',
+      'Praticar com roteiro',
+    ],
+  ]
+    .map(
+      ([i, h, p, r, l]) =>
+        `<article class="study-path"><span class="step-number">${i}</span><h2>${h}</h2><p>${p}</p><a href="#${r}">${l} →</a></article>`,
+    )
+    .join(
+      '',
+    )}</div>${studioVideos()}<div class="section-heading"><h2>Todo o acervo, por objetivo</h2></div><div class="library-groups">${navGroups
+    .map(
+      (g) =>
+        `<section><h2>${g.label}</h2><p>${g.description}</p><ul>${g.items
+          .filter(([id]) => id !== 'home')
+          .map(
+            ([id, t]) =>
+              `<li><a href="#${id}">${icon(id)}<span><strong>${t}</strong><small>${descriptions[id]}</small></span></a></li>`,
+          )
+          .join('')}</ul></section>`,
+    )
+    .join(
+      '',
+    )}</div><section class="panel home-progress"><h2>Seu progresso de estudo</h2><p>${progress.read.length} padrões estudados · ${progress.known.length} perguntas dominadas · ${progress.checks.filter((k) => k.startsWith('guided:')).length} etapas guiadas praticadas · ${progress.checks.filter((k) => k.startsWith('map:')).length} conceitos do mapa revisados.</p><p>Marque o que consegue explicar, retorne às lacunas e exporte o progresso pelo menu. Relatos, fontes oficiais e exercícios autorais têm origem identificada no material.</p></section>`;
+}
+
+function archCard(a) {
+  return `<article class="card"><div class="card-top"><span class="card-icon">${icon('layers')}</span>${chip(a.level)}</div><h3><a href="#atlas/${e(a.id)}">${e(a.title)}</a></h3><p>${e(a.summary)}</p><div class="card-bottom"><span>${e(a.category)}</span><a class="button small" href="#atlas/${e(a.id)}">Explorar ↗</a></div></article>`;
+}
+function atlas() {
+  const items = filtered(D.architectures);
+  return `${title('Mapeie o espaço de decisões', 'Atlas de arquiteturas', 'Estilos, padrões de integração, armazenamento e operação. Cada ficha conecta problema, mecanismo, custo e falha.', `<a class="button" href="#compare">Comparar padrões ⇄</a>`)}${filters(D.architectures, 'Buscar padrão, tecnologia ou problema…')}<div class="result-line"><span>${items.length} padrões encontrados</span><span>${progress.read.length} estudados</span></div><div class="cards">${paginate(items, archCard, 18)}</div>`;
+}
+function diagram(a) {
+  diagramModel = a;
+  const nodes = a.nodes || [],
+    edges = a.edges || [];
+  const maxX = Math.max(800, ...nodes.map((n) => n.x + 85)),
+    maxY = Math.max(360, ...nodes.map((n) => n.y + 45));
+  return `<div class="diagram-controls"><span>Selecione uma peça para entender sua responsabilidade</span><button class="button small" id="animate-toggle">Pausar fluxo</button></div><div class="diagram" id="diagram"><svg viewBox="0 0 ${maxX} ${maxY}" role="group" aria-label="Diagrama interativo: ${e(a.title)}"><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="#b99bda"/></marker></defs>${edges
+    .map((l, i) => {
+      const f = nodes.find((n) => n.id === l.from),
+        t = nodes.find((n) => n.id === l.to);
+      if (!f || !t) return '';
+      const dx = t.x - f.x,
+        dy = t.y - f.y;
+      let x1 = f.x,
+        y1 = f.y,
+        x2 = t.x,
+        y2 = t.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        x1 += Math.sign(dx) * 76;
+        x2 -= Math.sign(dx) * 81;
+      } else {
+        y1 += Math.sign(dy) * 28;
+        y2 -= Math.sign(dy) * 33;
+      }
+      const path = `M${x1} ${y1} L${x2} ${y2}`;
+      return `<path class="edge" d="${path}" marker-end="url(#arrow)"/><text class="edge-label" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 10}" text-anchor="middle">${e(l.label)}</text><circle class="packet" r="3"><animateMotion dur="${2.8 + i * 0.4}s" repeatCount="indefinite" path="${path}"/></circle>`;
+    })
+    .join('')}${nodes
+    .map((n) => {
+      const tech = D.technologies.find(
+        (t) => t.id === n.tech || normalize(t.name) === normalize(n.tech || ''),
+      );
+      const logo = n.logoOverride || tech?.logo;
+      const label = String(n.label);
+      const maxChars = logo ? 17 : 24;
+      const words = label
+        .split(' ')
+        .flatMap((w) =>
+          w.length > maxChars ? w.match(new RegExp('.{1,' + maxChars + '}', 'g')) : [w],
+        );
+      let lines = [''];
+      for (const word of words) {
+        const last = lines.length - 1;
+        if (lines[last] && lines[last].length + word.length + 1 > maxChars) lines.push(word);
+        else lines[last] += (lines[last] ? ' ' : '') + word;
+      }
+      if (lines.length > 3)
+        lines = [
+          ...lines.slice(0, 2),
+          lines
+            .slice(2)
+            .join(' ')
+            .slice(0, maxChars - 1) + '…',
+        ];
+      return `<g class="node" data-node="${e(n.id)}" tabindex="0" role="button" aria-label="${e(n.label)}"><rect x="${n.x - 76}" y="${n.y - 28}" width="152" height="56" rx="12"/>${logo ? `<image href="${e(logo)}" x="${n.x - 62}" y="${n.y - 10}" width="20" height="20"/>` : ''}${lines.map((line, i) => `<text x="${n.x + (logo ? 14 : 0)}" y="${n.y - (lines.length - 1) * 7 + 4 + i * 14}" text-anchor="middle" style="font-size:${logo ? 10 : 11}px">${e(line)}</text>`).join('')}</g>`;
+    })
+    .join(
+      '',
+    )}</svg></div><div class="node-detail" id="node-detail"><strong>O que atravessa cada fronteira?</strong> Clique nos componentes para inspecionar fluxo, estado e responsabilidade. As animações são didáticas, sem simulação de rede real.</div>`;
+}
+function archDetail(id) {
+  const a = D.architectures.find((x) => x.id === id);
+  if (!a) return notFound();
+  const known = progress.read.includes(id);
+  return `<a class="back" href="#atlas">← Voltar ao atlas</a><div class="detail-header"><div class="actions">${chip(a.category)}${chip(a.level, 'neutral')}${chip(`Prioridade ${a.priority}`, 'green')}</div><h1>${e(a.title)}</h1><p>${e(a.summary)}</p><div class="actions"><button class="button small" data-read="${e(id)}">${known ? '✓ Estudado' : 'Marcar como estudado'}</button><a class="button small" href="#compare/${e(id)}">Comparar com outro padrão ⇄</a><a class="button small" href="#questions?q=${encodeURIComponent(a.title.includes('Outbox') ? 'outbox' : a.title.split(' ')[0])}">Praticar perguntas ↗</a></div></div><div class="tabs" role="tablist">${[
+    ['overview', 'Desenho & fluxo'],
+    ['decisions', 'Trade-offs & falhas'],
+    ['internals', 'Por dentro'],
+    ['code', 'Código & invariantes'],
+    ['operations', 'Escala, falhas & SLA'],
+    ['deployments', 'AWS · Azure · On-prem'],
+  ]
+    .map(
+      ([k, l]) =>
+        `<button class="tab ${tab === k ? 'active' : ''}" data-tab="${k}" role="tab" aria-selected="${tab === k}">${l}</button>`,
+    )
+    .join('')}</div><div class="reading">${
+    tab === 'overview'
+      ? `<section class="panel"><h2>Qual problema resolve?</h2><p>${e(a.problem)}</p>${diagram(a)}</section><div class="detail-grid"><section class="panel"><h2>O caminho de uma operação</h2>${arr(
+          a.steps,
+        )
+          .map(
+            (s, i) =>
+              `<h3>${String(i + 1).padStart(2, '0')} · ${e(s.title)}</h3><p>${e(s.body)}</p>`,
+          )
+          .join(
+            '',
+          )}</section><div><section class="panel"><h3>Quando faz sentido</h3>${list(a.when)}<h3>Quando evitar</h3>${list(a.avoid)}</section><section class="panel"><span class="fact-label">Aplicação ao domínio financeiro</span><h3 style="margin-top:10px">${e(a.nubank?.scenario || 'Cenário de treino')}</h3><p>${e(a.nubank?.evidence)}</p>${refs(a.nubank?.sourceIds)}</section></div></div>`
+      : tab === 'decisions'
+        ? `<section class="panel"><h2>A decisão e seu preço</h2><div class="table-wrap"><table><thead><tr><th>Escolha</th><th>Ganho</th><th>Custo</th></tr></thead><tbody>${arr(
+            a.tradeoffs,
+          )
+            .map(
+              (t) => `<tr><td>${e(t.choice)}</td><td>${e(t.gain)}</td><td>${e(t.cost)}</td></tr>`,
+            )
+            .join(
+              '',
+            )}</tbody></table></div></section><div class="two-col"><section class="panel"><h2>Alternativas e substituições</h2>${arr(
+            a.alternatives,
+          )
+            .map((t) => `<h3>${e(t.name)}</h3><p>${e(t.when)}</p>`)
+            .join('')}</section><section class="panel"><h2>Como falha</h2>${arr(a.failureModes)
+            .map((t) => `<h3>${e(t.failure)}</h3><p>${e(t.mitigation)}</p>`)
+            .join('')}</section></div>`
+        : tab === 'internals'
+          ? `<div class="two-col">${Object.entries(a.internals || {})
+              .map(
+                ([k, v]) =>
+                  `<section class="panel"><span class="eyebrow">${e({ algorithm: 'Mecanismo & algoritmo', complexity: 'Custo computacional', hardware: 'CPU, memória & armazenamento', latency: 'Latência & caminho crítico', idempotency: 'Duplicação & concorrência' }[k] || k)}</span><p>${e(plain(v))}</p></section>`,
+              )
+              .join(
+                '',
+              )}</div><div class="note">Complexidade assintótica não prevê p99. Meça distribuição, contenção, I/O, tamanhos e concorrência. Nenhuma latência aqui é um benchmark do Nubank.</div>`
+          : tab === 'operations'
+            ? operationsView(a)
+            : tab === 'deployments'
+              ? deploymentView(a)
+              : `<section class="panel"><div class="panel-heading"><h2>Mecanismo em código</h2>${chip(a.code?.language || 'Pseudocódigo')}</div><p>${e(a.code?.explanation)}</p><pre><code>${e(a.code?.text)}</code></pre><div class="note">Exemplo didático. Verifique limites transacionais, autorização, observabilidade e tratamento de falhas antes de adaptar a produção.</div></section><section class="panel"><h2>Defenda sem decorar</h2>${list(a.questions)}</section>`
+  }<section class="panel"><h3>Continue nas fontes</h3>${refs(a.sourceIds)}</section></div>`;
+}
+function comparePage(id) {
+  if (id && !compare.length) compare = [id];
+  if (!compare.length && D.architectures[0])
+    compare = [D.architectures[0].id, D.architectures[1]?.id];
+  return `${title('Decisões lado a lado', 'Compare antes de escolher', 'Compare requisitos, garantias, operação e custo. Alguns padrões são complementares, não substitutos.')}<div class="compare-grid">${[
+    0, 1,
+  ]
+    .map((i) => {
+      const a = D.architectures.find((x) => x.id === compare[i]) || D.architectures[i];
+      return `<section class="panel reading"><select data-compare="${i}" aria-label="Padrão ${i + 1}" style="width:100%">${D.architectures.map((x) => `<option value="${e(x.id)}" ${x.id === a.id ? 'selected' : ''}>${e(x.title)}</option>`).join('')}</select><h2 style="margin-top:25px">${e(a.title)}</h2><p>${e(a.problem)}</p><h3>Escolha quando</h3>${list(a.when)}<h3>Evite quando</h3>${list(a.avoid)}<h3>Latência</h3><p>${e(a.internals?.latency)}</p><h3>Idempotência</h3><p>${e(a.internals?.idempotency)}</p><h3>Custos que você aceita</h3>${list(arr(a.tradeoffs).map((x) => `${x.choice}: ${x.cost}`))}<h3>O que pode substituí-lo</h3>${list(arr(a.alternatives).map((x) => `${x.name}: ${x.when}`))}<a class="button" href="#atlas/${e(a.id)}">Abrir ficha completa ↗</a></section>`;
+    })
+    .join('')}</div>`;
+}
+function questionCard(q) {
+  return `<details class="question ${progress.known.includes(q.id) ? 'mastered' : ''}" id="${e(q.id)}" ${currentId === q.id ? 'open' : ''}><summary><span class="q-number">${e(q.id.replace(/[^\d]/g, ''))}</span><div><div class="q-title">${e(q.question)}</div><div class="q-meta">${chip(q.category, 'neutral')}${chip(q.level)}${progress.bookmarks.includes(q.id) ? chip('Salva', 'green') : ''}</div></div></summary><div class="question-body"><p><strong>Cenário:</strong> ${e(q.scenario)}</p><h4>O que uma boa resposta precisa demonstrar</h4>${list(q.answer)}<h4>Armadilhas de raciocínio</h4>${list(q.redFlags)}<h4>Aprofundamento</h4><p>${e(q.followUp)}</p>${refs(q.sourceIds)}<div class="actions"><button class="button small" data-known="${e(q.id)}">${progress.known.includes(q.id) ? '✓ Dominada' : 'Já consigo explicar'}</button><button class="button small" data-bookmark="${e(q.id)}">${progress.bookmarks.includes(q.id) ? '★ Salva' : '☆ Revisar depois'}</button></div></div></details>`;
+}
+function questions() {
+  let items = filtered(
+    currentId ? D.questions.filter((q) => q.id === currentId) : D.questions,
+  ).filter((q) => !filter.saved || progress.bookmarks.includes(q.id));
+  return `${currentId ? '<a class="back" href="#questions">← Todas as perguntas</a>' : ''}${title('Prática deliberada', 'Uma pergunta. Muitas decisões.', `${fmt(D.questions.length)} perguntas autorais com mecanismos, contrapontos e aprofundamentos. Não são perguntas atribuídas aos entrevistadores.`, `<a class="button" href="#flashcards">Modo flashcard ↗</a>`)}<div class="note"><strong>Como o banco foi construído:</strong> 60 cenários concretos × 20 lentes técnicas, de requisitos e concorrência a segurança e infraestrutura. As respostas são guias de raciocínio, não uma única solução correta.</div>${filters(D.questions, 'Busque por cenário, mecanismo ou falha…', `<button class="button small" id="only-saved">${filter.saved ? '★ Só salvas' : '☆ Salvas'}</button>`)}<div class="result-line"><span>${fmt(items.length)} perguntas · tente responder antes de revelar</span><span>${progress.known.length} dominadas</span></div><div class="questions">${paginate(items, questionCard, 20)}</div>`;
+}
+function flashcards() {
+  const pool = D.questions.filter((q) => !progress.known.includes(q.id));
+  const q = pool[activeFlash % Math.max(1, pool.length)];
+  if (!q)
+    return `${title('Revisão', 'Você revisou todo o banco', 'Use os simulados para testar integração e profundidade.')}<a class="button" href="#mocks">Abrir simulados</a>`;
+  return `<a class="back" href="#questions">← Banco de perguntas</a>${title('Recuperação ativa', 'Explique antes de revelar', `${pool.length} perguntas ainda não marcadas como dominadas.`)}<section class="panel flashcard"><div>${chip(q.category)} ${chip(q.level, 'neutral')}</div><h2 style="margin-top:25px">${e(q.question)}</h2><p>${e(q.scenario)}</p><div class="actions" style="justify-content:center"><button class="button primary" id="reveal-flash">Revelar critérios</button><button class="button" id="next-flash">Outra pergunta →</button></div><div id="flash-answer" class="hidden reading"><h3 style="margin-top:30px">Uma resposta defensável</h3>${list(q.answer)}<div class="note">${e(q.followUp)}</div><button class="button" data-flash-known="${e(q.id)}">✓ Consegui explicar sem consultar</button></div></section>`;
+}
+function mockCard(m) {
+  return `<article class="card"><div class="card-top">${chip(m.domain)}${chip(m.level, 'neutral')}</div><h3><a href="#mocks/${e(m.id)}">${e(m.title)}</a></h3><p>${e(m.brief)}</p><div class="card-bottom"><span>◷ 60 min · ${m.timeline.length} etapas</span><a href="#mocks/${e(m.id)}" class="button small">Iniciar ↗</a></div></article>`;
+}
+function mocks() {
+  return `${title('Da teoria à conversa', 'Seu próximo simulado começa aqui', `${D.mocks.length} roteiros autorais: 60 cenários em dois modos, desenho inicial e incidente/evolução. Use um quadro branco e pense em voz alta.`)}<section class="panel guided-home"><div><span class="eyebrow">NOVO · CINCO ENTREVISTAS GUIADAS</span><h2>Veja como a conversa vira arquitetura.</h2><p>Falas em primeira pessoa, desenho por etapa, interrupções e aprofundamentos Staff/Principal.</p></div><a class="button primary" href="#guided">Abrir entrevistas guiadas ↗</a></section>${filters(D.mocks, 'Buscar domínio ou desafio…')}<div class="note"><strong>Como usar:</strong> leia o briefing, inicie o relógio e mantenha as respostas esperadas fechadas. Uma pessoa parceira pode conduzir os aprofundamentos. O portal não grava áudio nem avalia sua fala automaticamente.</div><div class="cards">${paginate(filtered(D.mocks), mockCard, 12)}</div>`;
+}
+function elapsed() {
+  return timer.elapsed + (timer.running ? (Date.now() - timer.start) / 1000 : 0);
+}
+function timerHtml() {
+  return `<section class="timer-shell"><div><span class="timer-label">TEMPO RESTANTE</span><strong class="timer-number" id="clock">60:00</strong></div><div class="progress-track"><div class="progress-fill" id="timer-fill"></div></div><div class="actions"><button class="button primary" id="timer-toggle">${timer.running ? 'Pausar' : 'Iniciar sessão'}</button><button class="button" id="timer-reset">Reiniciar</button></div></section>`;
+}
+function mockDetail(id) {
+  const m = D.mocks.find((x) => x.id === id);
+  if (!m) return notFound();
+  if (timer.id !== id) timer = { id, elapsed: 0, running: false, start: 0 };
+  return `<a class="back" href="#mocks">← Todos os simulados</a>${title('Sessão de 60 minutos', m.title, m.brief)}<div class="two-col reading"><section class="panel"><h3>Requisitos a esclarecer</h3>${list(m.requirements)}</section><section class="panel"><h3>Restrições deste exercício</h3>${list(m.constraints)}<small>Volumes e SLOs são hipóteses de treino, não métricas reais do Nubank.</small></section></div>${timerHtml()}<div class="detail-grid"><div class="timeline">${m.timeline.map((t, i) => `<section class="timeline-step" data-stage="${i}" data-minute="${t.minute}" data-duration="${t.duration}">${chip(`${String(t.minute).padStart(2, '0')}–${String(t.minute + t.duration).padStart(2, '0')} MIN`, 'neutral')}<h3>${e(t.title)}</h3><p>${e(t.prompt)}</p><details><summary>Revelar critérios e aprofundamentos</summary><h4 style="margin-top:17px">Uma boa conversa inclui</h4>${list(t.expected)}<h4>Continue investigando</h4>${list(t.followUps)}</details></section>`).join('')}<details class="panel reading"><summary style="cursor:pointer;color:var(--purple)">Revelar mudança de cenário</summary><p style="margin:15px 0 0">${e(plain(m.twist))}</p></details></div><aside class="stack"><section class="panel"><h3>Seu raciocínio em rascunho</h3><p style="font-size:11px">Salvo automaticamente apenas neste navegador.</p><textarea data-note="${e(id)}" placeholder="Requisitos → invariantes → API → dados → fluxo → falhas → decisões…" aria-label="Anotações do simulado">${e(progress.notes[id] || '')}</textarea></section><section class="panel"><h3>Autoavaliação</h3><p style="font-size:11px">0: não cobriu · 1: superficial · 2: coerente · 3: justificou e testou limites.</p>${m.rubric.map((r, i) => `<div class="rubric-row"><div><strong>${e(r.criterion)}</strong><small>Forte: ${e(r.excellent)}</small><small>A melhorar: ${e(r.weak)}</small></div><select data-score="${e(id)}:${i}" aria-label="Nota em ${e(r.criterion)}">${[0, 1, 2, 3].map((n) => `<option ${Number(progress.scores[`${id}:${i}`] || 0) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`).join('')}<div id="score-total" class="note"></div></section></aside></div>`;
+}
+function updateClock() {
+  if (currentRoute !== 'guided' && (currentRoute !== 'mocks' || !currentId)) return;
+  const t = Math.min(3600, elapsed()),
+    remaining = Math.max(0, Math.ceil(3600 - t));
+  if ($('#clock'))
+    $('#clock').textContent =
+      `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+  if ($('#timer-fill')) $('#timer-fill').style.width = `${t / 36}%`;
+  $$('[data-stage]').forEach((el) =>
+    el.classList.toggle(
+      'current',
+      t >= Number(el.dataset.minute) * 60 &&
+        t < (Number(el.dataset.minute) + Number(el.dataset.duration)) * 60,
+    ),
+  );
+  if (t >= 3600 && timer.running) {
+    timer.elapsed = 3600;
+    timer.running = false;
+    $('#timer-toggle').textContent = 'Sessão concluída';
+    toast('60 minutos concluídos. Registre seus aprendizados.');
+  }
+  const m = D.mocks.find((x) => x.id === currentId);
+  if (m && $('#score-total')) {
+    const score = m.rubric.reduce((n, _, i) => n + Number(progress.scores[`${m.id}:${i}`] || 0), 0);
+    $('#score-total').textContent =
+      `Sua avaliação: ${score} / ${m.rubric.length * 3}. Escolha uma melhoria concreta para o próximo treino.`;
+  }
+}
+function researchCases(id) {
+  const r = D.research;
+  if (id) {
+    const c = r.cases.find((x) => x.id === id);
+    if (!c) return notFound();
+    return `<a class="back" href="#cases">← Casos e evidências</a>${title('Engenharia em contexto', c.title, c.summary)}<div class="reading"><section class="panel">${c.details.map((p, i) => `<h3>${String(i + 1).padStart(2, '0')} · ${i === 0 ? 'Entenda a restrição' : 'Aprofunde a decisão'}</h3><p>${e(p)}</p>`).join('')}</section>${id === 'chargeback' ? chargebackDeep() : ''}<section class="panel"><h2>Perguntas para defender o desenho</h2>${list(c.questions)}</section><section class="panel"><h3>De onde vem este caso</h3>${refs(c.sourceIds)}</section></div>`;
+  }
+  return `${title('O domínio dá sentido ao desenho', 'Nubank na prática', 'Casos de engenharia publicados, relatos de candidatos e cenários autorais. Consulte a fonte para distinguir contexto histórico de capacidade atual.')}<div class="cards">${r.cases.map((c) => `<article class="card"><span class="card-icon">${icon('cases')}</span><h3><a href="#cases/${e(c.id)}">${e(c.title)}</a></h3><p>${e(c.summary)}</p><a href="#cases/${e(c.id)}" class="button small">Investigar o caso ↗</a></article>`).join('')}</div><div class="section-heading"><h2>O que candidatos relatam</h2><span class="chip amber">EVIDÊNCIA ANEDÓTICA</span></div><div class="two-col">${r.interview.reports.map((t) => `<article class="panel reading"><h3>${e(t.title)}</h3><p>${e(t.body)}</p><div class="note warning">${e(t.caveat)}</div>${refs(t.sourceIds)}</article>`).join('')}</div>`;
+}
+function chargebackDeep() {
+  const sql = `-- Esboço PostgreSQL: associação durável, arquivo derivado.
+CREATE TABLE batch_item (
+  chargeback_id uuid PRIMARY KEY,
+  batch_id uuid NOT NULL REFERENCES batch(id)
+);
+-- PRIMARY KEY impede pertencer a dois lotes neste modelo.
+BEGIN;
+-- Crie o lote antes, com janela e versão de contrato.
+WITH eligible AS (
+  SELECT c.id FROM chargeback c
+  WHERE c.state = 'ELIGIBLE' AND c.created_at < :cutoff
+    AND NOT EXISTS (SELECT 1 FROM batch_item bi
+                    WHERE bi.chargeback_id = c.id)
+  ORDER BY c.created_at, c.id
+  FOR UPDATE OF c SKIP LOCKED
+  LIMIT :chunk_size
+)
+INSERT INTO batch_item (chargeback_id, batch_id)
+SELECT id, :batch_id FROM eligible;
+COMMIT;
+-- Não faça upload mantendo locks. Congele membros/versão,
+-- gere em streaming, persista checksum, então envie.
+-- O fechamento do lote precisa impedir novos membros:
+-- lock/versão no batch e transição BUILDING -> FROZEN.`;
+  return `<section class="panel"><h2>Uma solução inicial que dá para defender</h2><div class="mini-flow"><span>Elegível</span><i>→</i><span>Lote congelado</span><i>→</i><span>Arquivo</span><i>→</i><span>Envio incerto</span><i>→</i><span>Confirmado</span></div><p>Separe estado de negócio, atribuição ao lote, geração e entrega. Um worker pode cair em cada fronteira. Congele membros e payload exportado (ou uma revisão imutável), versão de layout, ordenação, encoding e bytes finais. Recriar um retry a partir de valores mutáveis pode mudar o checksum mesmo mantendo os mesmos pedidos.</p><h3>O invariante que realmente importa</h3><p><strong>Cada chargeback pertence a no máximo um lote lógico de envio.</strong> Uma chave única no banco prova isso sob concorrência. Uma variável em memória, cron ou lock com TTL sem fencing não prova. Se o domínio permitir correção, crie uma revisão explícita ligada ao original; não apague a história para reutilizar o identificador.</p><pre><code>${e(sql)}</code></pre><p>O exemplo não implementa todo o fechamento nem o protocolo do parceiro. SKIP LOCKED evita espera entre workers, mas não oferece uma visão consistente para relatórios. A seleção precisa de índices alinhados aos predicados; o custo inclui linhas examinadas e contenção, não apenas a quantidade retornada.</p><h3>Quatro janelas não significam quatro retries</h3><p>Esclareça se o limite recai sobre tentativas, uploads, nomes de arquivo ou lotes aceitos. Proteja a criação com uma chave única por parceiro/janela/slot e um contador ou autorização transacional de tentativas quando a cota for por tentativa; dois jobs não podem consumir a mesma vaga independentemente. Depois do timeout, represente UNKNOWN. O parceiro precisa oferecer receipt, consulta por batch_id, deduplicação, arquivo de retorno ou reconciliação. Sem isso, não existe uma solução local que garanta simultaneamente ausência de perda e de duplicação no efeito externo.</p><div class="table-wrap"><table><thead><tr><th>Peça</th><th>AWS</th><th>Azure</th><th>On-premises</th></tr></thead><tbody><tr><td>Fonte transacional</td><td>RDS PostgreSQL / Aurora PostgreSQL</td><td>Azure Database for PostgreSQL</td><td>PostgreSQL com HA, backup e WAL testados</td></tr><tr><td>Arquivo imutável</td><td>S3 + versionamento + política de retenção</td><td>Blob Storage + versionamento/imutabilidade</td><td>Object storage compatível S3; HA e retenção são sua operação</td></tr><tr><td>Execução</td><td>ECS/Fargate ou EC2; Lambda se duração e rede permitirem</td><td>Container Apps Jobs ou VM; Functions se limites permitirem</td><td>Workers em containers/VMs com supervisor</td></tr><tr><td>Sinal de trabalho</td><td>SQS + DLQ, se necessário</td><td>Service Bus queue + dead-letter</td><td>RabbitMQ quorum queue ou polling transacional</td></tr><tr><td>Conector no parceiro</td><td colspan="3">Agente autorizado próximo ao parceiro, canal seguro acordado, identidade própria, credenciais rotacionadas. Nuvem não remove restrições do contrato externo.</td></tr></tbody></table></div><h3>Uma evolução possível</h3><p>Comece com banco e workers. Adicione outbox se um commit precisar produzir eventos; separe geração de entrega quando recursos ou cadências diferirem; use backlog, idade do item mais antigo e reconciliação para justificar escala. Não migre para Kafka apenas para nomear um produto.</p></section>`;
+}
+function people() {
+  const r = D.research;
+  return `${title('Clareza vale mais que adivinhação', 'Entenda a conversa', 'Use o que está documentado para preparar decisões. A experiência pública dos entrevistadores dá contexto, mas não revela o que será perguntado.')}<div class="note"><strong>Formato confirmado no material fornecido:</strong> 60 minutos · Miro · apresentação pessoal de até cinco minutos · colaboração e justificativa das escolhas. Faça uma solução simples atravessar o fluxo inteiro antes de aprofundar.</div><section class="panel reading"><h2>O que merece sua atenção</h2><p>${e(r.interview.overview)}</p><div class="two-col">${r.interview.signals.map((s) => `<div class="bullet-row"><strong>${e(s.title)}</strong><p>${e(s.body)}</p>${refs(s.sourceIds)}</div>`).join('')}</div></section><div class="section-heading"><h2>Contexto profissional público</h2>${chip('ACESSO PARCIAL', 'amber')}</div><div class="people-grid">${r.people
+    .map(
+      (p) =>
+        `<article class="panel reading"><div class="person-title"><div class="portrait">${p.name
+          .split(' ')
+          .map((s) => s[0])
+          .slice(0, 2)
+          .join(
+            '',
+          )}</div><div><h2>${e(p.name)}</h2><p>${e(p.role)}</p></div></div><h3>O que foi possível verificar</h3>${p.verified.map((v) => `<div class="bullet-row"><p>${e(v.claim)}</p>${refs(v.sourceIds)}</div>`).join('')}<div class="note warning">${e(p.limits)}</div><h3>Como usar na preparação</h3>${p.preparation.map((x) => `<div class="bullet-row"><strong>${e(x.topic)}</strong><p>${e(x.reason)}</p><small>${e(x.caveat)}</small></div>`).join('')}</article>`,
+    )
+    .join(
+      '',
+    )}</div><section class="panel reading" style="margin-top:24px"><h2>Uma abertura que organiza a sessão</h2><p>“Antes de desenhar, vou confirmar o objetivo, quem usa o sistema e quais garantias não podem ser quebradas. Depois proponho um fluxo simples e aprofundamos as partes mais importantes. Posso começar pelo contrato com o sistema externo?”</p><h3>Quando uma pergunta te surpreender</h3><p>Repita a nova restrição, tire alguns segundos para pensar, mostre qual decisão muda e compare duas opções. Se não souber um detalhe de produto, explicite a propriedade que precisa verificar. Discordar com fundamento e rever a escolha fazem parte da colaboração.</p></section>`;
+}
+function plan() {
+  const days = D.research.studyPlan;
+  return `${title('Priorize antes de aprofundar', 'Um plano para chegar com clareza', 'A janela sugerida vai de 30 de outubro a 3 de novembro de 2026. Ajuste a carga ao seu tempo e concentre o esforço nas decisões que ainda não consegue explicar.')}<div class="note"><strong>Ordem de prioridade:</strong> requisitos e invariantes → modelo de dados e concorrência → idempotência e falhas externas → fluxo simples → escala e operação → alternativas de infraestrutura. O atlas é consulta; os simulados mostram as lacunas.</div><div class="plan-grid">${days
+    .map(
+      (d, i) =>
+        `<section class="panel plan-day"><span class="eyebrow">${e(d.day)}</span><h2>${e(d.title)}</h2><ul class="checklist">${d.tasks
+          .map((t, j) => {
+            const key = `day-${i}-${j}`;
+            return `<li class="${progress.checks.includes(key) ? 'done' : ''}"><input type="checkbox" data-check="${key}" id="${key}" ${progress.checks.includes(key) ? 'checked' : ''}><label for="${key}">${e(t)}</label></li>`;
+          })
+          .join('')}</ul></section>`,
+    )
+    .join(
+      '',
+    )}</div><section class="panel reading" style="margin-top:24px"><h2>Seu roteiro de 60 minutos</h2><div class="table-wrap"><table><thead><tr><th>Janela sugerida</th><th>Entrega na conversa</th><th>Pergunta de controle</th></tr></thead><tbody>${[
+    ['0–5', 'Apresentação breve e alinhamento', 'Qual objetivo precisamos atender?'],
+    ['5–12', 'Requisitos, restrições e invariantes', 'O que seria uma falha inaceitável?'],
+    ['12–22', 'API, entidades e fluxo simples', 'De onde vem a verdade?'],
+    ['22–38', 'Concorrência, timeout e recuperação', 'Se cair aqui, como retoma?'],
+    ['38–50', 'Escala e alternativas', 'Qual medida justificaria mudar a solução?'],
+    ['50–57', 'Segurança, observabilidade e operação', 'Como detectamos uma falha silenciosa?'],
+    ['57–60', 'Recapitular e discutir limites', 'O que decidimos e o que ainda verificaríamos?'],
+  ]
+    .map((row) => `<tr>${row.map((c) => `<td>${e(c)}</td>`).join('')}</tr>`)
+    .join(
+      '',
+    )}</tbody></table></div><p style="margin:18px 0 0">A divisão é uma estratégia de treino, não uma agenda oficial. Siga o ritmo da conversa e a orientação das pessoas entrevistadoras.</p></section>`;
+}
+function techCards() {
+  return `<div class="tech-grid">${D.technologies.map((t) => `<article class="tech-card">${t.logo ? `<img class="tech-logo" src="${e(t.logo)}" alt="${e(t.name)}" loading="lazy">` : `<span class="tech-fallback" aria-hidden="true">${e(t.name.slice(0, 2))}</span>`}<div><strong><a href="${e(t.url)}" target="_blank" rel="noopener">${e(t.name)} ↗</a></strong><p>${e(t.role)}</p>${t.logoSource ? `<a href="${e(t.logoSource)}" target="_blank" rel="noopener"><small>${e(t.logoKind || 'Origem oficial do ícone')}</small></a>` : '<small>Marca não incluída; consulte a documentação.</small>'}</div></article>`).join('')}</div>`;
+}
+function sources() {
+  let items = D.sources.filter(
+    (s) => (!filter.q || matches(s, filter.q)) && (!filter.category || s.type === filter.category),
+  );
+  return `${title('Rastreabilidade faz parte do estudo', 'Biblioteca & fontes', 'Documentação primária, engenharia do Nubank, relatos públicos e materiais fornecidos. Uma fonte histórica descreve seu contexto de publicação.')}<div class="tabs"><button class="tab ${tab !== 'technologies' ? 'active' : ''}" data-tab="overview">Fontes de pesquisa</button><button class="tab ${tab === 'technologies' ? 'active' : ''}" data-tab="technologies">Tecnologias & marcas</button></div>${
+    tab === 'technologies'
+      ? `<div class="note">Logos e ícones são obtidos de páginas e repositórios oficiais quando disponíveis; cada ativo tem origem vinculada. Usados para identificação educacional, sem afiliação ou endosso. Uma marca não implica adoção pelo Nubank. A lista é representativa, não universal.</div>${techCards()}`
+      : `<div class="filters"><input type="search" id="filter-q" aria-label="Buscar fonte" placeholder="Título, assunto, domínio…" value="${e(filter.q)}"><select id="filter-category" aria-label="Tipo de evidência">${options(
+          D.sources.map((s) => s.type),
+          filter.category,
+          'Todos os tipos de evidência',
+        )}</select></div><div class="result-line"><span>${items.length} referências</span><span>Pesquisa consolidada em 30/10/2026</span></div><section class="panel">${paginate(items, (s) => `<article class="source-card">${chip(s.type || 'Referência', 'neutral')} ${s.date ? `<small style="color:var(--muted)">${e(s.date)}</small>` : ''}<h3>${s.url ? `<a href="${e(s.url)}" target="_blank" rel="noopener">${e(s.title)} ↗</a>` : e(s.title)}</h3><p>${e(s.summary)}</p>${s.url ? `<span class="url">${e(s.url)}</span>` : '<small>Material fornecido pelo candidato; arquivo original não publicado.</small>'}</article>`, 30)}</section><div class="note"><strong>Limites da pesquisa:</strong> não houve acesso a conteúdo privado do LinkedIn ou a uma rubrica interna. Não foi possível inspecionar todo post, comentário ou vídeo da internet. Relatos têm viés de seleção; o plano e as perguntas são material autoral de preparação. As referências fundamentam mecanismos, não uma promessa de aprovação.</div>`
+  }`;
+}
+function lab(id) {
+  const which = id || 'queue';
+  return `${title('Faça a falha aparecer', 'Laboratório de decisões', 'Mude uma hipótese, observe o efeito e explique a decisão. Modelos didáticos determinísticos; não são benchmarks de serviços.')}<div class="tabs">${[
+    ['queue', 'Fila & capacidade'],
+    ['idempotency', 'Retry & idempotência'],
+    ['latency', 'Latência & fan-out'],
+    ['sharding', 'Particionamento'],
+  ]
+    .map(([k, t]) => `<a href="#lab/${k}" class="tab ${which === k ? 'active' : ''}">${t}</a>`)
+    .join(
+      '',
+    )}</div>${which === 'queue' ? queueLab() : which === 'idempotency' ? idempotencyLab() : which === 'latency' ? latencyLab() : shardingLab()}`;
+}
+function control(id, label, min, max, value, unit, step = 1) {
+  return `<label class="control"><span>${label}<strong id="${id}-value">${value} ${unit}</strong></span><input id="${id}" type="range" min="${min}" max="${max}" value="${value}" step="${step}" data-unit="${unit}"></label>`;
+}
+function queueLab() {
+  return `<div class="detail-grid"><section class="panel reading"><h2>Uma fila compra tempo. Não cria capacidade.</h2><p>Um pico dura 60 segundos. O modelo abaixo assume chegadas uniformes, serviço constante e backlog inicial zero. Na prática, variância, retries e hot partitions pioram a cauda.</p>${control('arrival', 'Chegadas por segundo', 100, 10000, 3000, 'req/s', 100)}${control('workers', 'Workers paralelos', 1, 32, 8, 'workers')}${control('service', 'Tempo por operação', 1, 50, 5, 'ms')}<div class="note" id="queue-verdict"></div></section><section class="panel"><h3>Backlog durante o pico</h3><div class="bar-chart" id="queue-bars"></div><div class="lab-labels"><span>0s</span><span>30s</span><span>60s</span></div><p style="font-size:11px;margin-top:22px">Fila crescendo significa trabalho acumulado. Dimensione pelo tempo até o prazo e pela idade da mensagem mais antiga.</p></section></div><div class="lab-stats" style="margin-top:22px"><div class="lab-stat"><strong id="capacity"></strong><span>capacidade teórica / segundo</span></div><div class="lab-stat"><strong id="backlog"></strong><span>pendências após 60 segundos</span></div><div class="lab-stat"><strong id="drain"></strong><span>para drenar sem novas chegadas</span></div></div><section class="panel reading" style="margin-top:22px"><h3>O que dizer na entrevista</h3><p>“A fila desacopla o pico, mas se λ > μ por tempo suficiente, o backlog cresce sem limite. Em λ = μ não há folga; a variabilidade real pode acumular espera. Eu limitaria admissão, investigaria o gargalo por partição e escalaria consumidores apenas até a capacidade do recurso seguinte.”</p><pre><code>capacidade μ = workers × 1000 / tempo_ms
+backlog(60s) = max(0, (λ − μ) × 60)
+tempo_de_drenagem = backlog / μ  # sem novas chegadas
+Little: L = λ × W              # sistema estável e mesma fronteira</code></pre><p>CPU-bound exige capacidade de CPU; I/O-bound pode ganhar com concorrência limitada. Mais workers disputando o mesmo lock podem reduzir throughput.</p>${refs(['little-law'])}</section>`;
+}
+function updateQueue() {
+  if (!$('#arrival')) return;
+  const a = +$('#arrival').value,
+    w = +$('#workers').value,
+    s = +$('#service').value,
+    c = (w * 1000) / s,
+    b = Math.max(0, (a - c) * 60),
+    dr = b / c;
+  $('#capacity').textContent = fmt(Math.round(c));
+  $('#backlog').textContent = fmt(Math.round(b));
+  $('#drain').textContent = `${dr.toFixed(1)}s`;
+  $('#queue-verdict').textContent =
+    a >= c
+      ? `Saturado: utilização teórica ${((a / c) * 100).toFixed(0)}%. Reduza entrada, tempo de serviço ou gargalo antes de confiar na fila.`
+      : `Utilização teórica ${((a / c) * 100).toFixed(0)}%. Existe folga média, mas picos e caudas exigem medir.`;
+  $('#queue-bars').innerHTML = Array.from(
+    { length: 12 },
+    (_, i) =>
+      `<div class="bar" style="height:${b ? ((i + 1) / 12) * 88 : 2}%"><span>${i === 11 ? fmt(Math.round(b)) : ''}</span></div>`,
+  ).join('');
+}
+let payments = { balance: 10000, attempts: 0, effects: 0, seen: false };
+function idempotencyLab() {
+  payments = { balance: 10000, attempts: 0, effects: 0, seen: false };
+  return `<div class="detail-grid"><section class="panel reading"><h2>O commit aconteceu. A resposta sumiu.</h2><p>Um cliente tenta pagar R$ 100. O servidor debita, mas a rede perde o ACK. Reenvie a mesma operação com e sem chave idempotente.</p><label class="control"><span>Proteção transacional <strong>mesma chave, mesmo payload</strong></span><select id="idem-mode" style="width:100%"><option value="on">Chave única + efeito na mesma transação</option><option value="off">Sem deduplicação</option></select></label><div class="actions"><button class="button primary" id="pay">Enviar / repetir pagamento</button><button class="button" id="pay-reset">Reiniciar</button></div><div class="note">O primeiro ACK é perdido intencionalmente. A retenção da chave, o hash do payload e a fronteira transacional são parte do contrato.</div></section><section class="panel"><h3>Eventos observados</h3><div class="log" id="payment-log">Pronto. Conta com R$ 10.000,00.<br>Operação lógica: payment-42.</div></section></div><div class="lab-stats" style="margin-top:22px"><div class="lab-stat"><strong id="pay-balance">R$ 10.000</strong><span>saldo registrado</span></div><div class="lab-stat"><strong id="pay-attempts">0</strong><span>tentativas recebidas</span></div><div class="lab-stat"><strong id="pay-effects">0</strong><span>efeitos financeiros</span></div></div><section class="panel reading" style="margin-top:22px"><h3>Por que um GET seguido de SET não basta?</h3><p>Duas requisições podem ler “chave ausente” antes de gravar. Use exclusão por índice único e execute efeito e registro da resposta na mesma transação. Um SET NX com TTL separado do débito deixa janelas de falha. Uma chamada externa exige participação do receptor ou reconciliação.</p><pre><code>BEGIN;
+INSERT INTO request_key (tenant, key, payload_hash)
+VALUES (:tenant, :key, :hash)
+ON CONFLICT (tenant,key) DO NOTHING RETURNING key;
+-- Em READ COMMITTED, o INSERT aguarda a concorrente resolver.
+-- Se NÃO inseriu: fazer SELECT em nova instrução/snapshot,
+-- conferir hash; divergência = erro. Resultado existente =
+-- COMMIT/retorno sem executar o débito abaixo. Linha ausente
+-- exige retry controlado. Retenção não pode apagar chave ativa.
+-- Só o ramo que inseriu a chave continua:
+UPDATE account SET available = available - :amount
+WHERE id = :id AND available >= :amount;
+-- exigir exatamente uma linha atualizada ou abortar
+INSERT INTO ledger_entry (...) VALUES (...); -- lançamento balanceado
+UPDATE request_key SET response = :result WHERE ...;
+COMMIT;
+-- só então enviar ACK; persistir resultado permite retry seguro</code></pre><p>O esboço exige validação de autorização e moeda, valores em unidade mínima/decimal e lançamentos de dupla entrada. Exatamente uma aplicação local não significa exactly-once em qualquer integração.</p>${refs(['pg-insert', 'pg-transactions', 'aws-idempotent'])}</section>`;
+}
+function latencyLab() {
+  return `<div class="detail-grid"><section class="panel reading"><h2>Uma cauda rara pode virar rotina.</h2><p>Suponha chamadas independentes e uma probabilidade fixa de cada dependência ultrapassar 200 ms. A resposta espera todas elas.</p>${control('fanout', 'Dependências em paralelo', 1, 100, 20, 'chamadas')}${control('tail', 'Chance de cada chamada exceder 200 ms', 1, 20, 1, '%')}<div class="note" id="latency-verdict"></div></section><section class="panel reading"><h3>Probabilidade de alguma chamada lenta</h3><strong id="tail-result" style="font:700 68px Manrope;color:var(--purple)"></strong><pre><code>P(alguma lenta) = 1 − (1 − p)^n</code></pre><p>Independência é simplificação. Falhas correlacionadas alteram o resultado. A fórmula não calcula o p99 final; estima a chance de exceder um limiar.</p></section></div><section class="panel reading" style="margin-top:22px"><h3>Opções que mudam o caminho crítico</h3><p>Agregação materializada evita fan-out no request ao preço de freshness; cache exige invalidação e proteção contra stampede; paralelismo reduz soma de esperas, mas mantém o máximo. Timeout com orçamento por dependência, degradação de campos opcionais e isolamento de pools ajudam a limitar a falha.</p><p>Hedged requests só fazem sentido com idempotência, cancelamento efetivo e capacidade sobrando. Retry indiscriminado em saturação aumenta a fila.</p>${refs(['tail-at-scale'])}</section>`;
+}
+function hash(s) {
+  let h = 2166136261;
+  for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
+function shardingLab() {
+  return `<div class="detail-grid"><section class="panel reading"><h2>O tamanho total não explica a partição quente.</h2><p>Distribuímos 10 mil requisições entre mil contas fictícias. Uma conta pode concentrar tráfego. Virtual nodes equilibram chaves; não dividem automaticamente uma única chave quente.</p>${control('shards', 'Partições', 2, 16, 8, 'shards')}${control('hot', 'Tráfego da maior conta', 0, 90, 30, '%')}<div class="note" id="shard-verdict"></div></section><section class="panel"><h3>Requisições por partição</h3><div class="bar-chart" id="shard-bars"></div><div class="lab-labels"><span>Partição 0</span><span id="last-shard"></span></div></section></div><section class="panel reading" style="margin-top:22px"><h3>Mudar o hash não muda o invariante</h3><p>Dividir uma conta financeira em subchaves pode quebrar a serialização das atualizações do saldo. Antes de aplicar salting, identifique operações comutativas, fronteiras de autorização e o custo de agregar ou coordenar. Replicação de leitura não distribui necessariamente a escrita no líder.</p><p>O experimento usa hash módulo N. Rendezvous ou consistent hashing reduz remapeamento ao alterar o conjunto de nós, mas ainda precisa de migração, roteamento por versão e fencing para escritores antigos.</p>${refs(['dynamo-paper', 'dynamodb-partition-keys'])}</section>`;
+}
+function updateLabs() {
+  updateQueue();
+  if ($('#fanout')) {
+    const n = +$('#fanout').value,
+      p = +$('#tail').value / 100,
+      v = (1 - (1 - p) ** n) * 100;
+    $('#tail-result').textContent = `${v.toFixed(1)}%`;
+    $('#latency-verdict').textContent =
+      `Com ${n} dependências, a chance de ao menos uma ultrapassar o limiar é ${v.toFixed(1)}%. Considere reduzir dependências do caminho crítico.`;
+  }
+  if ($('#shards')) {
+    const n = +$('#shards').value,
+      hot = +$('#hot').value,
+      counts = Array(n).fill(0);
+    for (let i = 0; i < 10000; i++) {
+      const key = i < hot * 100 ? 'hot-account' : `account-${i % 1000}`;
+      counts[hash(key) % n]++;
+    }
+    const max = Math.max(...counts);
+    $('#shard-bars').innerHTML = counts
+      .map(
+        (v, i) =>
+          `<div class="bar" style="height:${(v / max) * 88}%" title="Partição ${i}: ${v} requisições"><span>${v}</span></div>`,
+      )
+      .join('');
+    $('#last-shard').textContent = `Partição ${n - 1}`;
+    $('#shard-verdict').textContent =
+      `A maior partição recebe ${(max / 100).toFixed(1)}% do tráfego: ${(max / (10000 / n)).toFixed(1)}× a média. Meça distribuição por chave, não só a média global.`;
+  }
+}
+function notFound() {
+  return `<div class="empty"><h1>Conteúdo não encontrado</h1><a class="button" href="#home">Voltar ao início</a></div>`;
+}
+function render(keepScroll = false) {
+  mindMap.destroy();
+  playbook.destroy();
+  const pos = scrollY,
+    active = document.activeElement;
+  const focusAttr = [
+    'data-tab',
+    'data-cap',
+    'data-ledger-action',
+    'data-ledger-file',
+    'data-cloud',
+    'data-read',
+  ].find((k) => active?.hasAttribute(k));
+  const focusSelector = active?.id
+    ? `#${CSS.escape(active.id)}`
+    : focusAttr
+      ? `[${focusAttr}="${CSS.escape(active.getAttribute(focusAttr))}"]`
+      : null;
+  navRender();
+  let html = '';
+  try {
+    html =
+      currentRoute === 'home'
+        ? home()
+        : currentRoute === 'map'
+          ? mindMap.html(D.mindmap, currentId)
+          : currentRoute === 'playbook'
+            ? playbook.html(D.playbook, currentId)
+            : currentRoute === 'atlas'
+              ? currentId
+                ? archDetail(currentId)
+                : atlas()
+              : currentRoute === 'compare'
+                ? comparePage(currentId)
+                : currentRoute === 'questions'
+                  ? questions()
+                  : currentRoute === 'flashcards'
+                    ? flashcards()
+                    : currentRoute === 'guided'
+                      ? guidedPage(currentId)
+                      : currentRoute === 'mocks'
+                        ? currentId
+                          ? mockDetail(currentId)
+                          : mocks()
+                        : currentRoute === 'lab'
+                          ? lab(currentId)
+                          : currentRoute === 'course'
+                            ? coursePage(currentId)
+                            : currentRoute === 'videos'
+                              ? videosPage(currentId)
+                              : currentRoute === 'foundations'
+                                ? foundationPage(currentId)
+                                : currentRoute === 'ledger'
+                                  ? ledgerPage(currentId)
+                                  : currentRoute === 'cases'
+                                    ? researchCases(currentId)
+                                    : currentRoute === 'people'
+                                      ? people()
+                                      : currentRoute === 'plan'
+                                        ? plan()
+                                        : currentRoute === 'sources'
+                                          ? sources()
+                                          : notFound();
+    $('#main').innerHTML = html;
+    bind();
+    bindLedger();
+    bindFoundations();
+    bindVideos();
+    bindCourse();
+    bindGuided();
+    if (currentRoute === 'map') mindMap.bind(D.mindmap, currentId);
+    if (currentRoute === 'playbook') playbook.bind();
+    enhanceReading();
+    updateClock();
+    updateLabs();
+    if (keepScroll) {
+      scrollTo(0, pos);
+      if (focusSelector) $(focusSelector)?.focus({ preventScroll: true });
+    }
+  } catch (err) {
+    console.error(err);
+    $('#main').innerHTML =
+      '<div class="empty">Não foi possível montar esta página. <a href="#home">Voltar ao início</a></div>';
+  }
+}
+function route() {
+  rememberPlace();
+  const [base, query] = (location.hash.slice(1) || 'home').split('?');
+  const parts = base.split('/');
+  const next = parts[0];
+  if (next !== currentRoute || parts[1] !== currentId) {
+    filter = { q: '', category: '', level: '', priority: '', saved: false, page: 1 };
+    tab = 'overview';
+  }
+  currentRoute = next;
+  currentId = decodeURIComponent(parts[1] || '');
+  if (currentRoute === 'compare' && currentId) compare[0] = currentId;
+  const params = new URLSearchParams(query);
+  if (params.has('q')) filter.q = params.get('q');
+  if (currentRoute === 'guided') {
+    guidedStep = Math.max(0, Math.min(9, (parseInt(params.get('step'), 10) || 1) - 1));
+    guidedRehearse = params.get('mode') === 'rehearse';
+    guidedRevealed = false;
+    guidedFinal = false;
+  }
+  if (
+    currentRoute === 'atlas' &&
+    ['overview', 'decisions', 'internals', 'code', 'operations', 'deployments'].includes(
+      params.get('tab'),
+    )
+  )
+    tab = params.get('tab');
+  $('#sidebar').classList.remove('open');
+  $('#menu').setAttribute('aria-expanded', 'false');
+  render();
+  scrollTo(0, 0);
+  activeHash = location.hash || '#home';
+  if (requestedResumeY !== null) {
+    const y = requestedResumeY;
+    requestedResumeY = null;
+    requestAnimationFrame(() => scrollTo(0, y));
+  }
+}
+function toggle(array, id) {
+  const index = array.indexOf(id);
+  index >= 0 ? array.splice(index, 1) : array.push(id);
+  return save();
+}
+function bind() {
+  $$('[data-cloud]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        cloud = b.dataset.cloud;
+        render(true);
+      }),
+  );
+  for (const kind of ['q', 'category', 'level', 'priority']) {
+    const el = $(`#filter-${kind}`);
+    if (el)
+      el.addEventListener(kind === 'q' ? 'input' : 'change', () => {
+        const start = el.selectionStart;
+        filter[kind] = el.value;
+        filter.page = 1;
+        if (currentRoute === 'videos') {
+          updateVideoCatalogue();
+          return;
+        }
+        render(true);
+        const next = $(`#filter-${kind}`);
+        next?.focus();
+        if (kind === 'q') next.setSelectionRange(start, start);
+      });
+  }
+  $$('[data-page]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        filter.page = +b.dataset.page;
+        render();
+        scrollTo(0, 200);
+      }),
+  );
+  $$('[data-tab]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        tab = b.dataset.tab;
+        if (currentRoute === 'atlas')
+          history.replaceState(null, '', `#atlas/${encodeURIComponent(currentId)}?tab=${tab}`);
+        activeHash = location.hash;
+        render(true);
+      }),
+  );
+  $$('[data-read]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        toggle(progress.read, b.dataset.read);
+        render(true);
+      }),
+  );
+  $$('[data-compare]').forEach(
+    (b) =>
+      (b.onchange = () => {
+        compare[+b.dataset.compare] = b.value;
+        render(true);
+      }),
+  );
+  $$('[data-known]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const persisted = toggle(progress.known, b.dataset.known);
+        b.textContent = progress.known.includes(b.dataset.known)
+          ? '✓ Dominada'
+          : 'Já consigo explicar';
+        b.closest('.question').classList.toggle(
+          'mastered',
+          progress.known.includes(b.dataset.known),
+        );
+        if (persisted) toast('Progresso salvo no dispositivo');
+      }),
+  );
+  $$('[data-bookmark]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const persisted = toggle(progress.bookmarks, b.dataset.bookmark);
+        b.textContent = progress.bookmarks.includes(b.dataset.bookmark)
+          ? '★ Salva'
+          : '☆ Revisar depois';
+        if (persisted) toast('Lista de revisão atualizada');
+      }),
+  );
+  if ($('#only-saved'))
+    $('#only-saved').onclick = () => {
+      filter.saved = !filter.saved;
+      filter.page = 1;
+      render();
+    };
+  if ($('#reveal-flash'))
+    $('#reveal-flash').onclick = () => {
+      $('#flash-answer').classList.remove('hidden');
+      $('#reveal-flash').disabled = true;
+    };
+  if ($('#next-flash'))
+    $('#next-flash').onclick = () => {
+      activeFlash += 1 + Math.floor(Math.random() * 37);
+      render(true);
+    };
+  $$('[data-flash-known]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (!progress.known.includes(b.dataset.flashKnown))
+          progress.known.push(b.dataset.flashKnown);
+        save();
+        render(true);
+      }),
+  );
+  $$('[data-node]').forEach((n) => {
+    const select = () => {
+      const a = diagramModel || D.architectures.find((x) => x.id === currentId),
+        node = a?.nodes.find((x) => x.id === n.dataset.node);
+      $$('[data-node]').forEach((x) => x.classList.remove('selected'));
+      n.classList.add('selected');
+      $('#node-detail').innerHTML =
+        `<strong>${e(node?.label)}</strong><br>${e(node?.detail || 'Responsabilidade conforme o fluxo apresentado.')} ${node?.tech ? `<br><small>Tecnologia representativa: ${e(node.tech)}</small>` : ''}`;
+    };
+    n.onclick = select;
+    n.onkeydown = (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        select();
+      }
+    };
+  });
+  if ($('#animate-toggle'))
+    $('#animate-toggle').onclick = () => {
+      const d = $('#diagram');
+      d.classList.toggle('paused');
+      $('#animate-toggle').textContent = d.classList.contains('paused')
+        ? 'Animar fluxo'
+        : 'Pausar fluxo';
+    };
+  if ($('#timer-toggle'))
+    $('#timer-toggle').onclick = () => {
+      if (timer.running) {
+        timer.elapsed = elapsed();
+        timer.running = false;
+      } else if (timer.elapsed < 3600) {
+        timer.start = Date.now();
+        timer.running = true;
+      }
+      $('#timer-toggle').textContent = timer.running ? 'Pausar' : 'Continuar';
+      updateClock();
+    };
+  if ($('#timer-reset'))
+    $('#timer-reset').onclick = () => {
+      timer.elapsed = 0;
+      timer.running = false;
+      $('#timer-toggle').textContent = 'Iniciar sessão';
+      updateClock();
+    };
+  $$('[data-note]').forEach(
+    (t) =>
+      (t.oninput = () => {
+        progress.notes[t.dataset.note] = t.value;
+        save();
+      }),
+  );
+  $$('[data-score]').forEach(
+    (t) =>
+      (t.onchange = () => {
+        progress.scores[t.dataset.score] = +t.value;
+        save();
+        updateClock();
+      }),
+  );
+  $$('[data-check]').forEach(
+    (t) =>
+      (t.onchange = () => {
+        toggle(progress.checks, t.dataset.check);
+        t.closest('li').classList.toggle('done', t.checked);
+      }),
+  );
+  $$('input[type=range]').forEach(
+    (x) =>
+      (x.oninput = () => {
+        $(`#${x.id}-value`).textContent = `${x.value} ${x.dataset.unit}`;
+        updateLabs();
+      }),
+  );
+  if ($('#pay'))
+    $('#pay').onclick = () => {
+      payments.attempts++;
+      const protectedMode = $('#idem-mode').value === 'on';
+      let msg;
+      if (protectedMode && payments.seen) {
+        msg = '<span class="ok">Chave encontrada → resultado anterior; nenhum novo débito.</span>';
+      } else {
+        payments.balance -= 100;
+        payments.effects++;
+        payments.seen = true;
+        msg =
+          payments.attempts === 1
+            ? '<span class="bad">COMMIT concluído. ACK perdido → timeout no cliente.</span>'
+            : `<span class="${payments.effects > 1 ? 'bad' : 'ok'}">COMMIT: novo débito aplicado ${payments.effects > 1 ? '(duplicação!)' : ''}.</span>`;
+      }
+      $('#payment-log').innerHTML += `<br>#${payments.attempts} ${msg}`;
+      $('#pay-balance').textContent = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0,
+      }).format(payments.balance);
+      $('#pay-attempts').textContent = payments.attempts;
+      $('#pay-effects').textContent = payments.effects;
+    };
+  if ($('#pay-reset'))
+    $('#pay-reset').onclick = () => {
+      payments = { balance: 10000, attempts: 0, effects: 0, seen: false };
+      render(true);
+    };
+  if ($('#idem-mode'))
+    $('#idem-mode').onchange = () => {
+      payments = { balance: 10000, attempts: 0, effects: 0, seen: false };
+      $('#payment-log').innerHTML = 'Novo experimento. Conta com R$ 10.000,00.';
+      $('#pay-balance').textContent = 'R$ 10.000';
+      $('#pay-attempts').textContent = '0';
+      $('#pay-effects').textContent = '0';
+    };
+}
+function search() {
+  const q = $('#global-search').value;
+  if (q.length < 2) {
+    $('#search-results').innerHTML =
+      '<p style="margin:20px 0;font-size:12px">Digite ao menos dois caracteres. Pesquise mecanismos, problemas ou tecnologias.</p>';
+    return;
+  }
+  const items = [
+    ...D.playbook.cases
+      .filter((x) => matches({ title: x.title, brief: x.brief, invariants: x.invariants }, q))
+      .slice(0, 4)
+      .map((x) => ({
+        title: x.title,
+        sub: 'Roteiro do dia · fala e desenho em 10 etapas',
+        url: `#playbook/${x.id}`,
+      })),
+    ...D.mindmap.nodes
+      .filter((x) => matches({ title: x.label, summary: x.summary, keywords: x.keywords }, q))
+      .slice(0, 4)
+      .map((x) => ({
+        title: x.label,
+        sub: 'Mapa mental · ' + D.mindmap.groups.find((g) => g.id === x.group).label,
+        url: `#map/${x.id}`,
+      })),
+    ...D.guided.cases
+      .filter((x) => matches({ title: x.title, subtitle: x.subtitle, brief: x.brief }, q))
+      .slice(0, 3)
+      .map((x) => ({ title: x.title, sub: 'Entrevista guiada · 60 min', url: `#guided/${x.id}` })),
+    ...D.course.lessons
+      .filter((x) => matches({ title: x.title, topics: x.topics }, q))
+      .slice(0, 3)
+      .map((x) => ({
+        title: x.title,
+        sub: 'Curso LINUXtips · aula ' + x.number,
+        url: `#course/${x.id}`,
+      })),
+    ...D.videos.videos
+      .filter((x) => matches({ title: x.title, topic: x.topic, channel: x.channel }, q))
+      .slice(0, 3)
+      .map((x) => ({ title: x.title, sub: 'Videoteca · ' + x.channel, url: `#videos/${x.id}` })),
+    ...D.foundations.chapters
+      .filter((x) => matches(x, q))
+      .slice(0, 3)
+      .map((x) => ({
+        title: x.title,
+        sub: 'Fundamentos distribuídos',
+        url: `#foundations/${x.id}`,
+      })),
+    ...D.ledger.sections
+      .filter((x) => matches(x, q))
+      .slice(0, 3)
+      .map((x) => ({
+        title: x.title,
+        sub: 'Ledger bancário · capítulo técnico',
+        url: `#ledger/${x.id}`,
+      })),
+    ...D.architectures
+      .filter((x) => matches(x, q))
+      .sort((a, b) => Number(matches(b.title, q)) - Number(matches(a.title, q)))
+      .slice(0, 5)
+      .map((x) => ({ title: x.title, sub: `Atlas · ${x.category}`, url: `#atlas/${x.id}` })),
+    ...D.questions
+      .filter((x) => matches({ question: x.question, category: x.category }, q))
+      .slice(0, 5)
+      .map((x) => ({
+        title: x.question,
+        sub: `Pergunta · ${x.category}`,
+        url: `#questions/${x.id}`,
+      })),
+    ...D.mocks
+      .filter((x) => matches({ title: x.title, domain: x.domain }, q))
+      .slice(0, 3)
+      .map((x) => ({ title: x.title, sub: 'Simulado de 60 min', url: `#mocks/${x.id}` })),
+    ...D.research.cases
+      .filter((x) => matches(x, q))
+      .slice(0, 3)
+      .map((x) => ({ title: x.title, sub: 'Caso de engenharia', url: `#cases/${x.id}` })),
+  ];
+  $('#search-results').innerHTML = items.length
+    ? items.map((x) => `<a href="${x.url}">${e(x.title)}<small>${e(x.sub)}</small></a>`).join('')
+    : '<p style="padding:20px">Nenhum resultado.</p>';
+  $$('#search-results a').forEach((a) => (a.onclick = () => $('#search-dialog').close()));
+}
+function openSearch() {
+  if (document.body.classList.contains('map-is-full')) $('#map-full')?.click();
+  $('#search-dialog').showModal();
+  $('#global-search').focus();
+  search();
+}
+$('#search-launch').onclick = openSearch;
+$('#global-search').oninput = search;
+document.addEventListener('keydown', (ev) => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key === 'k') {
+    ev.preventDefault();
+    openSearch();
+  }
+  if (ev.key === 'Escape') $('#sidebar').classList.remove('open');
+});
+$('#menu').onclick = () => {
+  $('#sidebar').classList.toggle('open');
+  $('#menu').setAttribute('aria-expanded', $('#sidebar').classList.contains('open'));
+};
+$('.skip').onclick = (ev) => {
+  ev.preventDefault();
+  $('#main').focus();
+};
+document.addEventListener('click', (ev) => {
+  if (
+    $('#sidebar').classList.contains('open') &&
+    !$('#sidebar').contains(ev.target) &&
+    !$('#menu').contains(ev.target)
+  ) {
+    $('#sidebar').classList.remove('open');
+    $('#menu').setAttribute('aria-expanded', 'false');
+  }
+});
+$('#theme').onclick = () => {
+  document.body.classList.toggle('dark');
+  (() => {
+    try {
+      localStorage.setItem(
+        'nuarch-theme',
+        document.body.classList.contains('dark') ? 'dark' : 'light',
+      );
+    } catch {}
+  })();
+};
+try {
+  document.body.classList.toggle('dark', localStorage.getItem('nuarch-theme') === 'dark');
+} catch {}
+$('#export-progress').onclick = () => {
+  const blob = new Blob(
+    [JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), progress }, null, 2)],
+    { type: 'application/json' },
+  );
+  const url = URL.createObjectURL(blob),
+    a = document.createElement('a');
+  a.href = url;
+  a.download = 'nuarch-meu-progresso.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Progresso exportado');
+};
+$('#import-progress').onclick = () => $('#progress-file').click();
+$('#progress-file').onchange = async (ev) => {
+  try {
+    const data = JSON.parse(await ev.target.files[0].text());
+    if (
+      data.version !== 1 ||
+      !data.progress ||
+      !['known', 'bookmarks', 'read', 'checks'].every(
+        (k) =>
+          Array.isArray(data.progress[k]) && data.progress[k].every((x) => typeof x === 'string'),
+      ) ||
+      !data.progress.notes ||
+      Array.isArray(data.progress.notes) ||
+      typeof data.progress.notes !== 'object' ||
+      !Object.values(data.progress.notes).every((x) => typeof x === 'string') ||
+      !data.progress.scores ||
+      Array.isArray(data.progress.scores) ||
+      typeof data.progress.scores !== 'object' ||
+      !Object.values(data.progress.scores).every((x) => Number.isInteger(x) && x >= 0 && x <= 3)
+    )
+      throw new Error();
+    progress = { ...progress, ...data.progress };
+    const persisted = progressStore.replace(progress);
+    if (persisted) progress = progressStore.snapshot();
+    render(true);
+    if (persisted) toast('Progresso importado');
+  } catch {
+    toast('Arquivo de progresso inválido. Use uma exportação do nuArch.');
+  }
+  ev.target.value = '';
+};
+$('.skip').onclick = (ev) => {
+  ev.preventDefault();
+  $('#main').focus();
+  $('#main').scrollIntoView({ block: 'start' });
+};
+setInterval(updateClock, 500);
+window.addEventListener('hashchange', route);
+installStudio();
+async function init() {
+  try {
+    const responses = await loadPortalData();
+    const [a, p, r, l, g, f, v, c, w, m, b] = responses;
+    D = {
+      playbook: b,
+      mindmap: m,
+      guided: w,
+      course: c,
+      videos: v,
+      foundations: f,
+      ledger: g,
+      architectures: a.architectures,
+      technologies: a.technologies,
+      questions: p.questions,
+      mocks: p.mocks,
+      research: r,
+      practiceMeta: p.meta,
+      sources: [],
+    };
+    const all = [
+      ...r.sources,
+      ...a.sources,
+      ...p.sources,
+      ...g.sources,
+      ...f.sources,
+      ...v.sources,
+      ...c.sources,
+      ...w.sources,
+      ...m.sources,
+      ...b.sources,
+    ];
+    const byUrl = new Map();
+    for (const s of all) {
+      sourceMap[s.id] = s;
+      if (!byUrl.has(s.url || s.id)) byUrl.set(s.url || s.id, s);
+    }
+    D.sources = [...byUrl.values()];
+    D.technologies = D.technologies.map((t) => {
+      const logo = l.entries.find(
+        (x) =>
+          normalize(x.name) === normalize(t.name) ||
+          x.id === t.id ||
+          (t.id === 'elastic' && x.id === 'elasticsearch'),
+      );
+      return logo
+        ? {
+            ...t,
+            assetId: logo.id,
+            logo: logo.logo,
+            logoSource: logo.sourceUrl,
+            logoKind: logo.kind,
+          }
+        : t;
+    });
+    for (const logo of l.entries) {
+      if (
+        !D.technologies.some(
+          (t) =>
+            t.id === logo.id || t.assetId === logo.id || normalize(t.name) === normalize(logo.name),
+        )
+      )
+        D.technologies.push({
+          id: logo.id,
+          name: logo.name,
+          url: logo.officialWebsite,
+          role: 'Opção de implementação',
+          logo: logo.logo,
+          logoSource: logo.sourceUrl,
+          logoKind: logo.kind,
+        });
+    }
+    route();
+  } catch (err) {
+    console.error(err);
+    $('#main').innerHTML =
+      `<section class="panel"><h1>O acervo ainda não carregou.</h1><p>Verifique sua conexão e recarregue a página. O portal precisa ser aberto por HTTP, não diretamente como arquivo.</p><button class="button" onclick="location.reload()">Tentar novamente</button></section>`;
+  }
+}
+
+function cloudTechnology(service) {
+  const n = normalize(service);
+  const aliases =
+    cloud === 'aws'
+      ? {
+          'step-functions': ['step functions'],
+          'api-gateway': ['api gateway'],
+          msk: ['msk'],
+          aurora: ['aurora'],
+          rds: ['rds'],
+          dynamodb: ['dynamodb'],
+          sqs: ['sqs'],
+          sns: ['sns'],
+          eventbridge: ['eventbridge'],
+          kinesis: ['kinesis'],
+          lambda: ['lambda'],
+          ecs: ['ecs', 'fargate'],
+          eks: ['eks'],
+          s3: ['s3'],
+          elasticache: ['elasticache'],
+          cloudwatch: ['cloudwatch'],
+          ec2: ['ec2'],
+        }
+      : cloud === 'azure'
+        ? {
+            'azure-postgresql': ['azure database for postgresql'],
+            'azure-service-bus': ['service bus'],
+            'azure-event-hubs': ['event hubs'],
+            'azure-container-apps': ['container apps'],
+            'azure-functions': ['functions'],
+            'azure-aks': ['aks'],
+            'azure-cosmos-db': ['cosmos'],
+            'azure-blob': ['blob'],
+            'azure-api-management': ['api management'],
+            'azure-redis': ['managed redis', 'cache for redis'],
+            'azure-monitor': ['azure monitor'],
+            'azure-key-vault': ['key vault'],
+            'azure-front-door': ['front door'],
+            'azure-app-gateway': ['application gateway'],
+            'azure-vm': ['virtual machine', 'azure vm'],
+          }
+        : {};
+  for (const [id, terms] of Object.entries(aliases)) {
+    if (terms.some((t) => n.includes(t))) {
+      const t = D.technologies.find((x) => x.id === id || x.assetId === id);
+      if (t?.logo) return t;
+    }
+  }
+  return D.technologies.find(
+    (x) => x.logo && n.includes(normalize(x.name).replace(/^apache /, '')),
+  );
+}
+function cloudLogo(service) {
+  const t = cloudTechnology(service);
+  return t?.logo
+    ? `<img src="${e(t.logo)}" class="tech-logo" alt="${e(t.name)}" loading="lazy">`
+    : '';
+}
+function deploymentView(a) {
+  const d = a.deployments;
+  if (!d)
+    return '<div class="note">Implementação depende das garantias requeridas. Consulte os serviços oficiais na biblioteca.</div>';
+  const selected = d[cloud] || d.aws;
+  const titles = {
+    aws: 'Amazon Web Services',
+    azure: 'Microsoft Azure',
+    onprem: 'On-premises / autogerenciado',
+  };
+  const comps = arr(selected.components);
+  const mapped = {
+    ...a,
+    title: `${a.title} · ${titles[cloud]}`,
+    nodes: a.nodes.map((n, i) => {
+      const c = comps.find((c) => c.role === n.label) || comps[i];
+      return {
+        ...n,
+        label: c ? c.service.split(' / ')[0].split(' + ')[0] : n.label,
+        detail: c ? `${c.role}: ${c.service}. ${c.reason}` : n.detail,
+        tech: null,
+        logoOverride: c ? cloudTechnology(c.service)?.logo : null,
+      };
+    }),
+  };
+  return `<section class="panel"><h2>O padrão continua. A operação muda.</h2><p>Estas são implementações possíveis para o exercício. Nenhuma coluna afirma a infraestrutura real do Nubank, equivalência perfeita entre produtos ou adequação sem validação.</p><div class="tabs">${Object.entries(
+    titles,
+  )
+    .map(
+      ([id, name]) =>
+        `<button class="tab ${cloud === id ? 'active' : ''}" data-cloud="${id}">${name}</button>`,
+    )
+    .join(
+      '',
+    )}</div>${diagram(mapped)}<div class="cards">${comps.map((c) => `<article class="card"><div style="display:flex;gap:12px;align-items:center">${cloudLogo(c.service)}<div><span class="eyebrow" style="font-size:8px;margin:0">${e(c.role)}</span><h3 style="margin:7px 0">${e(c.service)}</h3></div></div><p style="margin:14px 0 0">${e(c.reason)}</p>${refs([c.sourceId])}</article>`).join('')}</div><div class="note">${list(selected.notes)}</div></section><section class="panel"><h2>Compare as três implementações</h2><div class="table-wrap"><table><thead><tr><th>Papel</th><th>AWS</th><th>Azure</th><th>On-premises</th></tr></thead><tbody>${a.nodes
+    .map(
+      (n, i) =>
+        `<tr><td>${e(n.label)}</td>${['aws', 'azure', 'onprem']
+          .map((k) => {
+            const c =
+              arr(d[k]?.components).find((c) => c.role === n.label) || arr(d[k]?.components)[i];
+            return `<td><strong>${e(c?.service || 'Conforme contrato')}</strong><br>${e(c?.reason || '')}</td>`;
+          })
+          .join('')}</tr>`,
+    )
+    .join(
+      '',
+    )}</tbody></table></div><div class="note warning"><strong>Não troque apenas o logo:</strong> valide ordering, retenção, replay, ack, partições, transações, quotas, failover, custo de transferência e responsabilidade por patch/backup/restore. SQS/Service Bus não são substitutos transparentes de Kafka; Event Hubs com endpoint Kafka exige verificar as APIs e garantias usadas.</div></section>`;
+}
+
+// Ledger chapter: the browser experiment illustrates boundaries, not a bank runtime.
+const ledgerSections = [
+  'Mapa & fluxo',
+  'Peças & decisões',
+  'Datoms & partidas',
+  'Engine & infraestrutura',
+  'Falhas distribuídas',
+];
+let ledgerCodeFile = 'ledger.py';
+const freshLedgerLab = () => ({
+  journal: [
+    {
+      t: 1,
+      key: 'opening',
+      kind: 'Abertura',
+      entries: [
+        ['A', 100000],
+        ['B', 20000],
+        ['Clearing', -120000],
+      ],
+    },
+  ],
+  projectedT: 1,
+  asOf: 1,
+  message:
+    'Saldos iniciais balanceados: A R$ 1.000, B R$ 200 e clearing −R$ 1.200. Valores fictícios.',
+  tone: '',
+  events: [],
+});
+let ledgerLab = freshLedgerLab();
+const ledgerMoney = (cents) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
+function ledgerBalance(account, t) {
+  return ledgerLab.journal
+    .filter((tx) => tx.t <= t)
+    .reduce(
+      (sum, tx) => sum + tx.entries.filter((p) => p[0] === account).reduce((s, p) => s + p[1], 0),
+      0,
+    );
+}
+function ledgerBlock(b) {
+  const heading = b.title ? `<h3>${e(b.title)}</h3>` : '';
+  const sources = b.sourceIds ? refs(b.sourceIds) : '';
+  let body = '';
+  if (b.type === 'code')
+    body = `<pre class="ledger-code ${b.language === 'ascii' ? 'ascii' : ''}" tabindex="0"><code>${e(b.text)}</code></pre>`;
+  else if (b.type === 'table')
+    body = `<div class="table-wrap"><table><thead><tr>${arr(b.headers)
+      .map((h) => `<th>${e(h)}</th>`)
+      .join('')}</tr></thead><tbody>${arr(b.rows)
+      .map(
+        (row) =>
+          `<tr>${arr(row)
+            .map((c) => `<td>${e(plain(c))}</td>`)
+            .join('')}</tr>`,
+      )
+      .join('')}</tbody></table></div>`;
+  else if (b.type === 'list') body = list(b.items);
+  else if (b.type === 'callout')
+    body = `<div class="note ${b.tone === 'warning' ? 'warning' : ''}">${e(b.text)}</div>`;
+  else
+    body = arr(b.paragraphs || b.text)
+      .map((p) => `<p>${e(p)}</p>`)
+      .join('');
+  return `<section class="ledger-block">${heading}${body}${sources}</section>`;
+}
+function ledgerVisual() {
+  return diagram({
+    id: 'ledger-map',
+    title: 'Ledger com fronteira transacional e publicação recuperável',
+    nodes: [
+      {
+        id: 'gateway',
+        x: 120,
+        y: 65,
+        label: '1 App / API Gateway',
+        tech: 'envoy',
+        detail:
+          'Autentica, propaga request ID e orçamento de timeout. Envoy/Kong são opções, não evidência de topologia do ledger Nubank. Uma resposta 202 indica aceitação, não liquidação.',
+      },
+      {
+        id: 'redis',
+        x: 400,
+        y: 65,
+        label: '2 Redis: proteção',
+        tech: 'redis',
+        detail:
+          'Rate limit e cache de resultados reduzem trabalho. Expiração/evicção ou failover do Redis não pode liberar um segundo efeito financeiro: a deduplicação definitiva reside na transação do ledger.',
+      },
+      {
+        id: 'account',
+        x: 680,
+        y: 65,
+        label: '3 Account Service',
+        tech: 'clojure',
+        detail:
+          'Valida identidade, contrato e estado da conta. Cache de validação não autoriza gastar saldo antigo; saldo, estado financeiro e idempotência são revalidados na fronteira transacional.',
+      },
+      {
+        id: 'inbound',
+        x: 680,
+        y: 225,
+        label: '4 Kafka inbound',
+        tech: 'kafka',
+        detail:
+          'Comandos duráveis com command ID, tenant, moeda, contas e expected version. Particione pela fronteira de ordenação. O ack do broker não é o commit financeiro. Sobrecarga exige admissão e limite de idade do comando.',
+      },
+      {
+        id: 'core',
+        x: 400,
+        y: 225,
+        label: '5 Core + transactor',
+        tech: 'datomic',
+        detail:
+          'Uma decisão serializada por banco: valida hash de intenção, saldo e todos os lançamentos agregados; grava transação balanceada, resultado e fato de publicação. Reenvio após timeout resolve pelo mesmo ID.',
+      },
+      {
+        id: 'storage',
+        x: 120,
+        y: 225,
+        label: '6 Storage Datomic',
+        tech: 'dynamo',
+        detail:
+          'Variante ilustrada: Datomic Pro com storage DynamoDB suportado. Não editar suas tabelas por fora. Datomic Cloud usa outra topologia AWS, com log em DynamoDB e índices em S3, além de caches.',
+      },
+      {
+        id: 'relay',
+        x: 400,
+        y: 385,
+        label: 'Relay / transaction log',
+        tech: 'clojure',
+        detail:
+          'Auxiliar indispensável: lê transações confirmadas ou fatos outbox, publica event ID determinístico e só então avança checkpoint. Se cair após publish e antes do checkpoint, repete; o consumidor deve deduplicar.',
+      },
+      {
+        id: 'outbound',
+        x: 680,
+        y: 385,
+        label: '7 Kafka outbound',
+        tech: 'kafka',
+        detail:
+          'Eventos confirmados: operation ID, event ID, shard/epoch, sequence, schema version e postings. Uma partição dá ordem local; duas partições ou tópicos não fornecem causalidade global.',
+      },
+      {
+        id: 'projector',
+        x: 680,
+        y: 545,
+        label: '8 Projetores',
+        tech: 'clojure',
+        detail:
+          'Aplica evento e registra versão/dedup na mesma operação durável. Um watermark só avança sobre prefixo contínuo confirmado; receber t=12 não prova que t=11 já foi aplicado.',
+      },
+      {
+        id: 'read',
+        x: 400,
+        y: 545,
+        label: '9 Redis + DynamoDB',
+        tech: 'dynamo',
+        detail:
+          'DynamoDB é tabela de projeção; Redis acelera consultas. Não são réplicas transacionais do Datomic. Resposta leva versão aplicada; strong read em DynamoDB não torna novo um evento que ainda não chegou.',
+      },
+      {
+        id: 'status',
+        x: 120,
+        y: 545,
+        label: 'Status / leitura causal',
+        tech: 'envoy',
+        detail:
+          'Consulta por operation ID ou leitura com minVersion. Se a projeção não alcançou o token, espera limitada, consulta autoridade ou exibe processando. Nunca apresenta saldo antigo como atual.',
+      },
+    ],
+    edges: [
+      { from: 'gateway', to: 'redis', label: 'request' },
+      { from: 'redis', to: 'account', label: 'admissão' },
+      { from: 'account', to: 'inbound', label: 'command ID' },
+      { from: 'inbound', to: 'core', label: 'replay seguro' },
+      { from: 'core', to: 'storage', label: 'commit durável' },
+      { from: 'core', to: 'relay', label: 't confirmado' },
+      { from: 'relay', to: 'outbound', label: 'publish / retry' },
+      { from: 'outbound', to: 'projector', label: 'evento + versão' },
+      { from: 'projector', to: 'read', label: 'aplica + checkpoint' },
+      { from: 'read', to: 'status', label: 'saldo + watermark' },
+    ],
+  });
+}
+function ledgerExperiment() {
+  const s = ledgerLab,
+    last = s.journal.length,
+    asOf = Math.min(s.asOf, last);
+  return `<section class="panel ledger-experiment" aria-label="Experimento interativo do ledger"><div class="panel-heading"><div><span class="eyebrow">EXPERIMENTE A FRONTEIRA</span><h2>Um commit. Muitas percepções.</h2></div>${chip('MODELO DIDÁTICO', 'green')}</div><p>Transfira R$ 150, perca a resposta, repita o comando e atrase a projeção. O journal mantém fatos; a tela de leitura só muda quando o projetor avança.</p><div class="ledger-balances"><article><span>Autoridade · t=${last}</span><strong>${ledgerMoney(ledgerBalance('A', last))}</strong><small>Conta A no journal</small></article><article class="${s.projectedT < last ? 'lagging' : ''}"><span>Projeção · t=${s.projectedT}</span><strong>${ledgerMoney(ledgerBalance('A', s.projectedT))}</strong><small>${s.projectedT < last ? 'Desatualizada: não é saldo garantido' : 'Leitura alcançou o journal'}</small></article><article><span>Contrapartida · conta B</span><strong>${ledgerMoney(ledgerBalance('B', last))}</strong><small>Soma de todos os lançamentos = 0</small></article></div><div class="actions ledger-actions"><button class="button primary" data-ledger-action="transfer">Transferir R$ 150 + perder ACK</button><button class="button" data-ledger-action="retry">Repetir mesma chave</button><button class="button" data-ledger-action="conflict">Mudar valor na mesma chave</button><button class="button" data-ledger-action="project">Avançar projeção</button><button class="button" data-ledger-action="causal">Ler com minVersion</button><button class="button" data-ledger-action="reverse">Adicionar estorno</button><button class="button small" data-ledger-action="reset">Reiniciar laboratório</button></div><div id="ledger-outcome" role="status" class="note ${s.tone}">${e(s.message)}</div><label class="control"><span>Time-travel: saldo da conta A no corte t <strong id="ledger-asof-caption">${asOf} → ${ledgerMoney(ledgerBalance('A', asOf))}</strong></span><input id="ledger-asof" type="range" min="1" max="${last}" value="${asOf}" aria-label="Versão histórica do ledger"></label><div class="table-wrap"><table><thead><tr><th>Tx / intenção</th><th>Δ A</th><th>Δ B</th><th>Δ clearing</th><th>Σ por BRL</th></tr></thead><tbody>${s.journal.map((tx) => `<tr class="${tx.t === asOf ? 'selected-tx' : ''}"><td>t=${tx.t} · ${e(tx.kind)}<small class="block">${e(tx.key)}</small></td>${['A', 'B', 'Clearing'].map((a) => `<td>${ledgerMoney(tx.entries.filter((p) => p[0] === a).reduce((sum, p) => sum + p[1], 0))}</td>`).join('')}<td>${tx.entries.reduce((sum, p) => sum + p[1], 0)} centavos</td></tr>`).join('')}</tbody></table></div><p class="ledger-caption">Δ é variação do saldo operacional do cliente: positivo aumenta, negativo reduz. No passivo contábil do banco, reduzir o depósito de A é débito; aumentar B é crédito. O laboratório não movimenta dinheiro, não executa o Python nem simula rede real. Reinicia ao recarregar.</p></section>`;
+}
+function ledgerAct(action) {
+  const s = ledgerLab,
+    original = s.journal.find((tx) => tx.key === 'transfer-150');
+  s.tone = '';
+  if (action === 'reset') {
+    ledgerLab = freshLedgerLab();
+    render(true);
+    return;
+  }
+  if (action === 'transfer') {
+    if (original) {
+      s.message = `A intenção transfer-150 já foi confirmada em t=${original.t}. A chave retorna o mesmo resultado; não há novo lançamento.`;
+      s.tone = 'success';
+    } else {
+      s.journal.push(
+        Object.freeze({
+          t: s.journal.length + 1,
+          key: 'transfer-150',
+          kind: 'Transferência',
+          entries: Object.freeze([Object.freeze(['A', -15000]), Object.freeze(['B', 15000])]),
+        }),
+      );
+      s.asOf = s.journal.length;
+      s.message =
+        'COMMIT t=2 confirmado. ACK perdido: cliente vê timeout, mas os dois lançamentos já existem. Projeção continua em t=1. O resultado financeiro é desconhecido para o cliente, não desfeito.';
+      s.tone = 'warning';
+    }
+  } else if (action === 'retry') {
+    s.message = original
+      ? `Replay reconhecido: hash idêntico, resultado original t=${original.t}; journal permanece com ${s.journal.length} transações.`
+      : 'Execute a transferência primeiro para criar a intenção durável.';
+    s.tone = original ? 'success' : '';
+  } else if (action === 'conflict') {
+    s.message = original
+      ? 'CONFLITO: transfer-150 já pertence a R$ 150,00. Tentar R$ 100,00 com a mesma chave falha antes de qualquer efeito. Não retorne sucesso silencioso nem substitua o payload.'
+      : 'Execute a transferência primeiro. Uma chave inexistente ainda não está associada a uma intenção.';
+    s.tone = 'warning';
+  } else if (action === 'project') {
+    s.projectedT = s.journal.length;
+    s.message = `Projetor aplicou todos os eventos até t=${s.projectedT}, em ordem contínua; dados e watermark foram confirmados juntos no modelo.`;
+    s.tone = 'success';
+  } else if (action === 'causal') {
+    const token = original ? s.journal.length : 1;
+    s.message =
+      s.projectedT >= token
+        ? `minVersion=${token} atendida: saldo A ${ledgerMoney(ledgerBalance('A', s.projectedT))} na versão ${s.projectedT}.`
+        : `minVersion=${token}, projeção=${s.projectedT}: a leitura não atende a sessão. Espera limitada ou retorno 'processando'; fallback autoritativo retornaria ${ledgerMoney(ledgerBalance('A', s.journal.length))}. Um GET fortemente consistente da tabela atrasada não resolve o lag.`;
+    s.tone = s.projectedT >= token ? 'success' : 'warning';
+  } else if (action === 'reverse') {
+    if (!original)
+      s.message = 'Não existe transferência para estornar. Crie a operação original primeiro.';
+    else if (s.journal.some((tx) => tx.key === 'reversal-transfer-150')) {
+      s.message = 'O estorno já existe. O vínculo único reversal-of impede compensação duplicada.';
+      s.tone = 'success';
+    } else {
+      s.journal.push(
+        Object.freeze({
+          t: s.journal.length + 1,
+          key: 'reversal-transfer-150',
+          kind: 'Estorno de t=2',
+          entries: Object.freeze(original.entries.map(([a, v]) => Object.freeze([a, -v]))),
+        }),
+      );
+      s.asOf = s.journal.length;
+      s.message =
+        'Novo commit de estorno com sinais opostos. t=2 permanece intacto; as-of t=2 ainda mostra R$ 850 em A. A projeção pode continuar atrasada. Neste exemplo B conserva recursos; em produção, bloqueios, overdraft e reconciliação precisam de política explícita.';
+      s.tone = 'success';
+    }
+  }
+  render(true);
+}
+function ledgerCode() {
+  const files = D.ledger.codeFiles || [],
+    file = files.find((f) => f.name === ledgerCodeFile) || files[0];
+  if (!file) return '';
+  return `<section class="panel ledger-source"><div class="panel-heading"><div><span class="eyebrow">CÓDIGO COMPLETO · EXECUTÁVEL</span><h2>Examine, rode e quebre os invariantes.</h2></div><a class="button small" href="https://github.com/wesleyvieira99/nuArch/tree/main/examples/ledger" target="_blank" rel="noopener">Ver no GitHub ↗</a></div><p>Implementação de referência em memória, com testes de isolamento entre threads. Um lock local e estruturas frozen não fornecem durabilidade, consenso entre processos ou uma plataforma bancária pronta para produção. O capítulo detalha o que a versão persistente precisa garantir.</p><div class="tabs" role="tablist" aria-label="Arquivos do exemplo">${files.map((f) => `<button class="tab ${file.name === f.name ? 'active' : ''}" role="tab" aria-selected="${file.name === f.name}" data-ledger-file="${e(f.name)}">${e(f.name)}</button>`).join('')}</div><div class="actions"><button class="button small" id="ledger-copy-code">Copiar arquivo</button><button class="button small" id="ledger-download-code">Baixar arquivo</button><span class="ledger-caption">${file.text.split('\n').length} linhas · ${e(file.language || 'texto')}</span></div><pre class="ledger-code source-file" tabindex="0"><code>${e(file.text)}</code></pre></section>`;
+}
+function ledgerPage(id) {
+  const n = Math.max(1, Math.min(5, parseInt(id, 10) || 1)),
+    chapter = D.ledger.sections[n - 1];
+  return `${title('ENGENHARIA FINANCEIRA · DE PONTA A PONTA', 'Ledger bancário imutável', 'Do invariante contábil ao commit durável: cinco capítulos para explicar as decisões, implementar o núcleo e enfrentar falhas.')}<div class="ledger-intro panel"><div><span class="eyebrow">LEITURA EM PROFUNDIDADE</span><h2>O dinheiro exige uma história coerente.</h2><p>${e(D.ledger.scope || 'Arquitetura de referência inspirada em fontes públicas. Não é uma reprodução confirmada do ledger interno do Nubank.')}</p></div><div class="ledger-intro-symbol" aria-hidden="true"><span>Σ</span><small>lançamentos assinados</small><b>= 0</b><small>por moeda</small></div></div><nav class="ledger-nav" aria-label="Seções do ledger">${ledgerSections.map((s, i) => `<a href="#ledger/${i + 1}" class="${n === i + 1 ? 'active' : ''}" ${n === i + 1 ? 'aria-current="page"' : ''}><span>0${i + 1}</span>${s}</a>`).join('')}</nav><article class="reading ledger-reading"><div class="ledger-heading"><span class="eyebrow">SEÇÃO 0${n} / 05</span><h2>${e(chapter.title)}</h2>${chapter.intro ? `<p>${e(chapter.intro)}</p>` : ''}</div>${n === 1 ? `<section class="panel"><h3>Inspecione o caminho de uma operação</h3><p>Clique em cada peça. O relay torna recuperável a fronteira entre banco e eventos; o token de leitura torna explícito o atraso da projeção.</p>${ledgerVisual()}</section>` : ''}${n === 3 ? ledgerExperiment() : ''}${n === 4 ? ledgerCode() : ''}<section class="panel ledger-prose">${chapter.blocks.map(ledgerBlock).join('')}</section>${refs(chapter.sourceIds)}<div class="ledger-pagination">${n > 1 ? `<a class="button" href="#ledger/${n - 1}">← ${ledgerSections[n - 2]}</a>` : '<a class="button" href="#atlas/ledger">Consultar padrão no atlas ↗</a>'}${n < 5 ? `<a class="button primary" href="#ledger/${n + 1}">${ledgerSections[n]} →</a>` : '<a class="button primary" href="#questions?q=ledger">Defender em perguntas →</a>'}</div></article>`;
+}
+function bindLedger() {
+  $$('[data-ledger-action]').forEach((b) => (b.onclick = () => ledgerAct(b.dataset.ledgerAction)));
+  $$('[data-ledger-file]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        ledgerCodeFile = b.dataset.ledgerFile;
+        render(true);
+      }),
+  );
+  if ($('#ledger-asof'))
+    $('#ledger-asof').oninput = () => {
+      ledgerLab.asOf = +$('#ledger-asof').value;
+      $('#ledger-asof-caption').textContent =
+        `${ledgerLab.asOf} → ${ledgerMoney(ledgerBalance('A', ledgerLab.asOf))}`;
+      $$('.ledger-experiment tbody tr').forEach((row, i) =>
+        row.classList.toggle('selected-tx', i + 1 === ledgerLab.asOf),
+      );
+    };
+  const file =
+    (D.ledger?.codeFiles || []).find((f) => f.name === ledgerCodeFile) ||
+    (D.ledger?.codeFiles || [])[0];
+  if ($('#ledger-copy-code'))
+    $('#ledger-copy-code').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(file.text);
+        toast('Arquivo copiado');
+      } catch {
+        toast('Selecione o código e use Copiar. A área de transferência está indisponível.');
+      }
+    };
+  if ($('#ledger-download-code'))
+    $('#ledger-download-code').onclick = () => {
+      const url = URL.createObjectURL(new Blob([file.text], { type: 'text/plain;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+}
+
+const foundationNames = {
+  cap: 'CAP & consistência',
+  replication: 'Replicação & sharding',
+  databases: 'Bancos & índices',
+  caches: 'Caches',
+  balancing: 'Balanceamento',
+  queues: 'Filas & backpressure',
+};
+const foundationDescriptions = {
+  cap: 'O limite que aparece quando a rede deixa de conectar todas as partes.',
+  replication: 'Cópias, maiorias, propriedade dos dados e a conta quente.',
+  databases: 'Modelos de dados, páginas de índice, WAL, lag e sessões.',
+  caches: 'Memória finita, validade da informação e trabalho duplicado.',
+  balancing: 'Distribuir tráfego, preservar capacidade e controlar rajadas.',
+  queues: 'Aceitar trabalho é assumir prazo, memória e recuperação.',
+};
+let capState = {
+  partition: false,
+  written: false,
+  policy: 'consistent',
+  message: 'Todos os nós começam com x=1000. Primeiro isole a réplica C.',
+};
+function foundationDiagram(id) {
+  const make = (nodes, edges, title) => ({
+    id: `fund-${id}`,
+    title,
+    nodes: nodes.map(([nid, label, x, y, tech, detail]) => ({
+      id: nid,
+      label,
+      x,
+      y,
+      tech,
+      detail,
+    })),
+    edges: edges.map(([from, to, label]) => ({ from, to, label })),
+  });
+  const maps = {
+    cap: make(
+      [
+        [
+          'client',
+          'Cliente / ordem real',
+          120,
+          65,
+          'envoy',
+          'A leitura começa depois que a escrita já respondeu sucesso. Esse vínculo de tempo real é o que a linearizabilidade precisa respeitar.',
+        ],
+        [
+          'a',
+          'Réplica A · líder',
+          400,
+          65,
+          'postgres',
+          'A e B permanecem conectadas. Em um protocolo apropriado, a maioria pode confirmar uma escrita sem aguardar C. Isso não torna qualquer regra de R/W um protocolo de consenso.',
+        ],
+        [
+          'b',
+          'Réplica B · maioria',
+          680,
+          65,
+          'postgres',
+          'Uma cópia elegível confirma conforme a semântica de persistência e replay do protocolo. Receber bytes não é necessariamente poder atender uma leitura atual.',
+        ],
+        [
+          'c',
+          'Réplica C · isolada',
+          400,
+          255,
+          'postgres',
+          'C continua executando, mas não recebe mensagens da maioria. Responder com x antigo preserva a resposta local e pode violar linearizabilidade. Recusar/esperar não atende a disponibilidade formal CAP para essa operação.',
+        ],
+        [
+          'reader',
+          'Leitor do outro lado',
+          120,
+          255,
+          'envoy',
+          'Timeout não distingue servidor morto de rede lenta. Clientes e operações podem ter políticas diferentes, mas o contrato declarado precisa informar o que cada resposta significa.',
+        ],
+      ],
+      [
+        ['client', 'a', 'write x=850'],
+        ['a', 'b', 'replica / confirma'],
+        ['a', 'c', 'fronteira de rede'],
+        ['reader', 'c', 'read depois do ACK'],
+      ],
+      'CAP: duas visões da mesma história',
+    ),
+    replication: make(
+      [
+        [
+          'router',
+          'Roteador / epoch',
+          120,
+          65,
+          'envoy',
+          'Resolve a chave para a autoridade atual. A versão de ownership ajuda a rejeitar escritores antigos durante migração.',
+        ],
+        [
+          'leader',
+          'Shard 1 · líder',
+          400,
+          65,
+          'postgres',
+          'Ordena commits locais. Uma conta quente não é dividida automaticamente pela adição de shards.',
+        ],
+        [
+          'follower',
+          'Shard 1 · seguidor',
+          680,
+          65,
+          'postgres',
+          'Recebe, persiste e aplica log em etapas distintas. Fallback para ele precisa de contrato de frescor e de promoção segura.',
+        ],
+        [
+          'other',
+          'Shard 2 · líder',
+          400,
+          255,
+          'postgres',
+          'Outro grupo possui sua própria história. Transferência entre grupos exige coordenação, protocolo distribuído ou workflow com estados intermediários explícitos.',
+        ],
+        [
+          'migration',
+          'Backfill + catch-up',
+          680,
+          255,
+          'kafka',
+          'Copiar o estado inicial não inclui escritas concorrentes automaticamente. Catch-up, barreira de corte, roteamento versionado e fencing completam uma migração correta.',
+        ],
+      ],
+      [
+        ['router', 'leader', 'chave / grupo'],
+        ['leader', 'follower', 'WAL / log'],
+        ['router', 'other', 'outra chave'],
+        ['leader', 'other', 'fronteira transacional'],
+        ['follower', 'migration', 'posição aplicada'],
+      ],
+      'Replicação copia; sharding divide a autoridade',
+    ),
+    databases: make(
+      [
+        [
+          'pool',
+          'Pool limitado',
+          120,
+          65,
+          'postgres',
+          'Fila de aquisição separada do tempo de query. Mais conexões multiplicam backends, memória, contenção e context switches.',
+        ],
+        [
+          'planner',
+          'Planner + índice',
+          400,
+          65,
+          'postgres',
+          'Estatísticas, seletividade e correlação orientam plano. Índice composto, parcial ou covering resolve um access pattern ao preço de mais escrita e espaço.',
+        ],
+        [
+          'heap',
+          'Páginas / MVCC',
+          680,
+          65,
+          'postgres',
+          'O índice aponta para versões que ainda podem exigir heap fetch e teste de visibilidade. Longas transações retêm versões e atrasam limpeza.',
+        ],
+        [
+          'wal',
+          'WAL + persistência',
+          400,
+          255,
+          'postgres',
+          'O commit espera a condição de durabilidade configurada. fsync e group commit tratam persistência; locks e isolamento tratam outras propriedades.',
+        ],
+        [
+          'replica',
+          'Réplica / replay',
+          680,
+          255,
+          'postgres',
+          'Receive, flush e replay têm posições distintas. Redirecionar a query para uma réplica muda o contrato, não só o host.',
+        ],
+      ],
+      [
+        ['pool', 'planner', 'query'],
+        ['planner', 'heap', 'busca / scan'],
+        ['planner', 'wal', 'write + índices'],
+        ['wal', 'replica', 'replicação'],
+        ['heap', 'replica', 'visão pode divergir'],
+      ],
+      'Do pedido SQL ao custo físico',
+    ),
+    caches: make(
+      [
+        [
+          'traffic',
+          'Leitores concorrentes',
+          120,
+          65,
+          'envoy',
+          'Uma chave quente expira e milhares de requests chegam juntos. Não confundir esse miss simultâneo com uma chave inexistente atacada repetidamente.',
+        ],
+        [
+          'cache',
+          'Cache / TTL / versão',
+          400,
+          65,
+          'redis',
+          'Evicção libera espaço; expiração limita validade por tempo. Nenhuma delas prova que o valor de origem não mudou.',
+        ],
+        [
+          'origin',
+          'Origem autoritativa',
+          680,
+          65,
+          'postgres',
+          'Um miss vira trabalho real: CPU, I/O, locks e conexões. A capacidade da origem precisa sobreviver à perda do cache com admissão e degradação.',
+        ],
+        [
+          'coalesce',
+          'Singleflight / lease',
+          400,
+          255,
+          'redis',
+          'Coalescer local reduz duplicatas só por processo. Coordenação entre processos exige lease, dono, expiração, fencing e prevenção de escritor atrasado.',
+        ],
+        [
+          'stale',
+          'Snapshot permitido',
+          120,
+          255,
+          'redis',
+          'Stale-while-revalidate pode atender conteúdo informativo dentro de janela explícita. Autorização e saldo gastável não devem depender de uma cópia tolerante a atraso.',
+        ],
+      ],
+      [
+        ['traffic', 'cache', 'get(k)'],
+        ['cache', 'origin', 'miss sem proteção'],
+        ['cache', 'coalesce', 'eleger refresh'],
+        ['coalesce', 'origin', 'fetch limitado'],
+        ['cache', 'stale', 'degradação contratada'],
+      ],
+      'Um miss não precisa virar mil consultas',
+    ),
+    balancing: make(
+      [
+        [
+          'admit',
+          'Admissão / orçamento',
+          120,
+          65,
+          'envoy',
+          'Controla taxa, rajadas e concorrência antes de gastar trabalho caro. Retries devem respeitar o mesmo orçamento e deadline.',
+        ],
+        [
+          'lb',
+          'Balanceador L4 / L7',
+          400,
+          65,
+          'envoy',
+          'Algoritmo usa informação incompleta: conexões, requests, latência ou hash. Um stream longo e uma query curta não custam o mesmo.',
+        ],
+        [
+          'a',
+          'Backend A',
+          680,
+          65,
+          'k8s',
+          'Health e readiness precisam refletir capacidade. Uma instância lenta ainda pode responder ao health check e prejudicar p99.',
+        ],
+        [
+          'b',
+          'Backend B / drain',
+          680,
+          255,
+          'k8s',
+          'Drain encerra a admissão de novos fluxos e permite concluir os existentes dentro de um prazo. Conexão não é unidade equivalente a request em HTTP/2.',
+        ],
+        [
+          'state',
+          'Sessão / estado',
+          400,
+          255,
+          'redis',
+          'Afinidade é preferência de roteamento, não replicação. Se o nó morre, uma sessão só sobrevive se o estado e sua política de consistência permitirem.',
+        ],
+      ],
+      [
+        ['admit', 'lb', 'aceita / rejeita'],
+        ['lb', 'a', 'seleção'],
+        ['lb', 'b', 'seleção / drain'],
+        ['lb', 'state', 'afinidade'],
+        ['b', 'state', 'estado compartilhado'],
+      ],
+      'Balancear e limitar são decisões diferentes',
+    ),
+    queues: make(
+      [
+        [
+          'producer',
+          'Produtor / outbox',
+          120,
+          65,
+          'postgres',
+          'O pedido aceito precisa de uma intenção recuperável. Se o buffer enche, rejeite, reduza admissão ou persista sob contrato explícito; RAM ilimitada não existe.',
+        ],
+        [
+          'broker',
+          'Broker / buffer finito',
+          400,
+          65,
+          'kafka',
+          'A fila desacopla tempos até seus limites de retenção, memória e disco. Idade do item mais antigo revela atraso que throughput médio esconde.',
+        ],
+        [
+          'consumer',
+          'Consumidor / crédito',
+          680,
+          65,
+          'clojure',
+          'Limita trabalho in-flight conforme capacidade do destino. Pause, poll, heartbeats, visibility timeout e acknowledgment dependem do produto.',
+        ],
+        [
+          'effect',
+          'Efeito + inbox',
+          680,
+          255,
+          'postgres',
+          'Confirma dedupe e efeito na mesma transação local quando possível. Só depois avança ack/checkpoint. Queda nessa fronteira causa reentrega esperada.',
+        ],
+        [
+          'dlq',
+          'Retry / quarentena',
+          400,
+          255,
+          'kafka',
+          'Separar poison message evita tempestade, mas pular a mensagem pode romper ordem causal. Recuperar precisa de owner, motivo, versão e replay controlado.',
+        ],
+      ],
+      [
+        ['producer', 'broker', 'publicação durável'],
+        ['broker', 'consumer', 'entrega / crédito'],
+        ['consumer', 'effect', 'efeito local'],
+        ['effect', 'broker', 'ack após commit'],
+        ['consumer', 'dlq', 'falha classificada'],
+        ['dlq', 'broker', 'replay autorizado'],
+      ],
+      'Fila estável exige controle de entrada e saída',
+    ),
+  };
+  return diagram(maps[id]);
+}
+function foundationPage(id) {
+  const chapters = D.foundations.chapters,
+    c = chapters.find((x) => x.id === id) || chapters[0],
+    index = chapters.indexOf(c);
+  return `${title('MECANISMOS · LIMITES · DECISÕES', 'Fundamentos distribuídos', 'Por dentro das garantias e dos gargalos: teoria, algoritmo, armazenamento, rede, recuperação e experiência do usuário.')}<nav class="foundation-nav" aria-label="Capítulos de fundamentos">${chapters.map((x, i) => `<a href="#foundations/${e(x.id)}" class="${x.id === c.id ? 'active' : ''}" ${x.id === c.id ? 'aria-current="page"' : ''}><b>0${i + 1}</b><span>${e(foundationNames[x.id])}</span></a>`).join('')}</nav><section class="foundation-hero panel"><div><span class="eyebrow">CAPÍTULO 0${index + 1} / 06</span><h2>${e(c.title)}</h2><p>${e(c.summary || c.subtitle)}</p></div><div class="foundation-hero-tag">${icon({ cap: 'layers', replication: 'atlas', databases: 'code', caches: 'lab', balancing: 'arrow', queues: 'mocks' }[c.id])}<span>${e(foundationDescriptions[c.id])}</span></div></section><div class="reading foundation-reading"><section class="panel"><h2>Veja a fronteira antes de escolher a tecnologia.</h2>${foundationDiagram(c.id)}</section>${foundationLab(c.id)}<section class="panel foundation-toc"><h3>Dentro deste capítulo</h3><div>${c.sections.map((s, i) => `<button data-section-jump="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${e(s.title)} ↓</button>`).join('')}</div></section>${c.sections.map((s, i) => `<section class="panel foundation-section" tabindex="-1" id="foundation-section-${i}"><div class="foundation-section-heading"><span>${String(i + 1).padStart(2, '0')}</span><h2>${e(s.title)}</h2></div>${s.blocks.map(ledgerBlock).join('')}</section>`).join('')}<section class="panel"><span class="eyebrow">DEFENDA AS DECISÕES</span><h2>Pratique como uma pessoa Staff.</h2><div class="questions">${c.questions
+    .map(
+      (q, i) =>
+        `<details class="question"><summary><span class="q-number">${String(i + 1).padStart(2, '0')}</span><span class="q-title">${e(q.q)}</span></summary><div class="question-body">${arr(
+          q.answer,
+        )
+          .map((p) => `<p>${e(p)}</p>`)
+          .join('')}</div></details>`,
+    )
+    .join(
+      '',
+    )}</div></section>${refs(c.sourceIds)}<div class="ledger-pagination">${index ? `<a class="button" href="#foundations/${chapters[index - 1].id}">← ${e(foundationNames[chapters[index - 1].id])}</a>` : '<a class="button" href="#atlas">Explorar arquiteturas ↗</a>'}${index < chapters.length - 1 ? `<a class="button primary" href="#foundations/${chapters[index + 1].id}">${e(foundationNames[chapters[index + 1].id])} →</a>` : '<a class="button primary" href="#mocks">Testar em um simulado →</a>'}</div></div>`;
+}
+function foundationInput(id, label, min, max, value, unit = '', step = 1) {
+  return `<label class="control"><span>${label}<strong id="${id}-value">${value} ${unit}</strong></span><input data-foundation-input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}" data-unit="${unit}" aria-label="${label}"></label>`;
+}
+function foundationLab(id) {
+  const head = (tag, h) =>
+    `<div class="panel-heading"><div><span class="eyebrow">${tag}</span><h2>${h}</h2></div>${chip('EXPERIMENTO DIDÁTICO', 'green')}</div>`;
+  if (id === 'cap')
+    return `<section class="panel" id="cap-experiment">${head('CAP · UM CONTRAEXEMPLO', 'Uma resposta rápida pode contar uma história antiga.')}<p>Três réplicas de um único registro x. A e B formam o lado majoritário; C pode ficar isolada. A leitura de C acontece depois do ACK de uma escrita confirmada em A/B.</p><div class="cap-cluster"><div><span>A + B</span><strong>x = ${capState.written ? 850 : 1000}</strong><small>lado que confirma a escrita</small></div><div class="cap-link ${capState.partition ? 'broken' : ''}">${capState.partition ? '× partição' : '↔ rede conectada'}</div><div><span>C</span><strong>x = ${capState.written && !capState.partition ? 850 : 1000}</strong><small>${capState.partition ? 'não recebe a nova versão' : 'réplica sincronizada no modelo'}</small></div></div><div class="actions"><button class="button" data-cap="partition">Isolar C</button><button class="button primary" data-cap="write">Confirmar x=850 em A/B</button><button class="button" data-cap="read">Ler em C após o ACK</button><button class="button" data-cap="heal">Restabelecer e sincronizar</button><button class="button small" data-cap="reset">Reiniciar</button></div><label class="foundation-select">Política de leitura em C <select id="cap-policy"><option value="consistent" ${capState.policy === 'consistent' ? 'selected' : ''}>Exigir leitura linearizável</option><option value="local" ${capState.policy === 'local' ? 'selected' : ''}>Permitir cópia local atrasada</option></select></label><div class="note" role="status" id="cap-outcome">${e(capState.message)}</div><p class="foundation-caption">A disponibilidade de CAP é uma propriedade formal: uma resposta de erro não equivale a completar corretamente qualquer operação. A simulação supõe um protocolo que confirma a escrita na maioria; não implementa consenso, relógios, eleição ou recovery. Nenhum dinheiro é movimentado.</p></section>`;
+  if (id === 'replication')
+    return `<section class="panel">${head('QUORUM · CONTAGEM NÃO É PROTOCOLO', 'Quantos nós precisam responder?')}<div class="two-col"><div><label class="foundation-select">Réplicas N <select id="quorum-n"><option>3</option><option>5</option><option>7</option></select></label>${foundationInput('quorum-r', 'Respostas exigidas na leitura R', 1, 3, 2, 'nós')}${foundationInput('quorum-w', 'Confirmações exigidas na escrita W', 1, 3, 2, 'nós')}<p>Selecione os nós alcançáveis pelo coordenador. Todos pertencem ao mesmo conjunto fixo de réplicas.</p><div id="quorum-nodes" class="quorum-nodes"></div></div><div id="quorum-result" aria-live="polite"></div></div><p class="foundation-caption">Interseção de conjuntos não garante linearizabilidade sozinha: faltam versão/ordenação, tratamento de concorrência, leitura correta, mudança de membership e recuperação. Sloppy quorums, réplicas adicionais ou ack antes da persistência mudam as premissas. O laboratório calcula apenas alcançabilidade e interseção.</p></section>`;
+  if (id === 'databases')
+    return `<section class="panel">${head('POOL · DEMANDA POR SESSÕES', 'Um pool maior também custa ao banco.')}<div class="two-col"><div>${foundationInput('pool-arrival', 'Chegadas ao banco', 50, 5000, 800, 'queries/s', 50)}${foundationInput('pool-service', 'Tempo médio segurando conexão', 5, 200, 40, 'ms', 5)}${foundationInput('pool-size', 'Conexões disponíveis', 1, 200, 40, 'conexões')}<p>Inclua no tempo de ocupação toda transação, espera e I/O que segura a sessão. Não substitua a média pelo p99 na Lei de Little.</p></div><div id="pool-result" aria-live="polite"></div></div><p class="foundation-caption">Modelo com tempo de serviço fixo e capacidade proporcional ao pool. Bancos reais podem piorar com mais concorrência por CPU, locks, cache e I/O. A estimativa não dimensiona produção nem calcula latência de fila.</p></section>`;
+  if (id === 'caches')
+    return `<section class="panel">${head('CACHE · UMA CHAVE QUENTE', 'Quantas consultas um único miss provoca?')}<div class="two-col"><div>${foundationInput('cache-burst', 'Pedidos simultâneos para a mesma chave', 10, 5000, 1000, 'pedidos', 10)}${foundationInput('cache-instances', 'Instâncias da aplicação', 1, 100, 10, 'instâncias')}<label class="foundation-select">Proteção de refresh <select id="cache-policy"><option value="none">Sem coalescing</option><option value="local">Singleflight por instância</option><option value="coordinated">Coordenação global idealizada</option></select></label></div><div id="cache-burst-result" aria-live="polite"></div></div><p class="foundation-caption">O burst ocorre antes de qualquer fetch terminar. Com distribuição balanceada, cada instância ocupada elege um fetch local. A opção global supõe coordenação perfeita, sem lease expirando, crash ou atraso: a implementação real precisa tratar essas falhas. Redução de fetches não representa redução garantida de p99.</p></section>`;
+  if (id === 'balancing')
+    return `<section class="panel">${head('ADMISSÃO · TOKEN BUCKET', 'Ritmo sustentado e rajada são limites diferentes.')}<div class="two-col"><div>${foundationInput('bucket-rate', 'Reposição de tokens', 10, 1000, 100, 'por segundo', 10)}${foundationInput('bucket-size', 'Capacidade do bucket', 10, 2000, 200, 'tokens', 10)}${foundationInput('bucket-burst', 'Rajada no instante zero', 10, 3000, 600, 'pedidos', 10)}${foundationInput('bucket-steady', 'Pedidos nos segundos seguintes', 10, 1500, 150, 'por segundo', 10)}</div><div><div id="bucket-result" aria-live="polite"></div><div class="table-wrap"><table id="bucket-table"><thead><tr><th>t (s)</th><th>Aceitos</th><th>Rejeitados</th><th>Tokens restantes</th></tr></thead><tbody></tbody></table></div></div></div><p class="foundation-caption">Modelo discreto: bucket começa cheio, repõe tokens e recebe um lote por segundo. Token por pedido de custo uniforme. Os excedentes são rejeitados, não enfileirados: é policing/admissão. Shaping com espera exige buffer e deadline. Rate limit não limita sozinho o número de requests em execução.</p></section>`;
+  return `<section class="panel">${head('BACKPRESSURE · BUFFER LIMITADO', 'A fila compra tempo. Não cria capacidade.')}<div class="two-col"><div>${foundationInput('queue-arrival', 'Taxa de chegada', 100, 10000, 3000, 'mensagens/s', 100)}${foundationInput('queue-workers', 'Consumidores efetivos', 0, 32, 8, 'workers')}${foundationInput('queue-service', 'Serviço médio por mensagem', 1, 50, 5, 'ms')}${foundationInput('queue-buffer', 'Capacidade da fila', 100, 100000, 10000, 'mensagens', 100)}${foundationInput('queue-window', 'Duração da janela', 1, 120, 20, 'segundos')}</div><div id="queue-result" aria-live="polite"></div></div><p class="foundation-caption">Modelo fluido de uma janela que começa vazia, com taxas constantes e workers independentes. Excedentes ao buffer são rejeitados na admissão. Não modela retrabalho, distribuição dos tempos, mensagens in-flight, batching ou partições quentes. Drenagem assume chegada zero; não é o tempo de recuperar atraso com tráfego continuando.</p></section>`;
+}
+let quorumReachable = [true, true, true];
+const foundationMetric = (n, label) =>
+  `<div class="foundation-metric"><strong>${n}</strong><span>${label}</span></div>`;
+function foundationNumbers() {
+  const val = (id) => Number($(`#${id}`).value);
+  if ($('#quorum-n')) {
+    const n = val('quorum-n'),
+      r = val('quorum-r'),
+      w = val('quorum-w'),
+      reachable = quorumReachable.filter(Boolean).length,
+      m = quorumModel(n, r, w, reachable);
+    $('#quorum-result').innerHTML =
+      `${foundationMetric(`${reachable}/${n}`, 'réplicas alcançáveis deste lado')}<div class="note ${m.read && m.write ? 'success' : 'warning'}"><strong>Leitura:</strong> ${m.read ? 'há respostas suficientes' : 'não há respostas suficientes'}<br><strong>Escrita:</strong> ${m.write ? 'há confirmações suficientes' : 'não há confirmações suficientes'}</div><p>R + W = ${r + w}; interseção mínima entre um quorum de leitura e um de escrita: <strong>${m.readWriteIntersection}</strong>. Entre dois quorums de escrita: <strong>${m.writeWriteIntersection}</strong>.</p><p>Indisponibilidade tolerada pela contagem: até ${m.readFailures} nós para leitura; ${m.writeFailures} para escrita. O protocolo pode exigir restrições adicionais.</p>`;
+  }
+  if ($('#pool-arrival')) {
+    const m = poolModel(val('pool-arrival'), val('pool-service'), val('pool-size'));
+    $('#pool-result').innerHTML =
+      `${foundationMetric(m.offered.toFixed(1), 'conexões ocupadas em média: λ × tempo de ocupação')}${foundationMetric(`${(m.utilization * 100).toFixed(1)}%`, 'carga oferecida / capacidade do pool')}<div class="note ${m.stable ? '' : 'warning'}">${m.stable ? 'Há margem de capacidade no modelo; variabilidade ainda gera espera.' : 'Não existe equilíbrio com margem: a fila cresce quando a carga excede a capacidade; igualdade também não absorve variação.'}</div><p>Capacidade ideal: ${fmt(Math.round(m.capacity))} queries/s. O orçamento total precisa considerar todas as réplicas da aplicação e conexões reservadas para operação.</p>`;
+  }
+  if ($('#cache-burst')) {
+    const m = cacheBurstModel(val('cache-burst'), val('cache-instances'), $('#cache-policy').value);
+    $('#cache-burst-result').innerHTML =
+      `${foundationMetric(fmt(m.fetches), 'fetches simultâneos na origem')}${foundationMetric(fmt(m.followers), 'pedidos que compartilham um fetch')}<div class="note">Redução modelada de consultas: ${(100 * m.reduction).toFixed(1)}%. Os seguidores ainda precisam de limite de espera, cancelamento e tratamento da falha de quem está fazendo o refresh.</div>`;
+  }
+  if ($('#bucket-rate')) {
+    const rows = tokenBucketModel(
+        val('bucket-rate'),
+        val('bucket-size'),
+        val('bucket-burst'),
+        val('bucket-steady'),
+      ),
+      accepted = rows.reduce((s, r) => s + r.accepted, 0),
+      rejected = rows.reduce((s, r) => s + r.rejected, 0);
+    $('#bucket-result').innerHTML =
+      `${foundationMetric(fmt(accepted), 'pedidos aceitos entre t=0 e t=10 s')}<p>${fmt(rejected)} rejeitados no período. Um bucket cheio permite uma rajada maior que a taxa sustentada.</p>`;
+    $('#bucket-table tbody').innerHTML = rows
+      .map(
+        (r) =>
+          `<tr><td>${r.t}</td><td>${r.accepted}</td><td>${r.rejected}</td><td>${r.tokens}</td></tr>`,
+      )
+      .join('');
+  }
+  if ($('#queue-arrival')) {
+    const m = queueModel(
+      val('queue-arrival'),
+      val('queue-workers'),
+      val('queue-service'),
+      val('queue-buffer'),
+      val('queue-window'),
+    );
+    $('#queue-result').innerHTML =
+      `${foundationMetric(fmt(Math.round(m.serviceRate)), 'mensagens/s de capacidade ideal')}${foundationMetric(fmt(Math.round(m.queued)), 'mensagens acumuladas ao final')}${foundationMetric(fmt(Math.round(m.rejected)), 'mensagens rejeitadas na admissão')}<div class="note ${m.stable ? 'success' : 'warning'}">${m.stable ? 'Capacidade acima da chegada neste modelo.' : m.serviceRate === val('queue-arrival') ? 'Chegada igual à capacidade: zero acúmulo no modelo ideal, mas nenhuma margem para variabilidade.' : m.fillSeconds <= val('queue-window') ? `Buffer esgota em ${m.fillSeconds.toFixed(2)} s; continuar aceitando sem limite apenas deslocaria a falha.` : 'A fila acumula; esta janela ainda não esgotou o buffer.'}</div><p>Drenagem sem novas chegadas: ${Number.isFinite(m.drainSeconds) ? m.drainSeconds.toFixed(2) + ' s' : 'impossível enquanto consumidores não recuperarem capacidade'}. λ = μ deixa margem zero para variabilidade.</p>`;
+  }
+}
+function bindFoundations() {
+  $$('[data-section-jump]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const section = $(`#foundation-section-${b.dataset.sectionJump}`);
+        section?.focus({ preventScroll: true });
+        section?.scrollIntoView({
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'start',
+        });
+      }),
+  );
+  $$('[data-foundation-input]').forEach(
+    (input) =>
+      (input.oninput = () => {
+        $(`#${input.id}-value`).textContent = `${input.value} ${input.dataset.unit}`;
+        foundationNumbers();
+      }),
+  );
+  for (const id of ['cache-policy']) if ($(`#${id}`)) $(`#${id}`).onchange = foundationNumbers;
+  if ($('#quorum-n')) {
+    const nodes = () => {
+      $('#quorum-nodes').innerHTML = quorumReachable
+        .map(
+          (yes, i) =>
+            `<button class="${yes ? 'reachable' : ''}" data-quorum-node="${i}" aria-pressed="${yes}"><span>${yes ? '●' : '○'}</span>R${i + 1}<small>${yes ? 'alcançável' : 'isolada'}</small></button>`,
+        )
+        .join('');
+      $$('[data-quorum-node]').forEach(
+        (b) =>
+          (b.onclick = () => {
+            const index = +b.dataset.quorumNode;
+            quorumReachable[index] = !quorumReachable[index];
+            nodes();
+            foundationNumbers();
+            $(`[data-quorum-node="${index}"]`)?.focus({ preventScroll: true });
+          }),
+      );
+    };
+    $('#quorum-n').onchange = () => {
+      const n = +$('#quorum-n').value;
+      quorumReachable = Array(n).fill(true);
+      for (const key of ['r', 'w']) {
+        const input = $(`#quorum-${key}`);
+        input.max = n;
+        input.value = Math.ceil(n / 2);
+        $(`#quorum-${key}-value`).textContent = `${input.value} nós`;
+      }
+      nodes();
+      foundationNumbers();
+    };
+    quorumReachable = Array(3).fill(true);
+    nodes();
+  }
+  $$('[data-cap]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const s = capState;
+        switch (b.dataset.cap) {
+          case 'partition':
+            s.partition = true;
+            s.written = false;
+            s.message =
+              'Novo experimento: C isolada; todas as réplicas começam com x=1000. Confirme uma escrita em A/B.';
+            break;
+          case 'write':
+            s.written = true;
+            s.message = s.partition
+              ? 'Escrita x=850 concluída em A/B. O cliente recebeu ACK; C não recebeu a atualização. Agora a leitura inicia depois desse ACK.'
+              : 'Escrita x=850 concluída e C sincronizada no modelo sem partição.';
+            break;
+          case 'read':
+            s.message = !s.written
+              ? 'Ainda não houve escrita. Para demonstrar a contradição, confirme x=850 antes da leitura.'
+              : !s.partition
+                ? 'Leitura retorna x=850: a versão escrita já está em C.'
+                : s.policy === 'consistent'
+                  ? 'C não consegue provar a versão atual nem contatar a autoridade. Espera/erro preserva a exigência de linearizabilidade, mas esta operação não completa com a disponibilidade formal de CAP.'
+                  : 'C responde x=1000 depois do ACK de x=850. A operação responde localmente, mas este histórico viola linearizabilidade. Consistência eventual pode convergir após a rede recuperar.';
+            break;
+          case 'heal':
+            s.partition = false;
+            s.message =
+              'Rede restabelecida e réplica C atualizada no modelo. Recuperar a rede não reescreve a resposta antiga que um cliente já observou.';
+            break;
+          case 'reset':
+            capState = {
+              partition: false,
+              written: false,
+              policy: 'consistent',
+              message: 'Todos os nós começam com x=1000. Primeiro isole a réplica C.',
+            };
+        }
+        render(true);
+      }),
+  );
+  if ($('#cap-policy'))
+    $('#cap-policy').onchange = () => {
+      capState.policy = $('#cap-policy').value;
+    };
+  foundationNumbers();
+}
+function operationsView(a) {
+  const o = a.operations;
+  if (!o) return '<div class="note">Análise operacional indisponível.</div>';
+  return `<section class="panel"><span class="eyebrow">DIAGNÓSTICO ANTES DA MUDANÇA</span><h2>Onde este desenho encontra seu limite?</h2><p>Os sinais abaixo orientam hipóteses e testes. Metas de serviço são propostas para o exercício e precisam de orçamento end-to-end; não representam SLAs internos do Nubank.</p><div class="two-col">${o.bottlenecks.map((b) => `<article class="operations-card"><h3>${e(b.where)}</h3><dl><dt>Observe</dt><dd>${e(b.signal)}</dd><dt>Mecanismo do gargalo</dt><dd>${e(b.cause)}</dd><dt>Como aliviar</dt><dd>${e(b.mitigation)}</dd><dt>O preço da mudança</dt><dd>${e(b.tradeoff)}</dd></dl></article>`).join('')}</div></section><section class="panel"><span class="eyebrow">EVOLUÇÃO COM CRITÉRIO</span><h2>Como escalar sem perder a invariante</h2><p><strong>Gatilho para agir:</strong> ${e(o.scaling.trigger)}</p><ol class="scaling-steps">${o.scaling.sequence.map((s, i) => `<li><span>0${i + 1}</span><p>${e(s)}</p></li>`).join('')}</ol><div class="note"><strong>Limite que continua existindo:</strong> ${e(o.scaling.limit)}</div></section><section class="panel"><span class="eyebrow">FALHA → RESPOSTA → RECUPERAÇÃO</span><h2>O que acontece quando uma peça deixa de funcionar?</h2>${o.resilience.map((r, i) => `<article class="failure-scenario"><h3>${String(i + 1).padStart(2, '0')} · ${e(r.failure)}</h3><div class="failure-flow"><span>Detectar</span><i>→</i><span>Conter / failover</span><i>→</i><span>Recuperar / reconciliar</span></div><div class="two-col"><dl><dt>Sinal e detecção</dt><dd>${e(r.detection)}</dd><dt>Failover e contenção</dt><dd>${e(r.failover)}</dd><dt>Retorno ao serviço</dt><dd>${e(r.recovery)}</dd></dl><dl><dt>O que a pessoa percebe</dt><dd>${e(r.userImpact)}</dd><dt>Risco sobre estado e dinheiro</dt><dd>${e(r.dataRisk)}</dd></dl></div></article>`).join('')}</section><section class="panel"><span class="eyebrow">DO COMPONENTE À JORNADA</span><h2>Experiência, SLI, SLO e compromisso de serviço</h2><dl class="service-contract">${Object.entries(
+    {
+      userJourney: 'Jornada observada',
+      sli: 'Como medir — SLI',
+      slo: 'Objetivo proposto — SLO',
+      timeoutPolicy: 'Deadline e degradação',
+      recoveryObjectives: 'Recuperação — RTO e RPO',
+      validation: 'Como demonstrar a garantia',
+    },
+  )
+    .map(([k, l]) => `<div><dt>${l}</dt><dd>${e(o.serviceLevel[k])}</dd></div>`)
+    .join(
+      '',
+    )}</dl><div class="note">SLA é um compromisso contratual, frequentemente com exclusões e consequências. SLO é o objetivo técnico; SLI é a medida. Um failover pode restaurar disponibilidade e ainda violar frescor, prazo ou durabilidade da jornada.</div></section><section class="panel"><span class="eyebrow">DEFESA STAFF</span><h2>${e(o.staffQuestion.question)}</h2><p>${e(o.staffQuestion.answer)}</p>${refs(o.sourceIds || a.sourceIds)}</section>`;
+}
+
+// Videos load one third-party player only after an explicit click.
+let videoKind = '',
+  videoChannel = '';
+function videoDuration(seconds) {
+  const h = Math.floor(seconds / 3600),
+    m = Math.floor((seconds % 3600) / 60);
+  return `${h ? h + ' h ' : ''}${m} min`;
+}
+function videoCard(v, index) {
+  const done = progress.checks.includes(`video:${v.id}`);
+  return `<article class="video-card ${currentId === v.id ? 'selected' : ''}"><a class="video-thumb" href="#videos/${e(v.id)}" aria-label="Abrir estudo: ${e(v.title)}"><img src="${e(v.thumbnail)}" alt="Miniatura do vídeo ${e(v.title)}" loading="lazy" width="480" height="360"><span class="video-play" aria-hidden="true">▶</span><span class="video-time">${e(v.duration)}</span></a><div class="video-card-body"><div class="actions">${chip(v.kind)}${chip(v.topic, 'neutral')}</div><span class="video-author">${String(index + 1).padStart(2, '0')} · ${e(v.channel)}</span><h3><a href="#videos/${e(v.id)}">${e(v.title)}</a></h3><p>${e(v.guide)}</p><div class="video-card-actions"><a class="button small" href="#videos/${e(v.id)}">Estudar este vídeo ↗</a><button class="quiet" data-video-complete="${e(v.id)}" aria-pressed="${done}">${done ? '✓ Revisado' : 'Marcar revisão'}</button></div></div></article>`;
+}
+function videosPage(id) {
+  const all = D.videos.videos,
+    v = all.find((x) => x.id === id) || all.find((x) => x.id === 'til92X5hYAY') || all[0];
+  const items = filtered(all).filter(
+    (x) => (!videoKind || x.kind === videoKind) && (!videoChannel || x.channel === videoChannel),
+  );
+  const total = all.reduce((s, x) => s + x.seconds, 0);
+  return `${title('ASSISTA · PAUSE · DESENHE · DEFENDA', 'Videoteca de System Design', '50 vídeos públicos, com entrevistas simuladas e walkthroughs de problemas de Big Tech. Guias de estudo em português para transformar conteúdo em decisões.', `<a class="button" href="#mocks">Praticar por 60 minutos ↗</a>`)}<section class="video-intro panel"><div><span class="eyebrow">CURADORIA PARA ESTUDO ATIVO</span><h2>Transforme cada vídeo em uma decisão que você consegue defender.</h2><p>Antes de assistir, escreva requisitos e invariantes. Pause antes da solução, defenda uma escolha e provoque uma falha. Depois compare seu raciocínio com a abordagem apresentada.</p></div><div class="video-totals"><strong>${all.length}<small>vídeos únicos</small></strong><strong>${videoDuration(total)}<small>de conteúdo no YouTube</small></strong><strong id="video-progress">${all.filter((x) => progress.checks.includes(`video:${x.id}`)).length}<small>revisados por você</small></strong></div></section><div class="video-workspace"><section class="panel video-feature"><div class="actions">${chip(v.kind)}${chip(v.level, 'green')}</div><h2>${e(v.title)}</h2><p class="video-author">${e(v.channel)} · ${e(v.duration)} · áudio e legendas conforme disponibilidade no YouTube</p><div class="video-player" id="video-player"><img src="${e(v.thumbnail)}" alt="Prévia de ${e(v.title)}" width="480" height="360"><button class="video-load" data-video-load="${e(v.id)}"><span aria-hidden="true">▶</span> Carregar player do YouTube</button></div><div class="video-external"><a href="${e(v.url)}" target="_blank" rel="noopener" class="button small">Abrir no YouTube ↗</a><a href="${e(v.channelUrl)}" target="_blank" rel="noopener">Canal do autor ↗</a></div><p class="foundation-caption">O player externo carrega após seu clique. Se a incorporação não estiver disponível, use o link do YouTube. Vídeos, anúncios, legendas e disponibilidade são controlados pelos autores e pela plataforma.</p></section><aside class="panel video-study"><span class="eyebrow">ROTEIRO AUTORAL DE ESTUDO</span><h2>O que você precisa conseguir explicar</h2><p>${e(v.guide)}</p><ol>${v.focus.map((x) => `<li>${e(x)}</li>`).join('')}</ol><div class="note"><strong>Leve para uma fintech</strong><p>${e(v.challenge)}</p></div><div class="actions">${v.relatedArchitectures
+    .map((id) => {
+      const a = D.architectures.find((x) => x.id === id);
+      return a ? `<a class="chip" href="#atlas/${e(id)}">${e(a.title)} ↗</a>` : '';
+    })
+    .join(
+      '',
+    )}</div><label class="video-notes">Sua hipótese antes de assistir<textarea data-note="video:${e(v.id)}" rows="4" placeholder="Qual é a invariante? Onde está o gargalo? O que a pessoa vê se falhar?">${e(progress.notes[`video:${v.id}`] || '')}</textarea></label><button class="button" data-video-complete="${e(v.id)}" aria-pressed="${progress.checks.includes(`video:${v.id}`)}">${progress.checks.includes(`video:${v.id}`) ? '✓ Revisado' : 'Marcar revisão'}</button></aside></div><section class="panel video-method"><details><summary>Como esta curadoria foi verificada e como usar os mocks</summary><p>Títulos, canais, URLs e duração foram conferidos em playlists públicas e metadados do YouTube; descrições disponíveis também foram consultadas. Pesquisa em ${e(D.videos.verifiedAtLabel)}. Os roteiros em português são exercícios editoriais baseados no tema e na descrição, não transcrições, resumos de uma visualização integral nem endosso de todas as escolhas dos vídeos.</p><p>“Entrevista simulada” representa uma sessão apresentada pelo canal como mock/interview; “Walkthrough” representa uma explicação guiada. Empresas e cargos citados nos títulos são apresentados pelos próprios autores. Estes materiais não são gravações confidenciais de processos seletivos, nem arquiteturas internas oficiais das empresas ou previsões do teste do Nubank.</p><p>Use o tempo do seu simulado, não a duração do vídeo: 0–10 min requisitos e invariantes; 10–20 min API e dados; 20–35 min caminho principal; 35–50 min gargalos e falhas; 50–60 min trade-offs, recuperação e síntese. Refazer um mesmo problema com outro autor é um exercício de comparação.</p></details></section><div class="section-heading"><h2>Os 50 vídeos, em uma página</h2><a href="#foundations">Reforçar os fundamentos →</a></div><div class="filters video-filters"><input type="search" id="filter-q" aria-label="Pesquisar vídeos" placeholder="Buscar tema, empresa ou autor…" value="${e(filter.q)}"><select id="filter-category" aria-label="Filtrar tema">${options(
+    all.map((x) => x.topic),
+    filter.category,
+    'Todos os temas',
+  )}</select><select id="video-kind" aria-label="Filtrar formato">${options(
+    all.map((x) => x.kind),
+    videoKind,
+    'Todos os formatos',
+  )}</select><select id="video-channel" aria-label="Filtrar canal">${options(
+    all.map((x) => x.channel),
+    videoChannel,
+    'Todos os canais',
+  )}</select></div><div class="result-line" id="video-count"><span>${items.length} de ${all.length} vídeos</span><span>Links originais · sem download dos vídeos</span></div><div class="video-grid">${items.map((v) => videoCard(v, all.indexOf(v))).join('') || '<div class="empty">Nenhum vídeo com esses filtros. Experimente outro tema.</div>'}</div>`;
+}
+function bindVideos() {
+  for (const [id, set] of [
+    ['video-kind', (v) => (videoKind = v)],
+    ['video-channel', (v) => (videoChannel = v)],
+  ])
+    if ($('#' + id))
+      $('#' + id).onchange = () => {
+        set($('#' + id).value);
+        updateVideoCatalogue();
+      };
+  $$('[data-video-complete]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const id = b.dataset.videoComplete;
+        const persisted = toggle(progress.checks, `video:${id}`);
+        $$(`[data-video-complete="${id}"]`).forEach((button) => {
+          const done = progress.checks.includes(`video:${id}`);
+          button.textContent = done ? '✓ Revisado' : 'Marcar revisão';
+          button.setAttribute('aria-pressed', String(done));
+        });
+        if ($('#video-progress'))
+          $('#video-progress').innerHTML =
+            `${D.videos.videos.filter((x) => progress.checks.includes(`video:${x.id}`)).length}<small>revisados por você</small>`;
+        if (persisted) toast('Revisão salva neste dispositivo');
+      }),
+  );
+  $$('[data-video-load]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const v = D.videos.videos.find((x) => x.id === b.dataset.videoLoad);
+        if (!v) return;
+        $('#video-player').innerHTML =
+          `<iframe src="https://www.youtube-nocookie.com/embed/${e(v.id)}?rel=0" title="${e(v.title)}" loading="eager" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+      }),
+  );
+}
+
+function updateVideoCatalogue() {
+  const all = D.videos.videos,
+    items = filtered(all).filter(
+      (x) => (!videoKind || x.kind === videoKind) && (!videoChannel || x.channel === videoChannel),
+    );
+  $('.video-grid').innerHTML =
+    items.map((v) => videoCard(v, all.indexOf(v))).join('') ||
+    '<div class="empty">Nenhum vídeo com esses filtros. Experimente outro tema.</div>';
+  $('#video-count').innerHTML =
+    `<span>${items.length} de ${all.length} vídeos</span><span>Links originais · sem download dos vídeos</span>`;
+  bindVideos();
+}
+
+let courseQuery = '',
+  courseResourceQuery = '',
+  courseResourceType = '';
+const coursePhase = (n) =>
+  n <= 6
+    ? 'Fundamentos'
+    : n <= 14
+      ? 'Comunicação & serviços'
+      : n <= 21
+        ? 'Escala & dados'
+        : 'Operação & resiliência';
+function courseResource(r) {
+  return `<a class="course-resource" href="${e(r.url)}" target="_blank" rel="noopener"><span><strong>${e(r.title)}${r.statusNote ? ' · ' + e(r.statusNote) : ''}</strong><small>${e(r.external ? 'Material externo · ' + r.type : r.path || r.originPath || r.type)}</small></span><span class="chip neutral">${e(r.type)} ↗</span></a>`;
+}
+function courseLessonCard(l) {
+  const slides = l.resources.find((x) => x.type === 'Slides'),
+    done = progress.checks.includes(`course:${l.id}`);
+  return `<article class="course-lesson ${currentId === l.id ? 'selected' : ''}"><div class="course-lesson-number">${String(l.number).padStart(2, '0')}<small>${e(coursePhase(l.number))}</small></div><div class="course-lesson-main"><h3><a href="#course/${e(l.id)}">${e(l.title)}</a></h3><p>${e(l.summary.replace('Guia autoral para entrevista: ', ''))}</p><div class="course-topics">${l.topics.map((x) => chip(x, 'neutral')).join('')}</div><div class="actions"><a class="button small" href="#course/${e(l.id)}">Abrir aula →</a><a href="${e(slides.url)}" target="_blank" rel="noopener" class="button small">Slides originais ↗</a><button class="quiet" data-course-complete="${e(l.id)}" aria-pressed="${done}">${done ? '✓ Estudada' : 'Marcar estudo'}</button></div></div></article>`;
+}
+function courseFileInventory() {
+  const all = [
+    ...D.course.lessons.flatMap((l) => l.resources.filter((r) => !r.external)),
+    ...D.course.otherResources,
+  ];
+  const items = all.filter(
+    (r) =>
+      (!courseResourceQuery ||
+        matches({ title: r.title, path: r.path, group: r.group }, courseResourceQuery)) &&
+      (!courseResourceType || r.type === courseResourceType),
+  );
+  const groups = new Map();
+  for (const r of items) {
+    if (!groups.has(r.group)) groups.set(r.group, []);
+    groups.get(r.group).push(r);
+  }
+  return `<div class="result-line"><span>${items.length} de ${all.length} arquivos</span><span>Versão ${e(D.course.commit.slice(0, 7))}</span></div>${[...groups].map(([group, files]) => `<details class="course-file-group" ${courseResourceQuery || courseResourceType ? 'open' : ''}><summary>${e(group)} <span>${files.length} arquivos</span></summary>${files.map(courseResource).join('')}</details>`).join('') || '<div class="empty">Nenhum arquivo com esse filtro.</div>'}`;
+}
+function coursePage(id) {
+  const c = D.course,
+    l = c.lessons.find((x) => x.id === id) || c.lessons[0],
+    slides = l.resources.find((r) => r.type === 'Slides'),
+    files = l.resources.filter((r) => r.type !== 'Slides');
+  return `${title('LINUXTIPS · CURSO + PRÁTICA', 'Descomplicando o System Design', 'Todas as aulas e apresentações listadas no repositório, com exemplos, cases e conexões para aprofundar cada decisão no portal.', `<a class="button" href="${e(c.repositoryUrl)}" target="_blank" rel="noopener">Repositório original indicado ↗</a>`)}<section class="course-hero panel"><div><span class="eyebrow">DO MATERIAL À ARGUMENTAÇÃO</span><h2>Estude a aula.<br>Defenda a arquitetura.</h2><p>Siga a sequência do curso ou vá direto ao tema que precisa dominar. Os materiais de LINUXtips e msfidelis permanecem em suas fontes originais; cada aula ganha um roteiro de aplicação à entrevista.</p><div class="course-stats">${[
+    [29, 'aulas com slides'],
+    [26, 'artigos'],
+    [26, 'cases'],
+    [341, 'arquivos catalogados'],
+  ]
+    .map(([n, t]) => `<div><strong>${n}</strong><span>${t}</span></div>`)
+    .join(
+      '',
+    )}</div></div><div class="course-map" aria-label="Trilha de aprendizado"><div><span>01</span><strong>Fundamentos</strong><small>Rede · dados · consistência</small></div><i>↓</i><div><span>02</span><strong>Fronteiras</strong><small>Serviços · protocolos · eventos</small></div><i>↓</i><div><span>03</span><strong>Escala</strong><small>Partições · réplicas · workflows</small></div><i>↓</i><div><span>04</span><strong>Operação</strong><small>Falhas · capacidade · observabilidade</small></div></div></section><div class="course-workspace"><section class="panel course-feature"><div class="actions">${chip('AULA ' + String(l.number).padStart(2, '0'))}${chip(coursePhase(l.number), 'green')}</div><h2>${e(l.title)}</h2><div class="course-slide" id="course-slide"><div class="course-slide-cover"><span class="eyebrow">APRESENTAÇÃO ORIGINAL</span><strong>${e(l.title)}</strong><span>LINUXtips · Descomplicando o System Design</span><button class="button primary" data-course-slides="${e(l.id)}">Carregar apresentação ↗</button></div></div><div class="actions"><a class="button small" href="${e(slides.url)}" target="_blank" rel="noopener">Abrir no Google Slides ↗</a>${l.links
+    .filter((r) => r.type === 'Artigo')
+    .map(
+      (r) =>
+        `<a class="button small" href="${e(r.url)}" target="_blank" rel="noopener">${r.statusNote ? 'Artigo original · 404' : 'Ler artigo da aula'} ↗</a>`,
+    )
+    .join(
+      '',
+    )}</div><p class="foundation-caption">A apresentação externa carrega após seu clique. Se o autor restringir a incorporação ou o acesso, abra o link original. O repositório contém materiais de aula, sem links de gravações em vídeo.</p>${l.links.some((r) => r.statusNote) ? '<div class="note">O artigo original desta aula retornou 404 na verificação. Use os slides e os aprofundamentos do atlas.</div>' : ''}${files.length || l.links.filter((r) => r.type !== 'Artigo').length ? `<details class="course-file-group"><summary>Exemplos e complementos desta aula <span>${files.length + l.links.filter((r) => r.type !== 'Artigo').length}</span></summary>${[...files, ...l.links.filter((r) => r.type !== 'Artigo')].map(courseResource).join('')}</details>` : ''}</section><aside class="panel course-study"><span class="eyebrow">GUIA AUTORAL · APLIQUE NA ENTREVISTA</span><h2>O que levar para o desenho</h2><p>${e(l.summary.replace('Guia autoral para entrevista: ', ''))}</p><ol><li>Declare o requisito que justifica a escolha e o custo de uma alternativa.</li><li>Siga uma operação até o commit: onde ficam estado, concorrência e durabilidade?</li><li>Interrompa uma dependência. Explique detecção, recuperação e o que o cliente vê.</li></ol><h3>Aprofunde no atlas</h3><div class="course-related">${l.relatedArchitectures
+    .map((id) => {
+      const a = D.architectures.find((x) => x.id === id);
+      return a
+        ? `<a href="#atlas/${e(id)}?tab=operations"><span>${e(a.title)}</span><small>Gargalos · falhas · SLA ↗</small></a>`
+        : '';
+    })
+    .join(
+      '',
+    )}</div><label class="video-notes">Sua decisão e o trade-off<textarea data-note="course:${e(l.id)}" rows="4" placeholder="Escolho… porque… Abro mão de… Se falhar, o usuário…">${e(progress.notes[`course:${l.id}`] || '')}</textarea></label><button class="button" data-course-complete="${e(l.id)}" aria-pressed="${progress.checks.includes(`course:${l.id}`)}">${progress.checks.includes(`course:${l.id}`) ? '✓ Estudada' : 'Marcar estudo'}</button></aside></div><section class="panel course-catalogue"><div class="panel-heading"><div><span class="eyebrow">A SEQUÊNCIA COMPLETA</span><h2>Todas as 29 aulas</h2></div><span class="chip green" id="course-progress">${c.lessons.filter((x) => progress.checks.includes(`course:${x.id}`)).length} / 29 estudadas</span></div><label class="course-search">Encontre uma aula<input id="course-query" type="search" placeholder="Cache, Saga, replicação, observabilidade…" value="${e(courseQuery)}"></label><div id="course-lesson-count" class="result-line" aria-live="polite"></div><div id="course-lessons">${c.lessons
+    .filter(
+      (x) =>
+        !courseQuery ||
+        matches({ title: x.title, topics: x.topics, summary: x.summary }, courseQuery),
+    )
+    .map(courseLessonCard)
+    .join(
+      '',
+    )}</div></section><section class="panel"><span class="eyebrow">ACERVO COMPLETO DO REPOSITÓRIO</span><h2>Cases, diagramas e código, sem perder nenhum arquivo.</h2><p>26 cases, 16 diagramas de resolução e exemplos de implementação. Inclui três exercícios presentes na pasta de cases que não estavam ligados no índice principal. Os arquivos estão fixados no commit catalogado para manter a referência estável.</p><div class="filters course-file-filters"><input id="course-file-query" type="search" aria-label="Buscar arquivo do curso" placeholder="Buscar case, arquivo ou diretório…" value="${e(courseResourceQuery)}"><select id="course-file-type" aria-label="Filtrar tipo de arquivo">${options(['Aula', 'Código', 'Recurso', 'Diagrama'], courseResourceType, 'Todos os tipos de arquivo')}</select></div><div id="course-inventory">${courseFileInventory()}</div></section><section class="panel course-provenance"><details><summary>Fontes, cobertura e links do material original</summary><p>Catálogo conferido em ${e(c.checkedAt)}. ${e(c.coverage.numberingNote)} ${e(c.coverage.summaryMethod)}</p><p>${e(c.coverage.scope)} ${e(c.coverage.linkVerification)}</p><p>Há 29 apresentações externas; o repositório não contém arquivos PDF/PPT nem links de vídeos das aulas. Para sessões gravadas de System Design, consulte a <a href="#videos">videoteca do portal</a>.</p><p>${e(c.coverage.licenseNote)} Autoria e marcas pertencem aos respectivos responsáveis. Consulte o <a href="${e(c.upstreamUrl)}" target="_blank" rel="noopener">repositório de origem de msfidelis</a>.</p><h3>Problemas encontrados na origem</h3>${list(c.coverage.warnings.map((w) => `${w.path}${w.target ? ' → ' + w.target : ''}: ${w.reason}`))}<details class="course-file-group"><summary>Todos os ${c.allLinks.length} links externos encontrados</summary>${c.allLinks.map(courseResource).join('')}</details>${refs(c.sources.map((s) => s.id))}</details></section>`;
+}
+function bindCourse() {
+  $$('[data-course-complete]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const id = b.dataset.courseComplete;
+        const persisted = toggle(progress.checks, `course:${id}`);
+        $$(`[data-course-complete="${id}"]`).forEach((button) => {
+          const done = progress.checks.includes(`course:${id}`);
+          button.textContent = done ? '✓ Estudada' : 'Marcar estudo';
+          button.setAttribute('aria-pressed', String(done));
+        });
+        $('#course-progress').textContent =
+          `${D.course.lessons.filter((x) => progress.checks.includes(`course:${x.id}`)).length} / 29 estudadas`;
+        if (persisted) toast('Estudo salvo neste dispositivo');
+      }),
+  );
+  $$('[data-course-slides]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const lesson = D.course.lessons.find((x) => x.id === b.dataset.courseSlides),
+          url = lesson?.resources.find((r) => r.type === 'Slides')?.url;
+        const slideId = url?.match(
+          /^https:\/\/docs\.google\.com\/presentation\/d\/([\w-]+)\//,
+        )?.[1];
+        if (!slideId) return;
+        $('#course-slide').innerHTML =
+          `<iframe src="https://docs.google.com/presentation/d/${e(slideId)}/embed?start=false&loop=false&delayms=3000" title="Slides: ${e(lesson.title)}" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+      }),
+  );
+  if ($('#course-query'))
+    $('#course-query').oninput = () => {
+      courseQuery = $('#course-query').value;
+      const items = D.course.lessons.filter(
+        (x) =>
+          !courseQuery ||
+          matches({ title: x.title, topics: x.topics, summary: x.summary }, courseQuery),
+      );
+      $('#course-lessons').innerHTML =
+        items.map(courseLessonCard).join('') ||
+        '<div class="empty">Nenhuma aula com esse termo.</div>';
+      $('#course-lesson-count').textContent = `${items.length} de 29 aulas`;
+      bindCourse();
+    };
+  for (const id of ['course-file-query', 'course-file-type'])
+    if ($('#' + id))
+      $('#' + id)[id.endsWith('query') ? 'oninput' : 'onchange'] = () => {
+        courseResourceQuery = $('#course-file-query').value;
+        courseResourceType = $('#course-file-type').value;
+        $('#course-inventory').innerHTML = courseFileInventory();
+      };
+}
+
+let guidedStep = 0,
+  guidedRehearse = false,
+  guidedRevealed = false,
+  guidedFinal = false;
+const guidedCase = () => D.guided.cases.find((c) => c.id === currentId) || D.guided.cases[0];
+const guidedRange = (s) =>
+  `${String(s.minute).padStart(2, '0')}–${String(s.minute + s.duration).padStart(2, '0')} min`;
+const guidedOpen = () => !guidedRehearse || guidedRevealed;
+function guidedCard(c, i) {
+  const done = c.steps.filter((_, j) =>
+    progress.checks.includes(`guided:${c.id}:step:${j}`),
+  ).length;
+  return `<a class="guided-case ${guidedCase()?.id === c.id ? 'active' : ''}" href="#guided/${e(c.id)}"><span class="guided-case-number">0${i + 1}<small>${e(c.evidence.kind)}</small></span><strong>${e(c.title)}</strong><span>${e(c.subtitle)}</span><small>${done} / 10 etapas praticadas · 60 min ↗</small></a>`;
+}
+function guidedNodeLines(label) {
+  const words = label.split(' '),
+    lines = [''];
+  for (const word of words) {
+    const i = lines.length - 1;
+    if (lines[i] && lines[i].length + word.length + 1 > 20) lines.push(word);
+    else lines[i] += (lines[i] ? ' ' : '') + word;
+  }
+  return lines;
+}
+function guidedBoard(c, s) {
+  const visibleStep = guidedOpen() ? (guidedFinal ? 9 : guidedStep) : guidedStep - 1;
+  const nodes = c.nodes.filter((n) => n.firstStep <= visibleStep),
+    ids = new Set(nodes.map((n) => n.id));
+  const edges = c.edges.filter(
+    (a) => a.firstStep <= visibleStep && ids.has(a.from) && ids.has(a.to),
+  );
+  return `<div class="guided-board-head"><span>${guidedFinal ? 'DESENHO COMPLETO' : guidedOpen() ? 'DESENHANDO COM A FALA' : 'SEU QUADRO ANTES DA RESPOSTA'}</span><button class="quiet" id="guided-final" ${!guidedOpen() ? 'disabled' : ''}>${guidedFinal ? 'Voltar à etapa' : 'Ver desenho final'}</button></div><div class="guided-board ${guidedOpen() ? '' : 'concealed'}"><svg viewBox="0 0 980 460" role="group" aria-label="Arquitetura progressiva: ${e(c.title)}"><defs><marker id="guided-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="#a18ab8"/></marker><pattern id="guided-grid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#b797d229"/></pattern></defs><rect width="980" height="460" fill="url(#guided-grid)"/>${edges
+    .map((a, i) => {
+      const f = nodes.find((n) => n.id === a.from),
+        t = nodes.find((n) => n.id === a.to);
+      const dx = t.x - f.x,
+        dy = t.y - f.y,
+        horizontal = dy === 0,
+        parallel =
+          edges.filter(
+            (b) => (b.from === a.from && b.to === a.to) || (b.to === a.from && b.from === a.to),
+          ).length > 1;
+      let path, mx, my;
+      if (horizontal && Math.abs(dx) < 300 && !parallel) {
+        const a = f.x + Math.sign(dx) * 83,
+          b = t.x - Math.sign(dx) * 88;
+        path = `M${a} ${f.y} H${b}`;
+        mx = (a + b) / 2;
+        my = f.y;
+      } else if (dx === 0 && Math.abs(dy) < 180) {
+        const a = f.y + Math.sign(dy) * 32,
+          b = t.y - Math.sign(dy) * 37;
+        path = `M${f.x} ${a} V${b}`;
+        mx = f.x;
+        my = (a + b) / 2;
+      } else {
+        const direction = Math.sign(dy) || (f.y > 300 ? -1 : 1),
+          sy = f.y + direction * 32,
+          ty = dy ? t.y - direction * 37 : t.y + direction * 37,
+          lane = f.y + direction * (52 + (i % 3) * 23);
+        if (Math.abs(dy) > 180) {
+          const side = dx ? -Math.sign(dx) : t.x > 750 ? -1 : 1,
+            corridor = t.x + side * (112 + (i % 2) * 10),
+            endLane = t.y - direction * (59 + (i % 3) * 9);
+          path = `M${f.x} ${sy} V${lane} H${corridor} V${endLane} H${t.x} V${ty}`;
+          mx = corridor;
+          my = (lane + endLane) / 2;
+        } else {
+          path = `M${f.x} ${sy} V${lane} H${t.x} V${ty}`;
+          mx = f.x + (t.x - f.x) * 0.48;
+          my = lane;
+        }
+      }
+      const edgeIndex = c.edges.indexOf(a);
+      return `<g class="guided-edge ${a.firstStep === visibleStep && !guidedFinal ? 'fresh' : ''}" data-guided-edge="${edgeIndex}" role="button" tabindex="0" aria-label="Fluxo ${edgeIndex + 1}: ${e(f.label)} para ${e(t.label)} — ${e(a.label)}"><path d="${path}" marker-end="url(#guided-arrow)"/><circle class="guided-particle" r="2.5"><animateMotion dur="${3 + i * 0.23}s" repeatCount="indefinite" path="${path}"/></circle><g class="guided-edge-badge"><circle cx="${mx}" cy="${my}" r="9"/><text x="${mx}" y="${my + 3.5}" text-anchor="middle">${edgeIndex + 1}</text></g></g>`;
+    })
+    .join('')}${nodes
+    .map((n) => {
+      const logo = D.technologies.find((t) => t.id === n.tech)?.logo,
+        lines = guidedNodeLines(n.label);
+      return `<g class="guided-node ${n.firstStep === visibleStep && !guidedFinal ? 'fresh' : ''} ${s.focusNodes.includes(n.id) ? 'focus-node' : ''} ${e(n.kind)}" tabindex="0" role="button" data-guided-node="${e(n.id)}" aria-label="Inspecionar ${e(n.label)}"><rect x="${n.x - 83}" y="${n.y - 32}" width="166" height="64" rx="${n.kind === 'actor' ? 30 : 12}"/>${logo ? `<image href="${e(logo)}" x="${n.x - 72}" y="${n.y - 9}" width="18" height="18"/>` : ''}${lines.map((line, j) => `<text x="${n.x + (logo ? 10 : 0)}" y="${n.y + 4 - (lines.length - 1) * 7 + j * 14}" text-anchor="middle">${e(line)}</text>`).join('')}</g>`;
+    })
+    .join(
+      '',
+    )}${nodes.length ? '' : `<text x="490" y="210" text-anchor="middle" class="guided-empty-board">Comece pelo cliente e pela fronteira do problema.</text><text x="490" y="235" text-anchor="middle" class="guided-empty-board">Revele a resposta para acompanhar o primeiro desenho.</text>`}</svg></div><p class="guided-board-hint">Selecione uma peça ou um número para explicar a responsabilidade e o fluxo. No celular, deslize o quadro na horizontal.</p>${
+    edges.length
+      ? `<details class="guided-flow-list"><summary>Explicar os ${edges.length} fluxos desenhados</summary><ol>${edges
+          .map((a) => {
+            const n = c.edges.indexOf(a);
+            return `<li><button data-guided-flow="${n}"><b>${n + 1}</b><span><strong>${e(c.nodes.find((x) => x.id === a.from).label)} → ${e(c.nodes.find((x) => x.id === a.to).label)}</strong><small>${e(a.label)}</small></span></button></li>`;
+          })
+          .join('')}</ol></details>`
+      : ''
+  }<div class="guided-board-legend"><span><i></i>Já desenhado</span><span><i class="new"></i>Acrescentado nesta etapa</span><button class="quiet" id="guided-motion">Pausar fluxo</button></div><div id="guided-node-detail" class="guided-node-detail" aria-live="polite">Clique em uma peça para explicar estado, garantia e responsabilidade.</div>${guidedOpen() ? `<div class="guided-draw"><span class="eyebrow">O QUE VOCÊ DESENHA AGORA</span><ol>${s.draw.map((x) => `<li>${e(x)}</li>`).join('')}</ol></div>` : '<div class="guided-draw"><p>Explique sua decisão em voz alta e desenhe no seu quadro antes de revelar a resposta. A visualização conserva somente as peças das etapas anteriores.</p></div>'}`;
+}
+function guidedDialogue(s) {
+  return `<div class="guided-dialogue interviewer"><span>ENTREVISTADOR · FALA SIMULADA</span><p>${e(s.interviewer)}</p></div>${guidedOpen() ? `<div class="guided-dialogue candidate"><span>VOCÊ · UMA RESPOSTA DEFENSÁVEL</span>${s.candidate.map((p) => `<p>${e(p)}</p>`).join('')}</div><div class="guided-checkpoint"><strong>Pare e colabore</strong><p>${e(s.checkpoint)}</p></div>` : `<div class="guided-hidden-answer"><strong>Sua vez de conduzir.</strong><p>Responda antes de consultar. Registre a invariante, a alternativa e a falha que sua proposta precisa suportar.</p><button class="button primary" id="guided-reveal">Revelar fala e desenho →</button></div>`}`;
+}
+function guidedMechanics(s) {
+  return `<section class="panel guided-mechanics"><div class="panel-heading"><div><span class="eyebrow">POR TRÁS DA RESPOSTA</span><h2>Transforme a fala em mecanismo.</h2></div>${chip('APROFUNDAMENTO TÉCNICO')}</div><div class="two-col">${s.mechanics.map((m) => `<article><h3>${e(m.title)}</h3><p>${e(m.body)}</p></article>`).join('')}</div><h3>${e(s.artifact.title)}</h3><span class="foundation-caption">${e(s.artifact.language)} · contrato ou pseudocódigo didático; precisa de implementação e testes no sistema real</span><pre tabindex="0"><code>${e(s.artifact.code)}</code></pre><div class="guided-decision"><h3>A decisão e a alternativa</h3><dl><dt>Escolha</dt><dd>${e(s.decision.choice)}</dd><dt>Alternativa</dt><dd>${e(s.decision.alternative)}</dd><dt>Por que agora</dt><dd>${e(s.decision.why)}</dd><dt>Quando eu mudaria</dt><dd>${e(s.decision.whenToChange)}</dd></dl></div><div class="guided-principal"><span class="eyebrow">AMPLIE A RESPONSABILIDADE · PRINCIPAL</span><p>${e(s.principal)}</p></div></section><section class="panel guided-challenge"><span class="eyebrow">O ENTREVISTADOR INTERROMPE</span><h2>${e(s.challenge.question)}</h2><details><summary>Ver como responder e adaptar o desenho</summary><p>${e(s.challenge.answer)}</p><div class="note"><strong>O que muda no quadro</strong><p>${e(s.challenge.pivot)}</p></div></details></section>`;
+}
+function guidedTranscript(c) {
+  return `<details class="panel guided-transcript"><summary>Ler o roteiro completo de 60 minutos</summary><p>Falas autorais de treino. Use pausas e checkpoints: uma entrevista real é uma conversa, e o entrevistador pode escolher outro aprofundamento.</p>${c.steps.map((s, i) => `<details><summary>${guidedRange(s)} · ${e(s.title)}</summary><div class="guided-dialogue interviewer"><span>ENTREVISTADOR</span><p>${e(s.interviewer)}</p></div><div class="guided-dialogue candidate"><span>VOCÊ</span>${s.candidate.map((p) => `<p>${e(p)}</p>`).join('')}</div><h4>Enquanto fala, desenhe</h4>${list(s.draw)}<p><strong>Checkpoint:</strong> ${e(s.checkpoint)}</p><button class="button small" data-guided-step="${i}">Abrir esta etapa no quadro ↗</button></details>`).join('')}</details>`;
+}
+function guidedPage(id) {
+  const c = guidedCase();
+  if (!c) return notFound();
+  if (timer.id !== `guided:${c.id}`)
+    timer = { id: `guided:${c.id}`, elapsed: 0, running: false, start: 0 };
+  const s = c.steps[guidedStep],
+    done = progress.checks.includes(`guided:${c.id}:step:${guidedStep}`);
+  return `${title('CINCO CASOS · FALA + QUADRO + DECISÃO', 'Conduza o desenho em voz alta.', 'Entrevistas guiadas de 60 minutos: o que perguntar, como responder, o que desenhar e como reagir quando a primeira solução deixa de funcionar.')}<section class="guided-intro panel"><div><span class="eyebrow">DO REQUISITO AO PLANO DE EVOLUÇÃO</span><h2>Explique cada caixa.<br>Defenda cada decisão.</h2><p>Em cada etapa você lê a pergunta, acompanha uma resposta em primeira pessoa e vê a arquitetura crescer. Depois entra no mecanismo, enfrenta uma falha e decide o que faria mudar de ideia.</p><div class="actions">${chip('5 CASOS')}${chip('50 ETAPAS', 'neutral')}${chip('300 MIN DE PRÁTICA', 'green')}</div></div><ol class="guided-method"><li><b>01</b><span>Leia ou ensaie<strong>Responda antes de revelar.</strong></span></li><li><b>02</b><span>Desenhe enquanto explica<strong>Estado, contratos e fronteiras.</strong></span></li><li><b>03</b><span>Defenda e adapte<strong>Falhas, custo e evolução.</strong></span></li></ol></section><details class="panel guided-framework"><summary>O padrão de raciocínio para levar a qualquer enunciado</summary><p>Use esta sequência como orientação e renegocie o foco quando surgirem novas restrições. Os casos abaixo mostram a sequência em ação.</p><ol><li><strong>Reformule a jornada.</strong> “Quero confirmar quem inicia, o que considera sucesso e qual erro seria mais caro.”</li><li><strong>Declare uma invariante.</strong> “Mesmo que uma resposta se perca, este efeito não pode ocorrer duas vezes. Vou localizar a fronteira que garante isso.”</li><li><strong>Faça uma conta que muda a decisão.</strong> “Com este pico, tempo de serviço e payload, esta peça exige esta capacidade. Vou validar a hipótese antes de distribuir mais estado.”</li><li><strong>Feche o caminho mínimo.</strong> “Aqui aceito a intenção; aqui faço o commit; aqui respondo. Uma confirmação externa ainda está pendente.”</li><li><strong>Interrompa o fluxo.</strong> “Se cair exatamente depois deste commit, quem retoma, com qual identidade e como descobre o resultado?”</li><li><strong>Mostre o preço da escolha.</strong> “Esta alternativa simplifica a operação, mas limita a escala neste ponto. Eu mudaria quando esta medição cruzasse este limite.”</li><li><strong>Amplie para a operação.</strong> “Quem recebe o alerta, qual jornada se degrada, como restauramos e que evidência prova o RTO/RPO?”</li><li><strong>Conclua com evolução verificável.</strong> “Entrego primeiro este fluxo, valido estas hipóteses e migro por estas etapas. O risco residual é este. Qual ponto você quer aprofundar?”</li></ol><p>Profundidade Principal aparece também em reduzir complexidade, negociar contratos entre times e propor uma migração segura. Se o entrevistador encurtar a sessão, priorize a invariante, o fluxo mínimo, uma falha crítica e os trade-offs; combine o restante.</p></details><nav class="guided-cases" aria-label="Escolher caso guiado">${D.guided.cases.map(guidedCard).join('')}</nav><section class="panel guided-brief"><div class="actions">${chip(c.evidence.kind)}${chip('ROTEIRO AUTORAL', 'neutral')}</div><h2>${e(c.title)}</h2><p>${e(c.brief)}</p><details><summary>O que é evidência e o que é hipótese deste exercício</summary><p>${e(c.evidence.summary)}</p><p>${e(c.evidence.limits)}</p>${refs(c.evidence.sourceIds)}<p>Não há garantia de aprovação nem rubrica oficial de Staff/Principal nesta página. As falas, escalas, metas e propostas abaixo são material de treino; adapte-as às respostas e prioridades de quem conduz a entrevista. Combine a agenda: se houver menos tempo de desenho, preserve o fluxo mínimo e peça a prioridade do aprofundamento.</p></details><details><summary>Premissas, invariantes e critério de sucesso</summary><div class="table-wrap"><table><thead><tr><th>Premissa hipotética</th><th>Valor para o exercício</th><th>Por que importa</th></tr></thead><tbody>${c.assumptions.map((a) => `<tr><td>${e(a.label)}</td><td>${e(a.value)}</td><td>${e(a.why)}</td></tr>`).join('')}</tbody></table></div><h3>O que não pode acontecer</h3>${list(c.invariants)}<p><strong>Critério proposto:</strong> ${e(c.success)}</p></details></section>${timerHtml().replace('timer-shell', 'timer-shell guided-timer')}<div class="guided-mode-bar"><label><input type="checkbox" id="guided-rehearse" ${guidedRehearse ? 'checked' : ''}> Modo ensaio: responder antes de revelar</label><button class="button small" id="guided-download">Baixar roteiro em texto ↓</button></div><nav class="guided-stages" aria-label="Etapas do roteiro">${c.steps.map((x, i) => `<button data-guided-step="${i}" class="${i === guidedStep ? 'active' : ''}" aria-current="${i === guidedStep ? 'step' : 'false'}"><span>${String(i + 1).padStart(2, '0')}</span><strong>${e(x.title)}</strong><small>${guidedRange(x)}</small></button>`).join('')}</nav><div class="guided-step-heading" id="guided-step-heading"><div><span class="eyebrow">ETAPA ${String(guidedStep + 1).padStart(2, '0')} / 10 · ${guidedRange(s)}</span><h2 id="guided-step-title" tabindex="-1">${e(s.title)}</h2><p>${e(s.goal)}</p></div><div class="actions"><button class="button small" id="guided-prev" ${guidedStep === 0 ? 'disabled' : ''}>← Anterior</button><button class="button small primary" id="guided-next" ${guidedStep === 9 ? 'disabled' : ''}>Próxima →</button></div></div><div class="guided-workspace"><section class="panel guided-whiteboard">${guidedBoard(c, s)}</section><section class="guided-conversation">${guidedDialogue(s)}</section></div>${guidedOpen() ? guidedMechanics(s) : ''}<section class="panel guided-notes"><div><span class="eyebrow">REGISTRE SUA VERSÃO</span><h2>O que você diria sem consultar?</h2><p>Praticar esta etapa não é uma avaliação de aprovação. Refaça com premissas diferentes e observe se a decisão continua válida.</p><button class="button" id="guided-complete" aria-pressed="${done}">${done ? '✓ Etapa praticada' : 'Marcar etapa praticada'}</button></div><label>Sua resposta, lacuna ou decisão<textarea data-note="guided:${e(c.id)}:step:${guidedStep}" rows="6" placeholder="Minha invariante é… A escolha custa… Se cair aqui… Eu mudaria de ideia se…">${e(progress.notes[`guided:${c.id}:step:${guidedStep}`] || '')}</textarea></label></section><details class="panel guided-drills"><summary>Três incidentes para testar o desenho final</summary><p>Use estas mudanças depois de estabelecer um fluxo coerente. Peça para outra pessoa escolher uma sem avisar.</p>${c.failureDrills
+    .map(
+      (d) =>
+        `<article><h3>${e(d.failure)}</h3><dl>${[
+          ['detection', 'Como detecto'],
+          ['containment', 'Como contenho'],
+          ['recovery', 'Como recupero'],
+          ['userExperience', 'O que o cliente vê'],
+          ['sli', 'O que eu meço'],
+        ]
+          .map(([k, t]) => `<dt>${t}</dt><dd>${e(d[k])}</dd>`)
+          .join('')}</dl></article>`,
+    )
+    .join(
+      '',
+    )}</details><details class="panel guided-deployments"><summary>Implementação em AWS, Azure ou on-premises</summary><p>Opções propostas para o exercício, não uma confirmação dos produtos usados internamente pelo Nubank. Configure e teste as garantias de cada alternativa.</p>${Object.entries(
+    c.deployment,
+  )
+    .map(
+      ([k, v]) =>
+        `<h3>${k === 'aws' ? 'AWS' : k === 'azure' ? 'Azure' : 'On-premises'}</h3><p>${e(v)}</p>`,
+    )
+    .join(
+      '',
+    )}</details><details class="panel guided-rubric"><summary>Autoavaliação: evidências de profundidade Staff e Principal</summary><p>Rubrica pedagógica do portal. O título de um cargo não é determinado por uma resposta isolada, e nenhuma pontuação abaixo prevê contratação.</p><div class="table-wrap"><table><thead><tr><th>Dimensão</th><th>Sinal Staff</th><th>Ampliação Principal</th><th>Alerta</th></tr></thead><tbody>${c.rubric.map((r) => `<tr><td>${e(r.dimension)}</td><td>${e(r.staff)}</td><td>${e(r.principal)}</td><td>${e(r.redFlag)}</td></tr>`).join('')}</tbody></table></div><h3>Uma forma de encerrar</h3><p>${e(c.closing)}</p></details>${guidedTranscript(c)}<section class="panel guided-links"><h3>Continue a partir desta decisão</h3><div class="actions">${c.relatedArchitectures
+    .map((id) => {
+      const a = D.architectures.find((x) => x.id === id);
+      return a ? `<a class="chip" href="#atlas/${e(id)}?tab=operations">${e(a.title)} ↗</a>` : '';
+    })
+    .join('')}</div>${refs(c.sourceIds)}</section>`;
+}
+function guidedMove(index) {
+  guidedStep = Math.max(0, Math.min(9, index));
+  guidedRevealed = false;
+  guidedFinal = false;
+  history.replaceState(
+    null,
+    '',
+    `#guided/${guidedCase().id}?step=${guidedStep + 1}${guidedRehearse ? '&mode=rehearse' : ''}`,
+  );
+  activeHash = location.hash;
+  render(true);
+  $('#guided-step-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
+  $('#guided-step-title').focus({ preventScroll: true });
+}
+function guidedText(c) {
+  return [
+    c.title,
+    c.brief,
+    `Evidência: ${c.evidence.kind}. ${c.evidence.summary}`,
+    c.evidence.limits,
+    'Premissas hipotéticas:',
+    ...c.assumptions.map((a) => `${a.label}: ${a.value}. ${a.why}`),
+    'Invariantes:',
+    ...c.invariants,
+    ...c.steps.flatMap((s) => [
+      `\n${guidedRange(s)} — ${s.title}`,
+      `ENTREVISTADOR: ${s.interviewer}`,
+      ...s.candidate.map((p) => `VOCÊ: ${p}`),
+      'DESENHE:',
+      ...s.draw,
+      ...s.mechanics.map((m) => `${m.title}: ${m.body}`),
+      s.artifact.title,
+      s.artifact.code,
+      `INTERRUPÇÃO: ${s.challenge.question}`,
+      s.challenge.answer,
+      `ADAPTAÇÃO: ${s.challenge.pivot}`,
+      `ESCOLHA: ${s.decision.choice}`,
+      `ALTERNATIVA: ${s.decision.alternative}`,
+      `POR QUÊ: ${s.decision.why}`,
+      `MUDO SE: ${s.decision.whenToChange}`,
+      `PRINCIPAL: ${s.principal}`,
+      `CHECKPOINT: ${s.checkpoint}`,
+    ]),
+    '\nENCERRAMENTO',
+    c.closing,
+    '\nFONTES',
+    ...c.sourceIds
+      .map((id) => sourceMap[id])
+      .filter(Boolean)
+      .map((s) => `${s.title}: ${s.url || 'material fornecido'}`),
+  ].join('\n\n');
+}
+function bindGuided() {
+  if (currentRoute !== 'guided') return;
+  $$('[data-guided-step]').forEach((b) => {
+    b.onclick = () => guidedMove(+b.dataset.guidedStep);
+    b.onkeydown = (ev) => {
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') {
+        ev.preventDefault();
+        guidedMove(+b.dataset.guidedStep + (ev.key === 'ArrowRight' ? 1 : -1));
+      }
+    };
+  });
+  $('#guided-prev').onclick = () => guidedMove(guidedStep - 1);
+  $('#guided-next').onclick = () => guidedMove(guidedStep + 1);
+  $('#guided-rehearse').onchange = () => {
+    guidedRehearse = $('#guided-rehearse').checked;
+    guidedRevealed = false;
+    guidedFinal = false;
+    history.replaceState(
+      null,
+      '',
+      `#guided/${guidedCase().id}?step=${guidedStep + 1}${guidedRehearse ? '&mode=rehearse' : ''}`,
+    );
+    activeHash = location.hash;
+    render(true);
+  };
+  if ($('#guided-reveal'))
+    $('#guided-reveal').onclick = () => {
+      guidedRevealed = true;
+      render(true);
+      $('#guided-step-heading').scrollIntoView({ block: 'start', behavior: 'instant' });
+      $('#guided-step-title').focus({ preventScroll: true });
+    };
+  $('#guided-final').onclick = () => {
+    guidedFinal = !guidedFinal;
+    render(true);
+  };
+  $('#guided-motion').onclick = () => {
+    const board = $('.guided-board');
+    board.classList.toggle('paused');
+    $('#guided-motion').textContent = board.classList.contains('paused')
+      ? 'Animar fluxo'
+      : 'Pausar fluxo';
+  };
+  $$('[data-guided-node]').forEach((n) => {
+    const inspect = () => {
+      const node = guidedCase().nodes.find((x) => x.id === n.dataset.guidedNode);
+      $('#guided-node-detail').innerHTML =
+        `<strong>${e(node.label)}</strong><p>${e(node.detail)}</p>`;
+      $$('[data-guided-node]').forEach((el) => el.classList.toggle('selected', el === n));
+    };
+    n.onclick = inspect;
+    n.onkeydown = (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        inspect();
+      }
+    };
+  });
+  $$('[data-guided-edge],[data-guided-flow]').forEach((el) => {
+    const inspect = () => {
+      const n = Number(el.dataset.guidedEdge ?? el.dataset.guidedFlow),
+        c = guidedCase(),
+        a = c.edges[n],
+        f = c.nodes.find((x) => x.id === a.from),
+        t = c.nodes.find((x) => x.id === a.to);
+      $$('[data-guided-edge]').forEach((x) =>
+        x.classList.toggle('selected', Number(x.dataset.guidedEdge) === n),
+      );
+      $('#guided-node-detail').innerHTML =
+        `<strong>Fluxo ${n + 1} · ${e(a.label)}</strong><p>${e(f.label)} → ${e(t.label)}</p><small>${e(t.detail)}</small>`;
+    };
+    el.onclick = inspect;
+    if (el.hasAttribute('data-guided-edge'))
+      el.onkeydown = (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          inspect();
+        }
+      };
+  });
+  $('#guided-complete').onclick = () => {
+    const ok = toggle(progress.checks, `guided:${guidedCase().id}:step:${guidedStep}`),
+      done = progress.checks.includes(`guided:${guidedCase().id}:step:${guidedStep}`);
+    $('#guided-complete').textContent = done ? '✓ Etapa praticada' : 'Marcar etapa praticada';
+    $('#guided-complete').setAttribute('aria-pressed', String(done));
+    $('.guided-cases').innerHTML = D.guided.cases.map(guidedCard).join('');
+    if (ok) toast('Etapa registrada no seu progresso');
+  };
+  $('#guided-download').onclick = () => {
+    const c = guidedCase(),
+      url = URL.createObjectURL(new Blob([guidedText(c)], { type: 'text/plain;charset=utf-8' })),
+      a = document.createElement('a');
+    a.href = url;
+    a.download = `nuarch-entrevista-${c.id}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+}
+
+for (const [id, cls, key] of [
+  ['reading-mode', 'reading-mode', 'nuarch-reading-mode'],
+  ['font-size', 'large-type', 'nuarch-large-type'],
+]) {
+  try {
+    document.body.classList.toggle(cls, localStorage.getItem(key) === 'true');
+  } catch {}
+  const control = $(`#${id}`);
+  control.setAttribute('aria-pressed', String(document.body.classList.contains(cls)));
+  control.onclick = () => {
+    document.body.classList.toggle(cls);
+    const enabled = document.body.classList.contains(cls);
+    control.setAttribute('aria-pressed', String(enabled));
+    try {
+      localStorage.setItem(key, String(enabled));
+    } catch {}
+  };
+}
+init();

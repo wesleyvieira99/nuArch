@@ -27,24 +27,27 @@ Depois da abertura do [demo.py](demo.py):
 
 ```python
 request = PostRequest(
-    idempotency_key="transfer-150",
+    idempotency_key='transfer-150',
     postings=(
-        Posting(account_id="alice", currency="BRL", delta_cents=-15000),
-        Posting(account_id="bruno", currency="BRL", delta_cents=15000),
+        Posting(account_id='alice', currency='BRL', delta_cents=-15000),
+        Posting(account_id='bruno', currency='BRL', delta_cents=15000),
     ),
-    description="Alice transfere R$150 para Bruno",
+    description='Alice transfere R$150 para Bruno',
 )
-tx = ledger.post(request)                     # tx_id 2
-assert ledger.post(request) is tx             # retry do commit aceito
-assert ledger.balance("alice") == 85000
-assert ledger.balance("alice", as_of_tx=1) == 100000
+tx = ledger.post(request)  # tx_id 2
+assert ledger.post(request) is tx  # retry do commit aceito
+assert ledger.balance('alice') == 85000
+assert ledger.balance('alice', as_of_tx=1) == 100000
 
-undo = ledger.reverse(ReverseRequest(
-    idempotency_key="reversal-150", original_tx_id=tx.tx_id,
-))
-assert undo.reversal_of == 2                  # nova tx_id 3
-assert ledger.balance("alice") == 100000
-assert ledger.balance("alice", as_of_tx=2) == 85000
+undo = ledger.reverse(
+    ReverseRequest(
+        idempotency_key='reversal-150',
+        original_tx_id=tx.tx_id,
+    )
+)
+assert undo.reversal_of == 2  # nova tx_id 3
+assert ledger.balance('alice') == 100000
+assert ledger.balance('alice', as_of_tx=2) == 85000
 ```
 
 O corte `as_of_tx` é inclusivo e representa **ordem de commit local**, não data efetiva financeira nem tempo de ocorrência no mundo real. Zero representa o estado antes de qualquer posting. As consultas usam o cadastro atual de contas; não há histórico separado de cadastro.
@@ -68,14 +71,14 @@ A API revalida modelos recebidos a partir dos dados, porque `model_copy(update=.
 
 ## Limites e custo do exercício
 
-| Tema | Este exemplo | O que faltaria em um serviço real |
-|---|---|---|
-| Concorrência | Uma instância e threads que usam seu lock | Coordenação entre processos/réplicas, transação no armazenamento, autoridade de escrita e fencing quando necessário |
-| Durabilidade | Tudo está em RAM; encerrar o processo perde journal e chaves | Persistência durável, recuperação, backup testado, políticas de retenção e disponibilidade |
-| Integrações | Nenhuma chamada externa dentro do commit | Outbox/inbox, identidade estável, reconciliação e tratamento de resultados incertos |
-| Segurança | API interna confiável, sem autenticação | Autorização por conta/ação, limites, revisão de comandos, trilha de acesso e proteção de dados |
-| Contabilidade | Postings assinados e soma zero por moeda | Plano de contas, ativos/passivos, reservas, juros, tarifas, datas efetivas e reconciliação com fatos externos |
-| Temporalidade | Replay até um tx_id local | Semântica explícita de tempo de negócio, correções retroativas e modelo bitemporal quando necessário |
+| Tema          | Este exemplo                                                 | O que faltaria em um serviço real                                                                                   |
+| ------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Concorrência  | Uma instância e threads que usam seu lock                    | Coordenação entre processos/réplicas, transação no armazenamento, autoridade de escrita e fencing quando necessário |
+| Durabilidade  | Tudo está em RAM; encerrar o processo perde journal e chaves | Persistência durável, recuperação, backup testado, políticas de retenção e disponibilidade                          |
+| Integrações   | Nenhuma chamada externa dentro do commit                     | Outbox/inbox, identidade estável, reconciliação e tratamento de resultados incertos                                 |
+| Segurança     | API interna confiável, sem autenticação                      | Autorização por conta/ação, limites, revisão de comandos, trilha de acesso e proteção de dados                      |
+| Contabilidade | Postings assinados e soma zero por moeda                     | Plano de contas, ativos/passivos, reservas, juros, tarifas, datas efetivas e reconciliação com fatos externos       |
+| Temporalidade | Replay até um tx_id local                                    | Semântica explícita de tempo de negócio, correções retroativas e modelo bitemporal quando necessário                |
 
 O lock não é uma eleição de líder, um lock distribuído ou um transactor do Datomic. Duas instâncias têm estados independentes. O `as_of_tx` aqui é uma soma sobre journal; não implementa os índices, datoms, Datalog, histórico de assertions/retractions ou filtros de database value do Datomic. A analogia útil é tomar decisões sobre um estado consistente e produzir novos fatos; as garantias operacionais são diferentes.
 

@@ -1,0 +1,23 @@
+{
+  "name": "nuarch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Laboratório independente de system design: decisões, falhas, diagramas e entrevistas escritas.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:ledger": "python3 -m unittest discover -s examples/ledger -p 'test_*.py' -v",
+    "validate:content": "python3 scripts/validate.py",
+    "export": "python3 scripts/export.py dist/nuArch.html",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

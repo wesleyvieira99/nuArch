@@ -232,8 +232,9 @@ for id,concept in playbook['concepts'].items():
     assert concept['technologyIds'] and set(concept['technologyIds']).issubset(tech_ids),(id,concept['technologyIds'])
 update=playbook['meta']['cacheUpdate']
 assert update['caseId']=='distributed-cache' and len(set(update['materialIds']))==6
-assert len(playbook['decisions'])==26+len(update['decisionIds'])
-assert len(playbook['interruptions'])==32+len(update['interruptionIds'])
+latest=playbook['meta']['latestUpdate']
+assert len(playbook['decisions'])==26+len(update['decisionIds'])+len(latest['decisionIds'])
+assert len(playbook['interruptions'])==32+len(update['interruptionIds'])+len(latest['interruptionIds'])
 assert len({x['id'] for x in playbook['decisions']})==len(playbook['decisions'])
 assert len({x['id'] for x in playbook['interruptions']})==len(playbook['interruptions'])
 cache_notes=[(c['id'],n) for c in playbook['cases'] for step in c['steps'] for n in step.get('cacheNotes',[])]
@@ -243,13 +244,33 @@ for id,n in cache_notes:
     assert n['title'] and n['sourceIds'],id
     assert all(isinstance(n[k],str) and len(n[k])>=40 for k in ('say','concept','connect','technology','defend')),(id,n['title'])
 assert {m['id'] for m in playbook['materials'] if m.get('collection')=='distributed-cache'}==set(update['materialIds'])
+assert len(set(latest['materialIds']))==31
+assert {m['id'] for m in playbook['materials'] if m.get('collection')=='nov-2026'}==set(latest['materialIds'])
+new_notes=[(c['id'],n) for c in playbook['cases'] for step in c['steps'] for n in step.get('studyNotes',[])]
+assert len(new_notes)==latest['stepAdditions'] and len(new_notes)>=24
+assert {id for id,n in new_notes}==set(latest['enrichedCaseIds'])
+context=playbook['nubankContext']
+topic_ids={t['id'] for t in context['topics']}
+assert len(topic_ids)==len(context['topics'])==latest['contextTopics']
+assert {n['stage'] for n in context['stageNotes']}==set(range(10))
+for id,n in new_notes+[(str(n['stage']),n) for n in context['stageNotes']]:
+    assert n['title'] and n['sourceIds'],id
+    assert all(isinstance(n[k],str) and len(n[k])>=40 for k in ('say','concept','connect','technology','defend')),(id,n['title'])
+for n in context['stageNotes']:
+    assert n['topicIds'] and set(n['topicIds']).issubset(topic_ids),n['stage']
+assert topic_ids=={id for n in context['stageNotes'] for id in n['topicIds']}
+for t in context['topics']:
+    assert t['verified'] and t['limit'] and t['sourceIds'],t['id']
+    assert t['videoEvidence']['href'].startswith('https://www.youtube.com/watch?v=')
+    assert t['videoEvidence']['time'] and t['videoEvidence']['claim']
+assert len(playbook['methodBridge']['items'])==8
 for d in playbook['decisions']:
     assert d.get('architectureId') in {x['id'] for x in a['architectures']} or (d.get('diagnostic') and d.get('sourceIds')),d['id']
     assert d['say'] and d['draw'] and d['cost'] and d['remove'],d['id']
 for q in playbook['interruptions']:
     assert 0<=q['stage']<=9 and all(q[k] for k in ('question','answer','redraw','guardrail','principal')),q['id']
-assert len({m['id'] for m in playbook['materials']})==len(playbook['materials'])==46
-assert {kind:sum(m['type']==kind for m in playbook['materials']) for kind in ('PDF','Vídeo','Mapa draw.io')}=={'PDF':41,'Vídeo':4,'Mapa draw.io':1}
+assert len({m['id'] for m in playbook['materials']})==len(playbook['materials'])==77
+assert {kind:sum(m['type']==kind for m in playbook['materials']) for kind in ('PDF','Vídeo','Mapa draw.io','Google Doc')}=={'PDF':71,'Vídeo':4,'Mapa draw.io':1,'Google Doc':1}
 for m in playbook['materials']:
     assert m['reviewStatus'] and m['insights'] and m['application'] and m['limit'] and m['sourceIds'],m['id']
     assert 'andamento' not in m['reviewStatus'],m['id']

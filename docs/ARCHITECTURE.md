@@ -42,6 +42,7 @@ o carregamento dos players e das apresentações é uma ação explícita do usu
 | [`src/features/playbook/`](../src/features/playbook/)                                       | Roteiro adaptável, ensaio, consultas, notas e desenho progressivo                                  | Depende de callbacks para persistência e referências           |
 | [`src/features/playbook/diagram-routing.mjs`](../src/features/playbook/diagram-routing.mjs) | Geometria das conexões entre caixas do roteiro                                                     | Trabalha com posições e obstáculos, não com regras financeiras |
 | [`src/features/mindmap/mindmap.mjs`](../src/features/mindmap/mindmap.mjs)                   | Mapa, câmera, seleção, inspector, galeria e tela ampliada                                          | Recebe o catálogo e serviços de progresso por injeção          |
+| [`src/features/fieldnotes/fieldnotes.mjs`](../src/features/fieldnotes/fieldnotes.mjs)       | Busca e filtros de anotações, fichas, fotos ampliadas e vínculos ao roteiro                        | Recebe conteúdo e callbacks; não altera os originais do Drive  |
 | [`src/core/progress-store.mjs`](../src/core/progress-store.mjs)                             | Normalização, merge e fronteira de armazenamento do progresso                                      | Não depende de DOM; o adapter de storage é injetado            |
 | [`src/domain/simulation-models.mjs`](../src/domain/simulation-models.mjs)                   | Cálculos puros de quorum, fila, cache, pool e token bucket                                         | Modelos didáticos, não emulação de produtos                    |
 | [`src/ui/studio.mjs`](../src/ui/studio.mjs)                                                 | Movimento, player contextual, pausa e tratamento de preferência de movimento reduzido              | Não altera contratos de estudo ou dados editoriais             |
@@ -56,7 +57,7 @@ completa de arquitetura hexagonal: parte da composição, renderização e inter
 ## Carregamento e navegação
 
 1. O navegador carrega o shell e o módulo de entrada. O progresso é lido por um adapter de `localStorage`.
-2. O content loader usa a lista canônica `CONTENT_COLLECTIONS`. Na publicação HTTP, busca os onze conjuntos
+2. O content loader usa a lista canônica `CONTENT_COLLECTIONS`. Na publicação HTTP, busca os doze conjuntos
    JSON em paralelo; no HTML portátil, lê `window.__NUARCH_DATA__`. Uma falha impede a montagem do acervo e
    apresenta uma mensagem de recuperação; não há carga parcial independente por seção.
 3. A aplicação monta um registro de fontes por ID e uma lista de consulta deduplicada por URL. Logos são
@@ -73,9 +74,9 @@ para cada clique. Consequentemente, o botão Voltar não percorre cada etapa já
 
 ### Ciclo de vida das features
 
-Mapa e roteiro expõem `html`, `bind` e `destroy`. Antes de substituir a página, a composição chama `destroy`:
+Mapa, roteiro e Post-its Staff expõem `html`, `bind` e `destroy`. Antes de substituir a página, a composição chama `destroy`:
 o roteiro cancela listeners e seu intervalo; o mapa desconecta listeners e observadores, restaura o estado
-de tela ampliada e libera referências de interação. Os eventos do conteúdo dessas features são delegados
+de tela ampliada e libera referências de interação; Post-its Staff fecha o modal de foto e remove seus listeners. Os eventos do conteúdo dessas features são delegados
 ao elemento raiz, com `AbortController` para desmontagem.
 
 A camada visual é instalada uma vez para o documento. Ela observa conteúdo inserido, descarta SVGs removidos
@@ -104,6 +105,9 @@ Os contratos centrais são:
   `lastStep` permite retirar uma ligação substituída. Nenhuma aresta deve aparecer antes de seus extremos.
 - **Rastreabilidade do mapa:** `originCellIds`, metadados de materiais e vínculos com conceitos mantêm a relação
   entre curadoria, OCR e recortes. OCR auxilia a busca; não é tratado como prova de exatidão técnica.
+- **Rastreabilidade das anotações:** fichas e fotos mantêm vínculos recíprocos por `photoIds` e `conceptIds`.
+  As 30 imagens têm originais no Drive e derivados locais. Links por caso e etapa fazem as fichas aparecerem
+  no roteiro sem duplicar suas explicações. O catálogo registra a legibilidade e separa síntese de transcrição literal.
 
 A validação confere referências, contagens, cronogramas, cobertura de conceitos, assets e parte dos formatos.
 Ela não prova que um artigo está atualizado, que uma recomendação é correta ou que um link externo continuará

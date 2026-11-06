@@ -12382,6 +12382,694 @@
       ],
       "application": "Mostrar células e jornadas com disponibilidade, latência, atraso de eventos e cobertura de observação. Não confundir painel verde com saldo correto; usar texto e símbolos além de vermelho/verde.",
       "limit": "Um milhão de bits ocupa 125.000 bytes, mas faltam identificadores, timestamps, motivos, índices, retenção e protocolo. Binário saudável/falho perde estados como desconhecido e degradado."
+    },
+    {
+      "id": "17OVmq_-_gAX2EZPNSkDsftG5zndDHJ_P",
+      "title": "Cache, fonte autoritativa e tolerância à sobrecarga · IMG_9933.HEIC",
+      "sourceIds": [
+        "pb-drive-17OVmq_-_gAX2EZPNSkDsftG5zndDHJ_P"
+      ],
+      "photoIds": [
+        "IMG_9933"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Cache: TTL, cache-aside, read-through, write-through e políticas de eviction LRU/LFU; Bloom filter aparece como ferramenta auxiliar.",
+        "Replicação e sharding: líder para escrita, seguidores para leitura e escolha da shard key, com clientes como exemplo.",
+        "Fonte autoritativa: identificar onde o dado e o estado são confirmados.",
+        "Banco em memória: RAM reduz custo de busca, mas não resolve sozinha os requisitos de consistência.",
+        "Backpressure: conter crescimento de trabalho em memória e vazão de requisições.",
+        "2PC: coordenar commit ou rollback envolvendo mais de um participante.",
+        "Sazonalidade e picos futuros; há fragmento sobre HTTP stateless e erros de requisição."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "TTL não garante validade para invariantes financeiros; Bloom filter pode ter falso positivo. Não tratar cache ou réplica defasada como autoridade para autorizar um débito. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1riZi_1DjUA5rYdugtodxQExsgBn_oiez",
+      "title": "Quórum, capacidade e proteção contra sobrecarga · IMG_9934.HEIC",
+      "sourceIds": [
+        "pb-drive-1riZi_1DjUA5rYdugtodxQExsgBn_oiez"
+      ],
+      "photoIds": [
+        "IMG_9934"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "DynamoDB: a configuração ConsistentRead=True é anotada como opção de leitura consistente.",
+        "Post-it sobre grupo de replicação em três zonas e confirmação por maioria; o desenho não é fonte oficial da implementação interna.",
+        "Backoff espera antes de nova tentativa; jitter espalha tentativas no tempo.",
+        "Admission control e load shedding aparecem ao lado de rate limiter, resposta 429 e Retry-After.",
+        "Tabela de conversão KB, MB, GB, TB; contém linhas pequenas e parcialmente ilegíveis.",
+        "Cache, replicação, sharding, fonte autoritativa e backpressure repetem IMG_9933."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Verificar as garantias documentadas de cada operação do DynamoDB; não generalizar ConsistentRead para todos os índices. Evitar promover a anotação 2 de 3 como contrato universal de durabilidade do serviço. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1E-RuiKQsPA_NJBk_0uSCKDs5JthXDmqR",
+      "title": "Lei de Little, Datomic e o problema de dual write · IMG_9935.HEIC",
+      "sourceIds": [
+        "pb-drive-1E-RuiKQsPA_NJBk_0uSCKDs5JthXDmqR"
+      ],
+      "photoIds": [
+        "IMG_9935"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Lei de Little: L = λ × W, relacionando itens em processamento, taxa de chegada e tempo no sistema.",
+        "Datomic: append-only e chave de negócio aparecem associados à idempotência.",
+        "CDC/PostgreSQL: referência a captura de alterações a partir do log; trecho de implementação está pouco legível.",
+        "Dual write: risco de gravar no banco sem publicar no broker, ou publicar sem persistir.",
+        "Fragmentos de DAU/RPS e unidades de capacidade; repete retry, sobrecarga e replicação das fotos anteriores."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Append-only não torna automaticamente uma operação idempotente; impor identidade de negócio e decisão atômica. A Lei de Little exige médias de um sistema estável e fronteira de medição consistente. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1mhWmcIhB9Ij3SU1yCm2FL6UuXMVrXjbr",
+      "title": "Redis, UPSERT e garantias de idempotência · IMG_9936.HEIC",
+      "sourceIds": [
+        "pb-drive-1mhWmcIhB9Ij3SU1yCm2FL6UuXMVrXjbr"
+      ],
+      "photoIds": [
+        "IMG_9936"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Redis é descrito como in-memory e single-thread, útil para contador de rate limit.",
+        "Race condition, DECR e fila aparecem no mesmo grupo, sem explicação completa legível.",
+        "UPSERT: referência a ON CONFLICT e ON DUPLICATE KEY para tratar inserção repetida.",
+        "Datomic append-only, chave de negócio, Lei de Little e dual write repetem IMG_9935.",
+        "Nota sobre SQL/relacional para consultas e transações mais complexas."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Uma sequência GET/decisão/SET não fica atômica por Redis executar comandos serialmente. UPSERT precisa de restrição única correta; decidir se um retry deve repetir resposta, ignorar ou alterar. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1vNEIau8fSU9W1qm71tBI4gwg64QB7Do4",
+      "title": "Fencing tokens, observabilidade e capacidade · IMG_9937.HEIC",
+      "sourceIds": [
+        "pb-drive-1vNEIau8fSU9W1qm71tBI4gwg64QB7Do4"
+      ],
+      "photoIds": [
+        "IMG_9937"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Fencing token é mencionado para controle de concorrência e proteção contra atuação atrasada.",
+        "RED: Rate, Errors, Duration; USE: Utilization, Saturation, Errors.",
+        "Quatro sinais de ouro: latência, tráfego, erros e saturação.",
+        "WAL significa Write-Ahead Log.",
+        "DAU não é RPS; vazão de rede depende de requisições por segundo vezes tamanho de payload.",
+        "Lei de Little reaparece em termos de média de itens no sistema, taxa de chegada e tempo médio."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Fencing só protege se o recurso de destino verificar e rejeitar tokens antigos. Adicionar threads não cria CPU, IOPS nem capacidade do sistema dependente. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1l1c5zBkIP6CPNk9X3rWqm6OnHutkL5CB",
+      "title": "Concorrência otimista e regras de negócio · IMG_9938.HEIC",
+      "sourceIds": [
+        "pb-drive-1l1c5zBkIP6CPNk9X3rWqm6OnHutkL5CB"
+      ],
+      "photoIds": [
+        "IMG_9938"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Race condition: transação SQL e coluna de versão aparecem como mecanismos de proteção.",
+        "Cartão de aplicação/regra de negócio no banco parcialmente ilegível; não há detalhe suficiente para uma transcrição exata.",
+        "UPSERT, fencing token, WAL, RED/USE e Lei de Little reaparecem."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Versionamento otimista precisa de escrita condicional e verificação de linhas afetadas. Regra de domínio e mecanismo transacional devem ser descritos separadamente. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1_9frfqg-wBXHnuTAy6Vnsi6BhFdSRW6k",
+      "title": "Revisão de concorrência, logs e publicação · IMG_9939.HEIC",
+      "sourceIds": [
+        "pb-drive-1_9frfqg-wBXHnuTAy6Vnsi6BhFdSRW6k"
+      ],
+      "photoIds": [
+        "IMG_9939"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "WAL/Write-Ahead Log legível.",
+        "Dual write e diferença entre usuários ativos e requisições por segundo.",
+        "Concorrência SQL com versão, UPSERT, fencing token, observabilidade e Lei de Little sobrepõem IMG_9937–9938."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "A foto acrescenta legibilidade, não um novo conceito para cada cartão repetido. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1FULv_E-HNvkRSt2IexUo3lZAT1XeB7Ph",
+      "title": "Rate limiting, DAX e consenso · IMG_9940.HEIC",
+      "sourceIds": [
+        "pb-drive-1FULv_E-HNvkRSt2IexUo3lZAT1XeB7Ph"
+      ],
+      "photoIds": [
+        "IMG_9940"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Rate limiting: fixed window, sliding window, token bucket e leaky bucket.",
+        "DAX aparece como aceleração de carga de leitura; transações são associadas ao DynamoDB subjacente.",
+        "TransactWriteItems aparece junto de 2PC.",
+        "Paxos/Raft como algoritmos para concordância entre nós; Raft é apontado como mais fácil de compreender.",
+        "Reaparecem idempotência, versão SQL, fencing e observabilidade."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Escolher algoritmo de rate limit por tolerância a burst, precisão e custo de estado. DAX não substitui a autoridade transacional nem oferece todas as garantias de leitura forte via cache. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1BhRWXTrNcVJetQzdjQBDUYqZheP4ZzIT",
+      "title": "Como comunicar trade-offs e escolher capacidade DynamoDB · IMG_9941.HEIC",
+      "sourceIds": [
+        "pb-drive-1BhRWXTrNcVJetQzdjQBDUYqZheP4ZzIT"
+      ],
+      "photoIds": [
+        "IMG_9941"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Frase do post-it: “Escolho X, porque Y, ao custo de Z”.",
+        "Comparação DynamoDB on-demand versus provisioned parcialmente cortada.",
+        "DAX, TransactWriteItems, Paxos/Raft, rate limiting e RED/USE repetem fotos adjacentes."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "A frase é um formato de argumentação; precisa de requisito e métrica para sustentar cada decisão. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1BZznXEgfmBlpNEFrnF_lRH8hin8TjafR",
+      "title": "DynamoDB: capacidade, cache e transações · IMG_9942.HEIC",
+      "sourceIds": [
+        "pb-drive-1BZznXEgfmBlpNEFrnF_lRH8hin8TjafR"
+      ],
+      "photoIds": [
+        "IMG_9942"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "On-demand e provisioned contrastados em previsibilidade de tráfego e capacidade.",
+        "DAX para leitura intensiva; transações e consumo no serviço subjacente.",
+        "Há números manuscritos de latência pouco nítidos: não transcrever como SLA.",
+        "Paxos/Raft, janela fixa/móvel, token/leaky bucket e frase de trade-off visíveis."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Qualquer valor de latência deve ser hipótese ou medição, não promessa da tecnologia. Não deduzir detalhes internos de quorum de uma nota de estudo. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1gNj9l67ig95eerBREyYI8HqkAhMZ58lp",
+      "title": "Cálculos de tráfego e desenho Clojure/Datomic · IMG_9943.HEIC",
+      "sourceIds": [
+        "pb-drive-1gNj9l67ig95eerBREyYI8HqkAhMZ58lp"
+      ],
+      "photoIds": [
+        "IMG_9943"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "DAU = MAU × proporção DAU/MAU; exemplo de 10 milhões de MAU e 20% produz 2 milhões de DAU.",
+        "RPS médio = requisições por dia / 86.400; exemplo 100 milhões/dia ≈ 1.157 RPS e pico de 3× ≈ 3.472 RPS.",
+        "Rede: payload médio × RPS; exemplo de 100 KB e 3.500 RPS.",
+        "Desenho Kafka, shards de contas, ECS/container/Clojure/JVM e Datomic Transactor.",
+        "Faixas A–M/M–Z são exemplo esquemático de shard, sem evidência de arquitetura real Nubank."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Usando KB decimal: 100 KB × 3.500/s = 350 MB/s = 2,8 Gbit/s, antes de overhead. Não combinar unidades decimais e binárias no cálculo; a anotação mistura conversões. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1Jjm1l6liTkBwyqAROzRAKBCsbTJsdQUN",
+      "title": "Storage, idempotência Redis e CDC · IMG_9944.HEIC",
+      "sourceIds": [
+        "pb-drive-1Jjm1l6liTkBwyqAROzRAKBCsbTJsdQUN"
+      ],
+      "photoIds": [
+        "IMG_9944"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Storage = bytes por usuário × usuários × fator de replicação + overhead.",
+        "Exemplo: 5 MB × 100 milhões × 3 réplicas; 30% de margem adicional.",
+        "Redis: cliente gera chave; SET idem:<chave> processing NX EX 86400 reserva processamento.",
+        "CDC captura alterações do banco/log; nomes Debezium, Kafka e DynamoDB Streams aparecem.",
+        "Outbox está parcialmente cortado na borda e completo em IMG_9945."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Resultado decimal do exemplo: 1,5 PB, chegando a 1,95 PB com 30%; um rótulo intermediário manuscrito está incorreto. Reserva Redis exige conclusão, resultado persistido, hash da requisição e recuperação de processamento abandonado; não é garantia financeira única. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1jhbFkOdVruIV9m-qdhYLEyIz8dan8kIo",
+      "title": "Outbox transacional e publicação confiável · IMG_9945.HEIC",
+      "sourceIds": [
+        "pb-drive-1jhbFkOdVruIV9m-qdhYLEyIz8dan8kIo"
+      ],
+      "photoIds": [
+        "IMG_9945"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Passo 1: em uma mesma transação, inserir a alteração de negócio e uma linha da tabela Outbox.",
+        "Passo 2: um processo lê a Outbox e publica no Kafka.",
+        "Redis/idempotência, CDC e estimativa de RPS reaparecem nas bordas."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "O relay pode publicar e morrer antes de marcar envio; consumidores precisam ser idempotentes. A atomicidade é do banco local; a publicação externa continua sujeita a repetição. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1zFYDRQpHTHeAqJ7eKAghcP3kd95oQN_r",
+      "title": "Mindset: projetar para a falha · IMG_9946.HEIC",
+      "sourceIds": [
+        "pb-drive-1zFYDRQpHTHeAqJ7eKAghcP3kd95oQN_r"
+      ],
+      "photoIds": [
+        "IMG_9946"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Frases em destaque: “A rede vai falhar”, “o BD vai cair”.",
+        "“Graceful degradation” e “fallback” anotados na lateral.",
+        "A parte inferior contrasta caminho feliz com sobrevivência do negócio ao caos; partes estão cortadas."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Degradação deve preservar os invariantes: não confirmar um efeito financeiro não conhecido. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1zT2Pre4hqpI7nPDR-BtNV_qBgnFKiUX2",
+      "title": "Máquina de estados: eventos, guardas e efeitos · IMG_9947.HEIC",
+      "sourceIds": [
+        "pb-drive-1zT2Pre4hqpI7nPDR-BtNV_qBgnFKiUX2"
+      ],
+      "photoIds": [
+        "IMG_9947"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Modela o ciclo de vida de uma entidade (pedido, chargeback ou atendimento) como estado único válido e transições explícitas.",
+        "A folha cita explosão de combinações de flags booleanas; cinco flags permitem 2^5 = 32 combinações, várias sem sentido de negócio.",
+        "Conceitos: estado, evento, transição, guarda e efeito colateral.",
+        "Exemplo de atendimento: OPEN-BOT → QUEUED → OFFERED → ASSIGNED → RESOLVED → CLOSED, com caminhos de timeout e resposta do cliente.",
+        "Guarda envolve disponibilidade/capacidade do agente; eventos incluem agent-accepted, customer-replied e SLA-expired.",
+        "Efeitos publicados em tópico e mecanismo para encontrar operações presas/self-healing.",
+        "Escrita condicional/WHERE aparece para impedir duas transições concorrentes incompatíveis."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "FSM organiza estados, mas a concorrência só é protegida com atualização atômica e verificação da versão/estado esperado. Publicar efeitos após commit deve usar outbox ou mecanismo equivalente. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1lTN85AUy1sNRRit0NJ23PAg9Jnu15nyC",
+      "title": "Mapa de fundamentos: DDD, rede, cache e dados · IMG_9948.HEIC",
+      "sourceIds": [
+        "pb-drive-1lTN85AUy1sNRRit0NJ23PAg9Jnu15nyC"
+      ],
+      "photoIds": [
+        "IMG_9948"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "DDD: domínio/core, ubiquitous language, bounded context, entidades, value objects, aggregates, domain services e repositories.",
+        "Balanceamento: proxy reverso, L4/L7, round robin, least connections, hash e slow start; health checks e controles de tráfego.",
+        "API Gateway: contratos, roteamento, limites e integração com load balancer.",
+        "Cache local versus distribuído; cache-aside, write-through/write-behind, Redis/Memcached, LRU/LFU/FIFO e TTL.",
+        "Armazenamento: IOPS, throughput e latência, com espera e dependências; mais paralelismo pode aumentar contenção.",
+        "CAP/PACELC, consistência, replicação versus sharding, ACID/BASE, SQL/NoSQL/NewSQL.",
+        "Bancos em memória, armazenamento colunar para consultas analíticas e índices para reduzir trabalho de busca; Elasticsearch aparece como busca."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "CAP não é uma escolha livre de dois entre três a qualquer momento; o dilema C/A é sob partição. “Consistência” de ACID, CAP e domínio precisa ser distinguida. Sem fonte visível para atribuir qualquer combinação ao Nubank. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1AARGnpGv_wiYe7Je134G6NirmNs6xSTk",
+      "title": "Concorrência, partições, CQRS, Sagas e deploy · IMG_9949.HEIC",
+      "sourceIds": [
+        "pb-drive-1AARGnpGv_wiYe7Je134G6NirmNs6xSTk"
+      ],
+      "photoIds": [
+        "IMG_9949"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Processos possuem isolamento de memória; threads compartilham estado do processo. Concorrência e paralelismo são distinguidos.",
+        "Starvation e deadlock; trava pessimista com SELECT FOR UPDATE versus versionamento otimista.",
+        "Failover de replicação: promover novo líder; consenso e conflitos são mencionados.",
+        "Particionamento por cliente/domínio/cidade e distribuição computacional; hot partition e escolha de shard key.",
+        "CQRS separa caminho de comandos do de consultas; leituras materializadas podem escalar de modo assimétrico.",
+        "Idempotência, compensação diferente de rollback, Saga coreografada e orquestrada.",
+        "Deploy: canary, blue-green, big bang, rollback, warm-up e smoke tests.",
+        "Datomic: desenho de transactor/shards e armazenamento, parcialmente legível."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Mais threads não criam capacidade de CPU nem removem um recurso compartilhado saturado. Compensação é ação de domínio posterior e pode falhar; não desfaz efeitos externos como uma transação local. Promoção de líder precisa evitar split-brain e respeitar durabilidade/lag. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1rWVNQXrscCNT1fI0YM6h2n0EZUnm8RBe",
+      "title": "Omnichannel: ingestão e normalização de mensagens · IMG_9950.HEIC",
+      "sourceIds": [
+        "pb-drive-1rWVNQXrscCNT1fI0YM6h2n0EZUnm8RBe"
+      ],
+      "photoIds": [
+        "IMG_9950"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Canais externos (WhatsApp/Facebook/Instagram/SMS) entram por webhook HTTP validado com HMAC/TLS; app/webchat entram por WebSocket/gRPC e gateway de tempo real.",
+        "Payload bruto vai para tópico Kafka de inbound, com partição relacionada à identidade externa.",
+        "Adapter mapeia identidades, normaliza mensagens, valida e deduplica antes de gerar mensagem canônica.",
+        "Conversation engine usa máquina de estados; routing/assignment controla atribuição ao atendente.",
+        "Mensagens/timeline em ScyllaDB/Cassandra; presença e filas em Redis; fan-out por pub/sub ao gateway do agente.",
+        "Contrato de mensagem: message_id, tenant_id, conversation_id, channel, direction, sender_id, content/body e timestamps do provedor/ingestão.",
+        "Single-agent lease: impedir dois atendentes de assumir ao mesmo tempo.",
+        "UUIDv7 é lembrado por carregar timestamp e favorecer ordenação."
+      ],
+      "application": "Aplicar ao roteiro de atendimento: definir a autoridade de mensagens e atribuições, proteger capacidade dos agentes e manter histórico e continuidade entre canais.",
+      "limit": "UUIDv7 não garante ordem causal global, relógios sincronizados nem unicidade absoluta; usar sequência de conversa e restrição única. Kafka preserva ordem na partição, mas ingestão fora de ordem do provedor exige contrato e reconciliação. Lease deve ter recuperação e proteção contra antigo dono continuar escrevendo. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1VR8Vxp5B7CDAZGq9JLPa0vdd81egFyb8",
+      "title": "Roteiro escrito de entrevista de System Design · IMG_9951.HEIC",
+      "sourceIds": [
+        "pb-drive-1VR8Vxp5B7CDAZGq9JLPa0vdd81egFyb8"
+      ],
+      "photoIds": [
+        "IMG_9951"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "1. Alinhar problema: resultados, impacto, limites, atores, domínio, sync/async, requisitos funcionais e não funcionais.",
+        "2. Definir invariantes, estados, contratos, dados e o que é imutável.",
+        "3. Segurança e resiliência: rate limit, políticas de repetição, idempotência, disponibilidade e escolhas de armazenamento.",
+        "4. Percorrer o menor caminho cliente → servidor → banco, com componentes necessários.",
+        "5. Retirar gargalos: particionamento, índices, cache, observabilidade RED/USE, filas e estratégias de replicação.",
+        "6. Escala: discutir aumento de volume, dinâmica da carga e limites da proposta.",
+        "7. Revisar solução contra requisitos e explicar limitações em voz alta.",
+        "8. Pensar e questionar trade-offs.",
+        "9. Entender os porquês das soluções e relacioná-las com contexto Nubank sem assumir detalhes internos."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Os tempos manuscritos não são um contrato da etapa; adaptar ao tempo e às perguntas da entrevista. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "17Uw2zrGs-6at9to0t2F-jbrgH2Qio8sO",
+      "title": "Chargeback AWS: envio e retorno com filas · IMG_9952.HEIC",
+      "sourceIds": [
+        "pb-drive-17Uw2zrGs-6at9to0t2F-jbrgH2Qio8sO"
+      ],
+      "photoIds": [
+        "IMG_9952"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "App faz POST/GET chargebacks via ALB para API ECS; persistência em PostgreSQL/RDS sob transação ACID.",
+        "Idempotency key gerada pelo cliente; mesma chave e mesmo pedido repetem status, mesma chave com conteúdo diferente deve conflitar.",
+        "EventBridge a cada quatro horas aciona ECS outbound para criar/recuperar lote e gerar arquivo S3.",
+        "Evento de objeto S3 → SQS com DLQ → Lambda outbound/polling → bandeira; retry/backoff e quotas.",
+        "Lambda inbound registra retorno, atualiza status e mantém tabela de eventos/arquivos de transferência.",
+        "Tabelas nomeadas: chargebacks, batches, transfer_files e eventos; partes da nomenclatura são pouco legíveis.",
+        "Notas de escala: read replica para GET, Redis para cache, sharding por contexto.",
+        "Há anotação “ETag gerado pelo S3 / MD5 do conteúdo”."
+      ],
+      "application": "Aplicar ao roteiro de chargeback: separar solicitação, lote, arquivo e tentativa; persistir o resultado conhecido, reconciliar UNKNOWN e proteger cada efeito contra repetição.",
+      "limit": "ETag S3 não é sempre MD5 do conteúdo, especialmente multipart e certas formas de criptografia; usar checksum explícito. Timeout após envio não prova que a bandeira não recebeu: estado UNKNOWN e reconciliação antes de novo efeito. Evento S3 e fila podem duplicar; deduplicar por identidade de arquivo/lote/evento e transições atômicas. A foto descreve uma proposta do usuário, não a arquitetura oficial da empresa. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1pV0F_Np4HpFi8cPafjLCDENxH7xRhdC1",
+      "title": "Omnichannel: capacidade, experiência e contratos · IMG_9953.HEIC",
+      "sourceIds": [
+        "pb-drive-1pV0F_Np4HpFi8cPafjLCDENxH7xRhdC1"
+      ],
+      "photoIds": [
+        "IMG_9953"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Problema: atendimento bancário por app, e-mail e WhatsApp, distribuição de conversas e preservação de histórico.",
+        "Estimativas de conversas, mensagens, pico, atendimento humano e capacidade por agente; alguns números estão inclinados/ilegíveis e precisam ser refeitos.",
+        "Duas capacidades distintas: recursos de infraestrutura e pessoas disponíveis; se faltam agentes, posicionar o cliente na fila correta e comunicar espera.",
+        "Trade-offs entre WebSocket, SSE + POST, long polling e polling.",
+        "Contrato cliente: client_message_id, persistência da mensagem com sequência e outbox numa transação.",
+        "Lembrete explícito: WebSocket transporta; banco confirma durabilidade e persistência.",
+        "Esboços de tabelas de conversa, mensagem e identidade de canal com hashes, versões e estados."
+      ],
+      "application": "Aplicar ao roteiro de atendimento: definir a autoridade de mensagens e atribuições, proteger capacidade dos agentes e manter histórico e continuidade entre canais.",
+      "limit": "Dimensionar pessoas com duração média, concorrência de chats, ocupação e margem, não só RPS. ACK de transporte não equivale a mensagem durável; responder confirmação de negócio após commit. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1l_ayJ_eaQgDmTgvbiqoRCpxkoQlgZoUI",
+      "title": "Kafka: partições, offsets e consumer groups · IMG_9954.HEIC",
+      "sourceIds": [
+        "pb-drive-1l_ayJ_eaQgDmTgvbiqoRCpxkoQlgZoUI"
+      ],
+      "photoIds": [
+        "IMG_9954"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Kafka descrito como commit log distribuído append-only.",
+        "Tópico é abstração lógica, dividido fisicamente em uma ou mais partições.",
+        "Cada partição registra mensagens em offsets sequenciais.",
+        "Um consumer group compartilha group.id e acompanha offsets de progresso.",
+        "Exemplo: dez partições limitam a dez consumidores ativos naquele grupo para esse tópico no modelo usual.",
+        "Chave de mensagem determina distribuição consistente à partição; exemplo cliente_id.",
+        "Ordem estrita é por partição, não entre todas as mensagens do tópico."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Hash/modulo é uma simplificação; chave, particionador e número de partições influenciam o mapeamento. Aumentar partições pode remapear chaves; reavaliar a estratégia quando ordem por entidade é requisito. Commit de offset não torna efeitos externos exatamente uma vez. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1HDQ_Aaevdr7Wzy-6bvdb2cuiI7yIdqeW",
+      "title": "Shuffle: console de atendimento, BFF e operações · IMG_9955.HEIC",
+      "sourceIds": [
+        "pb-drive-1HDQ_Aaevdr7Wzy-6bvdb2cuiI7yIdqeW"
+      ],
+      "photoIds": [
+        "IMG_9955"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Atores: atendentes consultam informações, contatos anteriores e executam ações sobre produtos.",
+        "SSO/OIDC/MFA, gateway/ALB/CDN e BFF agregando informações sem expor todos os serviços internos ao navegador.",
+        "Contextos separados: clientes, cartões e contas; operações pertencem ao domínio responsável.",
+        "Exemplo de comando: bloquear cartão, com customer_id, operação, idempotency_key e payload.",
+        "Operações assíncronas: requested, in-progress, succeeded, rejected e unknown; conciliação aparece no fluxo.",
+        "Operation service persiste operação, auditoria e outbox; relay/fila chega ao serviço de domínio; resultado consultado/atualizado via SSE.",
+        "Tabelas esboçadas: customer-session, operation, audit-event e outbox; identificadores, ator, recurso, motivo, resultado e timestamps.",
+        "Cálculos de aberturas, widgets e comandos são hipóteses de dimensionamento, não métricas reais do produto."
+      ],
+      "application": "Aplicar ao console de atendimento: separar leitura agregada no BFF de comandos autorizados no domínio; acompanhar operações, falhas e auditoria sem presumir sucesso após timeout.",
+      "limit": "BFF não deve passar a ser a autoridade de todos os domínios. Autorização precisa ser validada no servidor por ação/recurso, além de autenticação e UI. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1jJJnC-FZdsnHRSWPeSiKL588JQEjyo_z",
+      "title": "Hexagonal, contratos e comunicação confiável · IMG_9956.HEIC",
+      "sourceIds": [
+        "pb-drive-1jJJnC-FZdsnHRSWPeSiKL588JQEjyo_z"
+      ],
+      "photoIds": [
+        "IMG_9956"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Ports/adapters mantêm regras do domínio independentes de HTTP, banco e broker.",
+        "Quando usar: regras importantes sobrevivem a troca de fornecedores e testes isolados ajudam; evitar interfaces artificiais e redundantes.",
+        "Migração de legado: encontrar caso de uso, introduzir fronteira e mover regras gradualmente.",
+        "Contratos REST, gRPC e GraphQL; REST usa semântica HTTP, gRPC define RPCs tipadas.",
+        "Comunicação síncrona/assíncrona e fan-out como uma solicitação disparando chamadas/tarefas para vários destinos.",
+        "Comando solicita responsabilidade específica; evento divulga fato confirmado, podendo usar outbox.",
+        "Progresso consultável: persistir status e referência da operação; SSE melhora experiência, mas o recurso consultável continua necessário.",
+        "Evitar retry storm com uma camada responsável, backoff+jitter e orçamento de tentativas."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Arquitetura hexagonal não exige criar microserviços. Limites de retry devem considerar deadline, idempotência e se a falha é transitória. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1jCbQ7Jdh4W-PdBD6tkwVmfWcm4lcyNNm",
+      "title": "CAP/PACELC e service mesh Istio · IMG_9957.HEIC",
+      "sourceIds": [
+        "pb-drive-1jCbQ7Jdh4W-PdBD6tkwVmfWcm4lcyNNm"
+      ],
+      "photoIds": [
+        "IMG_9957"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "CAP/PACELC: partições interrompem comunicação entre nós/réplicas; sem partição também há tensão entre latência e consistência.",
+        "Líder único simplifica ordenação com risco de gargalo; mais réplicas custam coordenação; active-active traz conflitos.",
+        "Control plane gerencia políticas, configurações e regras; data plane executa tráfego.",
+        "Istio em modo sidecar: Envoy junto dos serviços, distribuindo roteamento, segurança e telemetria.",
+        "istiod aparece distribuindo configuração aos proxies dos pods.",
+        "mTLS, certificados/renovação, métricas e regras de acesso; VirtualService e DestinationRule são nomeados."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Sidecar é uma opção de implantação do Istio, não sua única arquitetura atual. Service mesh não substitui idempotência nem semântica de negócio. No CAP, disponibilidade é uma propriedade formal, diferente de SLO comercial em porcentagem. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1taySifJxpBbIGaVXw9Rt8Y2NOsjSRb3R",
+      "title": "DDD: proteger invariantes e separar projeções · IMG_9958.HEIC",
+      "sourceIds": [
+        "pb-drive-1taySifJxpBbIGaVXw9Rt8Y2NOsjSRb3R"
+      ],
+      "photoIds": [
+        "IMG_9958"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Proteger invariantes sob duas requisições combinando regra com mecanismo do armazenamento: versão, FOR UPDATE ou caminho atômico.",
+        "Cancelamento depende da fase da operação: impedir trabalho ainda não iniciado difere de compensar efeito concluído.",
+        "Modelo de leitura preparado para a tarefa do usuário pode agregar contextos, mas não se torna autoridade financeira.",
+        "Concorrência otimista evita bloqueio prolongado ao custo de detectar conflitos e resolver/repetir.",
+        "Alternativa de modelagem funcional: estado/comandos como funções puras, efeitos externos separados; ainda precisa proteger concorrência na fronteira."
+      ],
+      "application": "Consultar as fichas de Post-its Staff para ligar estes conceitos aos requisitos, invariantes, mecanismos, custos e falhas do cenário. Usar a foto como lembrete e a documentação primária para conferir as garantias.",
+      "limit": "Modelagem funcional e DDD podem coexistir; não são mutuamente exclusivos. Idempotência e controle de versão resolvem problemas relacionados, porém distintos. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1e31eFE4Nol1H1keapjsj37esg5GV9iAK",
+      "title": "Chargeback simplificado: banco como fila de retry · IMG_9959.HEIC",
+      "sourceIds": [
+        "pb-drive-1e31eFE4Nol1H1keapjsj37esg5GV9iAK"
+      ],
+      "photoIds": [
+        "IMG_9959"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Ingestão: POST chargebacks → API ECS/Clojure → RDS/PostgreSQL; replica de failover e leitura aparecem como notas.",
+        "API valida a compra e sua liquidação, insere registro sob restrição de unicidade e responde 202 Accepted.",
+        "Batch builder agendado por EventBridge agrupa pedidos pendentes, grava lote e relaciona chargebacks.",
+        "Arquivo CSV imutável em S3; envio por transferência/SFTP à bandeira.",
+        "Worker periódico, anotado como 10 minutos, consulta lotes FILE_READY não enviados e retenta; PostgreSQL guarda o trabalho pendente.",
+        "Schemas: chargebacks com id, transaction_id, amount, reason, status e batch_id; batches com id, bandeira, file_name, status, S3_key, checksum e timestamps; inbound_events com event_id e referência ao chargeback.",
+        "Dedup de retorno pelo event_id; ON CONFLICT para pedidos repetidos; uma associação de lote por solicitação é desenhada.",
+        "SSE-KMS e PCI são lembrados na margem como requisitos a considerar."
+      ],
+      "application": "Aplicar ao roteiro de chargeback: separar solicitação, lote, arquivo e tentativa; persistir o resultado conhecido, reconciliar UNKNOWN e proteger cada efeito contra repetição.",
+      "limit": "Não reenviar automaticamente quando houve timeout após possível aceitação; persistir UNKNOWN e reconciliar com a bandeira. transaction_id único só é correto se o domínio proibir múltiplas disputas/parcelas/razões; definir a chave de negócio real. “O banco é a fila” exige claim concorrente, lease/timeout, limite de tentativas, next_attempt_at e métricas. ACK de transferência não é aprovação final da disputa. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1WcA5KiE_XwLW9EUCKFJmJ6PcO--yRZ9S",
+      "title": "Fila de atendimento: um ticket, um agente e vários canais · IMG_9960.HEIC",
+      "sourceIds": [
+        "pb-drive-1WcA5KiE_XwLW9EUCKFJmJ6PcO--yRZ9S"
+      ],
+      "photoIds": [
+        "IMG_9960"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Consolidar canais no mesmo ticket e rotear para especialidade/prioridade, como fraude.",
+        "Requisito: dois atendentes não pegam o mesmo cliente, e histórico sobrevive a aba do navegador fechar.",
+        "Adapters de WebSocket/webhook normalizam evento inbound em Kafka.",
+        "Conversation service persiste ticket e mensagem no PostgreSQL; Redis mantém sorted sets/prioridades e presença.",
+        "Routing engine obtém topo de fila e registra atribuição no banco.",
+        "Tickets: id, customer_id, skill_queue, status, priority_score, assigned_agent_id, version, created_at e updated_at.",
+        "Messages: id, ticket_id, sender_type, channel, idempotency_key unique, content e created_at.",
+        "Índice único parcial por customer_id para impedir mais de um ticket aberto aparece como exemplo."
+      ],
+      "application": "Aplicar ao roteiro de atendimento: definir a autoridade de mensagens e atribuições, proteger capacidade dos agentes e manter histórico e continuidade entre canais.",
+      "limit": "Unicidade por cliente é decisão de produto; pode exigir tenant, tipo ou contexto para permitir casos simultâneos legítimos. Redis indica candidato; transação do banco deve confirmar atribuição e capacidade de agente. Índice parcial deve listar corretamente todos os estados terminais e tratar NULL conforme o modelo. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "1BQrReE46nIYpSKsCxoFubXHlpFER2kZx",
+      "title": "Chargeback com Kafka, KEDA e egress controlado · IMG_9961.HEIC",
+      "sourceIds": [
+        "pb-drive-1BQrReE46nIYpSKsCxoFubXHlpFER2kZx"
+      ],
+      "photoIds": [
+        "IMG_9961"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "App → BFF/gateway → dispute service → evento Kafka de chargeback submission.",
+        "Master/integration worker em pods com autoscaling; KEDA escala por atraso de consumo, além de observar CPU/RAM.",
+        "Envoy sidecar → Istio egress gateway → TLS origination → API externa; notas de IP estático/firewall.",
+        "DestinationRule, VirtualService, certificados, mTLS e roteamento são citados.",
+        "Exemplo de lote com 10 mil registros que falha após 4.500: checkpoint/processed_offset e status parcial para retomar.",
+        "Alguns nomes de tópico/fornecedor estão abreviados; tratam-se de desenho de estudo."
+      ],
+      "application": "Aplicar ao roteiro de chargeback: separar solicitação, lote, arquivo e tentativa; persistir o resultado conhecido, reconciliar UNKNOWN e proteger cada efeito contra repetição.",
+      "limit": "Checkpoint 4.500 só é seguro se o significado do ACK externo estiver definido; registros aceitos com resposta perdida exigem dedup/reconciliação. Lag não deve disparar consumidores ilimitados: partições e quotas externas limitam paralelismo. Egress gateway controla rede, não garante aplicação correta do comando na bandeira. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
+    },
+    {
+      "id": "14Tk-qgOrE0Pw_ZUUtUbAEKBrY7tR2Fy6",
+      "title": "Modelo de lote e resultado parcial · IMG_9962.HEIC",
+      "sourceIds": [
+        "pb-drive-14Tk-qgOrE0Pw_ZUUtUbAEKBrY7tR2Fy6"
+      ],
+      "photoIds": [
+        "IMG_9962"
+      ],
+      "type": "Imagem",
+      "collection": "fieldnotes-2026-11-05",
+      "reviewStatus": "Foto inspecionada individualmente. Leitura editorial dos trechos legíveis; OCR auxiliar não tratado como transcrição fiel.",
+      "insights": [
+        "Um lote contém várias transações/contestações; preservar estado do batch e de cada solicitação.",
+        "chargeback_batches: UUID/PK, janela temporal, status/enum, file_name, total_records, processed_offset, created_at e updated_at.",
+        "chargeback_disputes: UUID/PK, transaction_id, amount, reason, batch_id/FK, sequence_in_batch e updated_at.",
+        "Unicidade e chave de idempotência são anotadas junto dos campos.",
+        "Observação sobre saber quais linhas foram processadas antes da falha."
+      ],
+      "application": "Aplicar ao roteiro de chargeback: separar solicitação, lote, arquivo e tentativa; persistir o resultado conhecido, reconciliar UNKNOWN e proteger cada efeito contra repetição.",
+      "limit": "Um offset único presume prefixo contíguo confirmado; resultados fora de ordem exigem estado por item ou intervalos. Separar tentativa de transporte, aceite do arquivo, resultado da linha e resultado de negócio. Conteúdo principal reconhecível; caligrafia, reflexos de fita/plástico, perspectiva e cortes impedem transcrição literal integral. Detalhes abaixo não completam palavras ilegíveis por suposição."
     }
   ],
   "people": [
@@ -12967,10 +13655,10 @@
   ],
   "meta": {
     "title": "Roteiro do dia",
-    "date": "2026-11-01",
+    "date": "2026-11-05",
     "folderUrl": "https://drive.google.com/drive/u/1/folders/1sq6CYjWTOO1NckPcV9Pajce0ob3SiqTW",
     "draft": false,
-    "reviewSummary": "Inventário da pasta: 77 itens — 71 PDFs, quatro vídeos, um draw.io e um Google Doc. Os textos extraídos dos 71 PDFs foram lidos integralmente; o documento de AI Coding foi revisado como síntese não confirmada. Os quatro vídeos mantêm a revisão anterior por transcrição completa e amostragem visual. Nesta atualização, as duas transcrições sobre o Nubank foram relidas e conectadas a publicações primárias datadas, incluindo 2026. O roteiro mantém seus 13 cenários e dez etapas.",
+    "reviewSummary": "Acervo histórico: 77 materiais — 71 PDFs, quatro vídeos, um draw.io e um Google Doc — acrescido de 30 fotografias de anotações pessoais em 05/11/2026, totalizando 107 itens catalogados. As 30 fotos foram inspecionadas individualmente; caligrafia, reflexos e cortes limitam a transcrição. As fichas desenvolvem os trechos legíveis, preservam a origem e explicitam ressalvas técnicas. Mantêm-se a leitura integral dos textos extraídos dos 71 PDFs e a revisão dos quatro vídeos por transcrição completa e amostragem visual. O roteiro mantém 13 cenários e dez etapas. A contagem descreve o catálogo do portal, não todos os arquivos atualmente existentes no Drive.",
     "methodology": [
       "Material fornecido: leitura integral do texto extraído dos 71 PDFs, com revisão crítica de garantias. Na atualização de 01/11, os 30 PDFs novos totalizam 401 páginas; houve renderização de uma amostra por PDF e inspeção visual de páginas selecionadas. Algumas tabelas e figuras já estão cortadas na impressão. O Google Doc foi lido integralmente; não há bibliografia rastreável para confirmar suas afirmações sobre o processo seletivo.",
       "Vídeos: áudio completo processado localmente por ASR, leitura editorial das transcrições e amostras visuais periódicas + pontos específicos. Termos, unidades e negações podem ter erros; afirmações críticas foram confrontadas com fontes primárias. Não houve inspeção de cada frame.",
@@ -12980,7 +13668,8 @@
       "Contexto dos entrevistadores: fontes profissionais públicas parciais. O acesso direto ao LinkedIn falhou; não há alegação de revisão integral da carreira ou de previsão das perguntas.",
       "Os 13 cenários cobrem famílias de problema; decisões e consultas ajudam a adaptar outros enunciados. Não constituem todas as possibilidades nem garantia de aprovação.",
       "Atualização de cache distribuído: seis PDFs, 85 páginas. Textos extraídos integralmente revisados, páginas renderizadas e inspecionadas em folhas de contato, com ampliação do diagrama detalhado. Algumas tabelas já têm colunas cortadas na impressão original; não foram reconstruídas. Garantias, comparações de produtos e fórmulas foram confrontadas com documentação primária.",
-      "Atualização de 01/11/2026: 31 itens novos. Os seis PDFs de cache com metadados alterados foram novamente extraídos e comparados: textos idênticos à revisão anterior. As duas transcrições sobre arquitetura do Nubank foram relidas integralmente. Vídeo, fato público datado, mecanismo técnico e proposta do exercício têm rótulos distintos. Não há afirmação de acesso ao desenho interno completo atual."
+      "Atualização de 01/11/2026: 31 itens novos. Os seis PDFs de cache com metadados alterados foram novamente extraídos e comparados: textos idênticos à revisão anterior. As duas transcrições sobre arquitetura do Nubank foram relidas integralmente. Vídeo, fato público datado, mecanismo técnico e proposta do exercício têm rótulos distintos. Não há afirmação de acesso ao desenho interno completo atual.",
+      "Atualização de 05/11/2026: 30 fotos de post-its e folhas de estudo, inspecionadas visualmente. Os originais HEIC foram enviados e conferidos no Drive. As versões WebP e miniaturas do portal removem EXIF. O OCR auxilia localização e não constitui transcrição literal. As fotos incluem fundamentos, roteiro de entrevista e propostas de chargeback, atendimento e console/BFF; desenhos são exercícios, não arquitetura interna confirmada do Nubank."
     ],
     "cacheUpdate": {
       "date": "2026-10-31",
@@ -13095,6 +13784,10 @@
     },
     "materialCollections": [
       {
+        "id": "fieldnotes-2026-11-05",
+        "label": "Post-its · 05 nov"
+      },
+      {
         "id": "nov-2026",
         "label": "Novos · 01 nov"
       },
@@ -13102,7 +13795,45 @@
         "id": "distributed-cache",
         "label": "Cache · 31 out"
       }
-    ]
+    ],
+    "fieldnotesUpdate": {
+      "date": "2026-11-05",
+      "collection": "fieldnotes-2026-11-05",
+      "materialIds": [
+        "17OVmq_-_gAX2EZPNSkDsftG5zndDHJ_P",
+        "1riZi_1DjUA5rYdugtodxQExsgBn_oiez",
+        "1E-RuiKQsPA_NJBk_0uSCKDs5JthXDmqR",
+        "1mhWmcIhB9Ij3SU1yCm2FL6UuXMVrXjbr",
+        "1vNEIau8fSU9W1qm71tBI4gwg64QB7Do4",
+        "1l1c5zBkIP6CPNk9X3rWqm6OnHutkL5CB",
+        "1_9frfqg-wBXHnuTAy6Vnsi6BhFdSRW6k",
+        "1FULv_E-HNvkRSt2IexUo3lZAT1XeB7Ph",
+        "1BhRWXTrNcVJetQzdjQBDUYqZheP4ZzIT",
+        "1BZznXEgfmBlpNEFrnF_lRH8hin8TjafR",
+        "1gNj9l67ig95eerBREyYI8HqkAhMZ58lp",
+        "1Jjm1l6liTkBwyqAROzRAKBCsbTJsdQUN",
+        "1jhbFkOdVruIV9m-qdhYLEyIz8dan8kIo",
+        "1zFYDRQpHTHeAqJ7eKAghcP3kd95oQN_r",
+        "1zT2Pre4hqpI7nPDR-BtNV_qBgnFKiUX2",
+        "1lTN85AUy1sNRRit0NJ23PAg9Jnu15nyC",
+        "1AARGnpGv_wiYe7Je134G6NirmNs6xSTk",
+        "1rWVNQXrscCNT1fI0YM6h2n0EZUnm8RBe",
+        "1VR8Vxp5B7CDAZGq9JLPa0vdd81egFyb8",
+        "17Uw2zrGs-6at9to0t2F-jbrgH2Qio8sO",
+        "1pV0F_Np4HpFi8cPafjLCDENxH7xRhdC1",
+        "1l_ayJ_eaQgDmTgvbiqoRCpxkoQlgZoUI",
+        "1HDQ_Aaevdr7Wzy-6bvdb2cuiI7yIdqeW",
+        "1jJJnC-FZdsnHRSWPeSiKL588JQEjyo_z",
+        "1jCbQ7Jdh4W-PdBD6tkwVmfWcm4lcyNNm",
+        "1taySifJxpBbIGaVXw9Rt8Y2NOsjSRb3R",
+        "1e31eFE4Nol1H1keapjsj37esg5GV9iAK",
+        "1WcA5KiE_XwLW9EUCKFJmJ6PcO--yRZ9S",
+        "1BQrReE46nIYpSKsCxoFubXHlpFER2kZx",
+        "14Tk-qgOrE0Pw_ZUUtUbAEKBrY7tR2Fy6"
+      ],
+      "folderUrl": "https://drive.google.com/drive/folders/10ELnvkXOBT67LA9H3i6HzOAo9RO6fxf4",
+      "route": "#fieldnotes"
+    }
   },
   "sources": [
     {
@@ -15453,6 +16184,216 @@
       "type": "research-paper",
       "date": "2013",
       "summary": "Discute como episódios raros de latência passam a dominar serviços de grande escala e técnicas para limitar seu impacto. Ajuda a distinguir tempo médio de experiência nas caudas."
+    },
+    {
+      "id": "pb-drive-17OVmq_-_gAX2EZPNSkDsftG5zndDHJ_P",
+      "title": "IMG_9933.HEIC — Cache, fonte autoritativa e tolerância à sobrecarga",
+      "url": "https://drive.google.com/file/d/17OVmq_-_gAX2EZPNSkDsftG5zndDHJ_P/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Panorama dos post-its de cache, armazenamento, autoridade dos dados e controle de carga. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1riZi_1DjUA5rYdugtodxQExsgBn_oiez",
+      "title": "IMG_9934.HEIC — Quórum, capacidade e proteção contra sobrecarga",
+      "url": "https://drive.google.com/file/d/1riZi_1DjUA5rYdugtodxQExsgBn_oiez/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Amplia o panorama com consistência de leitura e estratégias para aliviar um sistema saturado. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1E-RuiKQsPA_NJBk_0uSCKDs5JthXDmqR",
+      "title": "IMG_9935.HEIC — Lei de Little, Datomic e o problema de dual write",
+      "url": "https://drive.google.com/file/d/1E-RuiKQsPA_NJBk_0uSCKDs5JthXDmqR/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Acrescenta relações entre volume, latência, concorrência e publicação de eventos. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1mhWmcIhB9Ij3SU1yCm2FL6UuXMVrXjbr",
+      "title": "IMG_9936.HEIC — Redis, UPSERT e garantias de idempotência",
+      "url": "https://drive.google.com/file/d/1mhWmcIhB9Ij3SU1yCm2FL6UuXMVrXjbr/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Post-its relacionam contadores rápidos, deduplicação e transações no armazenamento. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1vNEIau8fSU9W1qm71tBI4gwg64QB7Do4",
+      "title": "IMG_9937.HEIC — Fencing tokens, observabilidade e capacidade",
+      "url": "https://drive.google.com/file/d/1vNEIau8fSU9W1qm71tBI4gwg64QB7Do4/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Observabilidade e capacidade juntam-se aos lembretes de concorrência. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1l1c5zBkIP6CPNk9X3rWqm6OnHutkL5CB",
+      "title": "IMG_9938.HEIC — Concorrência otimista e regras de negócio",
+      "url": "https://drive.google.com/file/d/1l1c5zBkIP6CPNk9X3rWqm6OnHutkL5CB/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Panorama com ênfase em impedir atualizações concorrentes inconsistentes. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1_9frfqg-wBXHnuTAy6Vnsi6BhFdSRW6k",
+      "title": "IMG_9939.HEIC — Revisão de concorrência, logs e publicação",
+      "url": "https://drive.google.com/file/d/1_9frfqg-wBXHnuTAy6Vnsi6BhFdSRW6k/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Variação de enquadramento da mesma coleção, com melhor visão de WAL e dual write. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1FULv_E-HNvkRSt2IexUo3lZAT1XeB7Ph",
+      "title": "IMG_9940.HEIC — Rate limiting, DAX e consenso",
+      "url": "https://drive.google.com/file/d/1FULv_E-HNvkRSt2IexUo3lZAT1XeB7Ph/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Algoritmos de controle de tráfego e fundamentos de consenso. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1BhRWXTrNcVJetQzdjQBDUYqZheP4ZzIT",
+      "title": "IMG_9941.HEIC — Como comunicar trade-offs e escolher capacidade DynamoDB",
+      "url": "https://drive.google.com/file/d/1BhRWXTrNcVJetQzdjQBDUYqZheP4ZzIT/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Lembrete de decisão explícita: escolher um benefício e assumir um custo. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1BZznXEgfmBlpNEFrnF_lRH8hin8TjafR",
+      "title": "IMG_9942.HEIC — DynamoDB: capacidade, cache e transações",
+      "url": "https://drive.google.com/file/d/1BZznXEgfmBlpNEFrnF_lRH8hin8TjafR/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Enquadramento próximo dos post-its de DynamoDB. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1gNj9l67ig95eerBREyYI8HqkAhMZ58lp",
+      "title": "IMG_9943.HEIC — Cálculos de tráfego e desenho Clojure/Datomic",
+      "url": "https://drive.google.com/file/d/1gNj9l67ig95eerBREyYI8HqkAhMZ58lp/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Close-up de três cartões: demanda, vazão de rede e serviços separados por grupos de contas. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1Jjm1l6liTkBwyqAROzRAKBCsbTJsdQUN",
+      "title": "IMG_9944.HEIC — Storage, idempotência Redis e CDC",
+      "url": "https://drive.google.com/file/d/1Jjm1l6liTkBwyqAROzRAKBCsbTJsdQUN/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Exemplos de dimensionamento de armazenamento e mecanismo inicial de deduplicação. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1jhbFkOdVruIV9m-qdhYLEyIz8dan8kIo",
+      "title": "IMG_9945.HEIC — Outbox transacional e publicação confiável",
+      "url": "https://drive.google.com/file/d/1jhbFkOdVruIV9m-qdhYLEyIz8dan8kIo/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Close-up do mecanismo de persistir intenção de evento junto com a mudança de negócio. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1zFYDRQpHTHeAqJ7eKAghcP3kd95oQN_r",
+      "title": "IMG_9946.HEIC — Mindset: projetar para a falha",
+      "url": "https://drive.google.com/file/d/1zFYDRQpHTHeAqJ7eKAghcP3kd95oQN_r/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Folha de lembrete para pensar nas falhas do sistema, não só no caminho feliz. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1zT2Pre4hqpI7nPDR-BtNV_qBgnFKiUX2",
+      "title": "IMG_9947.HEIC — Máquina de estados: eventos, guardas e efeitos",
+      "url": "https://drive.google.com/file/d/1zT2Pre4hqpI7nPDR-BtNV_qBgnFKiUX2/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Folha completa explicando por que estados explícitos substituem combinações incoerentes de flags. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1lTN85AUy1sNRRit0NJ23PAg9Jnu15nyC",
+      "title": "IMG_9948.HEIC — Mapa de fundamentos: DDD, rede, cache e dados",
+      "url": "https://drive.google.com/file/d/1lTN85AUy1sNRRit0NJ23PAg9Jnu15nyC/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Folha densa que conecta limites de domínio, tráfego, armazenamento e consistência. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1AARGnpGv_wiYe7Je134G6NirmNs6xSTk",
+      "title": "IMG_9949.HEIC — Concorrência, partições, CQRS, Sagas e deploy",
+      "url": "https://drive.google.com/file/d/1AARGnpGv_wiYe7Je134G6NirmNs6xSTk/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Mapa de execução, falhas e evolução com vários mecanismos alternativos. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1rWVNQXrscCNT1fI0YM6h2n0EZUnm8RBe",
+      "title": "IMG_9950.HEIC — Omnichannel: ingestão e normalização de mensagens",
+      "url": "https://drive.google.com/file/d/1rWVNQXrscCNT1fI0YM6h2n0EZUnm8RBe/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Arquitetura de entrada de canais externos e app, convergindo para mensagens canônicas e atendimento. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1VR8Vxp5B7CDAZGq9JLPa0vdd81egFyb8",
+      "title": "IMG_9951.HEIC — Roteiro escrito de entrevista de System Design",
+      "url": "https://drive.google.com/file/d/1VR8Vxp5B7CDAZGq9JLPa0vdd81egFyb8/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Checklist de condução em etapas, conectando decisão de negócio ao desenho técnico. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-17Uw2zrGs-6at9to0t2F-jbrgH2Qio8sO",
+      "title": "IMG_9952.HEIC — Chargeback AWS: envio e retorno com filas",
+      "url": "https://drive.google.com/file/d/17Uw2zrGs-6at9to0t2F-jbrgH2Qio8sO/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Versão de chargeback com ingestão síncrona, lotes agendados, fila de envio e processamento do retorno. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1pV0F_Np4HpFi8cPafjLCDENxH7xRhdC1",
+      "title": "IMG_9953.HEIC — Omnichannel: capacidade, experiência e contratos",
+      "url": "https://drive.google.com/file/d/1pV0F_Np4HpFi8cPafjLCDENxH7xRhdC1/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Folha complementa o atendimento com capacidade de pessoas e infraestrutura, sem confundir transporte com persistência. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1l_ayJ_eaQgDmTgvbiqoRCpxkoQlgZoUI",
+      "title": "IMG_9954.HEIC — Kafka: partições, offsets e consumer groups",
+      "url": "https://drive.google.com/file/d/1l_ayJ_eaQgDmTgvbiqoRCpxkoQlgZoUI/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Explicação do log particionado e da unidade de paralelismo de consumidores. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1HDQ_Aaevdr7Wzy-6bvdb2cuiI7yIdqeW",
+      "title": "IMG_9955.HEIC — Shuffle: console de atendimento, BFF e operações",
+      "url": "https://drive.google.com/file/d/1HDQ_Aaevdr7Wzy-6bvdb2cuiI7yIdqeW/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Proposta de ferramenta interna para consultar contexto do cliente e executar ações sobre produtos. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1jJJnC-FZdsnHRSWPeSiKL588JQEjyo_z",
+      "title": "IMG_9956.HEIC — Hexagonal, contratos e comunicação confiável",
+      "url": "https://drive.google.com/file/d/1jJJnC-FZdsnHRSWPeSiKL588JQEjyo_z/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Respostas de entrevista sobre separar domínio, escolher contratos e controlar repetição. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1jCbQ7Jdh4W-PdBD6tkwVmfWcm4lcyNNm",
+      "title": "IMG_9957.HEIC — CAP/PACELC e service mesh Istio",
+      "url": "https://drive.google.com/file/d/1jCbQ7Jdh4W-PdBD6tkwVmfWcm4lcyNNm/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Relaciona trade-offs de replicação à separação entre configuração e execução de tráfego. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1taySifJxpBbIGaVXw9Rt8Y2NOsjSRb3R",
+      "title": "IMG_9958.HEIC — DDD: proteger invariantes e separar projeções",
+      "url": "https://drive.google.com/file/d/1taySifJxpBbIGaVXw9Rt8Y2NOsjSRb3R/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Perguntas e respostas sobre concorrência e autoridade no domínio. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1e31eFE4Nol1H1keapjsj37esg5GV9iAK",
+      "title": "IMG_9959.HEIC — Chargeback simplificado: banco como fila de retry",
+      "url": "https://drive.google.com/file/d/1e31eFE4Nol1H1keapjsj37esg5GV9iAK/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Versão que mantém lote, arquivo e tentativas duráveis no banco e reduz intermediários. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1WcA5KiE_XwLW9EUCKFJmJ6PcO--yRZ9S",
+      "title": "IMG_9960.HEIC — Fila de atendimento: um ticket, um agente e vários canais",
+      "url": "https://drive.google.com/file/d/1WcA5KiE_XwLW9EUCKFJmJ6PcO--yRZ9S/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Desenho de priorização e atribuição sem duplicar conversas abertas do cliente. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-1BQrReE46nIYpSKsCxoFubXHlpFER2kZx",
+      "title": "IMG_9961.HEIC — Chargeback com Kafka, KEDA e egress controlado",
+      "url": "https://drive.google.com/file/d/1BQrReE46nIYpSKsCxoFubXHlpFER2kZx/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Variante de integração por workers escaláveis e controle central do tráfego externo. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
+    },
+    {
+      "id": "pb-drive-14Tk-qgOrE0Pw_ZUUtUbAEKBrY7tR2Fy6",
+      "title": "IMG_9962.HEIC — Modelo de lote e resultado parcial",
+      "url": "https://drive.google.com/file/d/14Tk-qgOrE0Pw_ZUUtUbAEKBrY7tR2Fy6/view?usp=drivesdk",
+      "type": "Anotação pessoal fornecida",
+      "summary": "Esboço de tabelas que distinguem estado do lote de estado individual da solicitação. Inspeção visual em 05/11/2026; síntese editorial, não transcrição literal nem documentação oficial."
     }
   ],
   "nubankContext": {

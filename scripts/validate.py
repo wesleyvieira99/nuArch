@@ -6,7 +6,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 load = lambda n: json.loads((root / 'data' / f'{n}.json').read_text())
-a, p, r, l, g, f, v, course, guided, mindmap, playbook = [
+a, p, r, l, g, f, v, course, guided, mindmap, playbook, fieldnotes = [
     load(n)
     for n in (
         'architectures',
@@ -20,6 +20,7 @@ a, p, r, l, g, f, v, course, guided, mindmap, playbook = [
         'guided',
         'mindmap',
         'playbook',
+        'fieldnotes',
     )
 ]
 assert len(a['architectures']) >= 60
@@ -46,6 +47,7 @@ for s in (
     + guided['sources']
     + mindmap['sources']
     + playbook['sources']
+    + fieldnotes['sources']
 ):
     assert s['id'] not in sources or sources[s['id']]['url'] == s['url'], s['id']
     assert s.get('url') is None or s['url'].startswith('https://'), s
@@ -67,7 +69,7 @@ def refs(obj):
             refs(item)
 
 
-for obj in (a, p, r, g, f, v, course, guided, mindmap, playbook):
+for obj in (a, p, r, g, f, v, course, guided, mindmap, playbook, fieldnotes):
     refs(obj)
 for arch in a['architectures']:
     assert arch['title'] and len(arch['steps']) >= 2 and len(arch['internals']) >= 5, arch['id']
@@ -280,6 +282,8 @@ while pending:
             pending.append(edge['from'])
 assert seen == set(map_nodes), 'The concept graph must be connected'
 route_ids = {
+    'playbook': {x['id'] for x in playbook['cases']},
+    'fieldnotes': {x['id'] for x in fieldnotes['concepts']},
     'atlas': {x['id'] for x in a['architectures']},
     'foundations': {x['id'] for x in f['chapters']},
     'ledger': {x['id'] for x in g['sections']},
@@ -441,7 +445,11 @@ for q in playbook['interruptions']:
     assert 0 <= q['stage'] <= 9 and all(
         q[k] for k in ('question', 'answer', 'redraw', 'guardrail', 'principal')
     ), q['id']
-assert len({m['id'] for m in playbook['materials']}) == len(playbook['materials']) == 77
+assert len({m['id'] for m in playbook['materials']}) == len(playbook['materials'])
+assert len(playbook['materials']) == 77 + len(fieldnotes['photos'])
+assert sum(m.get('collection') == 'fieldnotes-2026-11-05' for m in playbook['materials']) == len(
+    fieldnotes['photos']
+)
 assert {
     kind: sum(m['type'] == kind for m in playbook['materials'])
     for kind in ('PDF', 'Vídeo', 'Mapa draw.io', 'Google Doc')
@@ -455,6 +463,61 @@ for m in playbook['materials']:
         assert len(m['chapters']) >= 4 and m['corrections'], m['id']
         for ch in m['chapters']:
             assert ch['href'].startswith('https://www.youtube.com/watch?v=') and ch['text']
+
+# Handwritten reminders: every photo has provenance and a connected interpretation.
+photo_ids = {photo['id'] for photo in fieldnotes['photos']}
+concept_ids = {concept['id'] for concept in fieldnotes['concepts']}
+category_ids = {category['id'] for category in fieldnotes['categories']}
+assert len(photo_ids) == len(fieldnotes['photos']) == 30
+assert len(concept_ids) == len(fieldnotes['concepts']) > 0
+assert len(category_ids) == len(fieldnotes['categories']) > 0
+assert fieldnotes['meta']['reviewSummary'] and fieldnotes['meta']['folderUrl'].startswith(
+    'https://drive.google.com/'
+)
+assert {photo['fileName'] for photo in fieldnotes['photos']} == {
+    f'IMG_{number}.HEIC' for number in range(9933, 9963)
+}
+for photo in fieldnotes['photos']:
+    assert photo['title'] and photo['reviewStatus'], photo['id']
+    assert photo['categoryIds'] and set(photo['categoryIds']).issubset(category_ids), photo['id']
+    assert photo['conceptIds'] and set(photo['conceptIds']).issubset(concept_ids), photo['id']
+    assert photo['driveUrl'].startswith('https://drive.google.com/'), photo['id']
+    for field in ('path', 'thumb'):
+        path = (root / photo[field]).resolve()
+        assert path.is_relative_to(root / 'assets' / 'fieldnotes') and path.is_file(), photo[field]
+        assert path.read_bytes()[:4] == b'RIFF', photo[field]
+for concept in fieldnotes['concepts']:
+    assert concept['category'] in category_ids, concept['id']
+    assert all(
+        concept.get(key)
+        for key in (
+            'title',
+            'summary',
+            'what',
+            'when',
+            'whenNot',
+            'mechanism',
+            'tradeoffs',
+            'alternatives',
+            'bankingExample',
+            'interviewPhrase',
+            'sourceIds',
+            'links',
+        )
+    ), concept['id']
+    assert concept['photoIds'] and set(concept['photoIds']).issubset(photo_ids), concept['id']
+    for photo_id in concept['photoIds']:
+        assert concept['id'] in next(
+            photo['conceptIds'] for photo in fieldnotes['photos'] if photo['id'] == photo_id
+        ), (concept['id'], photo_id)
+    for link in concept['links']:
+        assert link['label'] and link['href'].startswith('#'), (concept['id'], link)
+        route, _, item = link['href'][1:].split('?')[0].partition('/')
+        if item and route in route_ids:
+            assert item in route_ids[route], (concept['id'], link)
+assert photo_ids == {
+    photo_id for concept in fieldnotes['concepts'] for photo_id in concept['photoIds']
+}
 
 assert len(g['codeFiles']) >= 4
 for file in g['codeFiles']:
@@ -520,6 +583,9 @@ print(
             'playbook_materials': len(playbook['materials']),
             'playbook_decisions': len(playbook['decisions']),
             'playbook_followups': len(playbook['interruptions']),
+            'fieldnotes_photos': len(fieldnotes['photos']),
+            'fieldnotes_concepts': len(fieldnotes['concepts']),
+            'fieldnotes_categories': len(fieldnotes['categories']),
             'status': 'PASS',
         },
         ensure_ascii=False,

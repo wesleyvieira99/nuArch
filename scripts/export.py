@@ -61,15 +61,20 @@ def bundle_modules(entry):
 
 def export(destination):
     data = [json.loads((ROOT / 'data' / f'{name}.json').read_text()) for name in COLLECTIONS]
-    for entry in data[3]['entries']:
+    collections = dict(zip(COLLECTIONS, data))
+    for entry in collections['logos']['entries']:
         entry['logo'] = data_uri(ROOT / entry['logo'])
-    for material in data[9]['materials']:
+    for material in collections['mindmap']['materials']:
         for field in ('path', 'thumb'):
             material[field] = data_uri(ROOT / material[field])
 
+    for photo in collections['fieldnotes']['photos']:
+        for field in ('path', 'thumb'):
+            photo[field] = data_uri(ROOT / photo[field])
+
     javascript = bundle_modules(ROOT / 'src/app.js')
     html = (ROOT / 'index.html').read_text()
-    for name in ('base', 'mindmap', 'playbook', 'studio'):
+    for name in ('base', 'mindmap', 'playbook', 'studio', 'fieldnotes'):
         css_path = f'styles/{name}.css'
         css = re.sub(r'^@import[^;]+;\s*', '', (ROOT / css_path).read_text(), flags=re.MULTILINE)
         pattern = (

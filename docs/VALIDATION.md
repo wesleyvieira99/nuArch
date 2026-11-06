@@ -1,8 +1,18 @@
 # Validação do nuArch
 
-Registro da revisão de **01/11/2026**, que reorganizou os módulos, estilos, testes e documentação. Os resultados abaixo descrevem verificações executadas localmente; a situação do GitHub Actions é registrada separadamente.
+Registro das verificações locais, com a ampliação da coleção de anotações e o histórico da revisão de **01/11/2026**. A situação do GitHub Actions é registrada separadamente.
 
 [Apresentação do projeto](../README.md) · [Arquitetura](ARCHITECTURE.md) · [Testes](../tests/)
+
+## Coleção de anotações `fieldnotes-2026-11-05`
+
+- **Originais:** 30 HEIC enviados à subpasta de Nu e conferidos por nome e tamanho após upload. Não foram alteradas as permissões de compartilhamento.
+- **Acervo:** 30 fotos, 60 fichas, sete categorias e 59 referências técnicas. Todas as fotos possuem fichas relacionadas; fontes e rotas são resolvíveis. O catálogo do roteiro passou de 77 para 107 materiais, preservando casos, etapas e atualizações anteriores.
+- **Imagens:** 30 WebP de leitura e 30 miniaturas verificadas como imagens válidas e sem EXIF. Originais, hashes e derivados estão registrados em [provenance.json](../assets/fieldnotes/provenance.json).
+- **Código:** `npm run check` verifica nove módulos, cinco suites JavaScript, referências, conteúdo e exportação portátil. Os três testes novos cobrem busca por termos sem distinção de acentos, combinação de categoria/consulta e exclusão de dados binários da busca no portátil.
+- **Portátil:** exportação gerada com as fotos incorporadas, sem imports pendentes e com sintaxe válida. O arquivo fica próximo de 100 MB por incorporar os acervos visuais; não é o download inicial do portal hospedado.
+- **Interface:** inspeção visual em desktop e celular, incluindo busca, filtros, galeria, modal, ampliação, links para etapas e progresso após recarga. Não houve transbordamento horizontal nas telas verificadas. Essa inspeção usou uma versão editorial intermediária; a expansão final do conteúdo e o recolhimento dos links excedentes por foto foram conferidos estruturalmente. O navegador integrado ficou indisponível na conferência final; não se alega nova inspeção visual nessa etapa.
+- **Escopo:** a revisão técnica e visual das 30 fotos distingue síntese editorial, texto legível e correções. Os testes verificam integridade, não certificam a exatidão universal do conteúdo. O ledger não foi alterado; seus resultados abaixo pertencem à revisão anterior.
 
 ## Ambiente e reprodução
 
@@ -24,7 +34,7 @@ git diff --check
 
 `npm run check` requer Node.js e Python, mas não as dependências do ledger. O interpretador pode ser selecionado por `NUARCH_PYTHON`. O ambiente virtual acima instala também Pydantic e Ruff para executar o conjunto completo. Prettier está fixado no lockfile; Pydantic e Ruff estão fixados nos arquivos de requisitos.
 
-## Verificações executadas
+## Histórico de verificações — 01/11/2026
 
 | Área                   | Resultado observado                                        | Escopo                                                                                                               |
 | ---------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |

@@ -31,8 +31,9 @@ O projeto começou como preparação para uma entrevista de arquitetura e evolui
 - **Comparar decisões:** 64 padrões com alternativas, mecanismos, operação e implementações possíveis em AWS, Azure e infraestrutura própria.
 - **Investigar mecanismos:** seis capítulos de fundamentos, mapa com 130 conceitos e laboratórios sobre idempotência, filas, latência, particionamento e ledger.
 - **Praticar e registrar:** 1.200 perguntas comentadas, 120 simulados, 50 vídeos públicos, notas, favoritos e progresso no navegador.
+- **Revisar suas anotações:** [Post-its Staff](https://wesleyvieira99.github.io/nuArch/#fieldnotes) reúne 30 fotografias e 60 fichas em sete temas, incluindo cinco desenhos completos explicados em dez passos cada. Busca, mecanismos, alternativas, ressalvas e links às etapas do roteiro conectam cada ficha à foto de origem.
 
-Essas contagens descrevem o escopo dos dados em **01/11/2026**, não uma medida de qualidade ou uma cobertura universal. O [guia de conteúdo](docs/CONTENT_GUIDE.md) explica a metodologia, as fontes, os acervos adicionais e como manter os vínculos entre eles.
+As contagens do acervo anterior foram conferidas em **01/11/2026**; as 30 fotografias foram incorporadas em **05/11/2026**. São inventário, não uma medida de qualidade ou uma cobertura universal. O [guia de conteúdo](docs/CONTENT_GUIDE.md) explica a metodologia, as fontes, os acervos adicionais e como manter os vínculos entre eles.
 
 ## Executar localmente
 
@@ -69,7 +70,7 @@ npm run test:ledger
 
 O [README do exemplo](examples/ledger/README.md) descreve a API, as invariantes e os limites de concorrência e durabilidade. Após mudar seus arquivos, `python3 scripts/embed_ledger.py` atualiza a cópia exibida no portal.
 
-A exportação inclui os textos, experimentos e imagens do mapa. Referências, vídeos e apresentações continuam externos e exigem conexão. O arquivo é grande por incorporar o acervo visual. Resultados e limitações da verificação ficam em [VALIDATION.md](docs/VALIDATION.md); não se deve inferir garantia de produção a partir de um comando que passou.
+A exportação inclui os textos, experimentos, imagens do mapa e fotografias de estudo. Referências, vídeos e apresentações continuam externos e exigem conexão. O arquivo é grande por incorporar o acervo visual. Resultados e limitações da verificação ficam em [VALIDATION.md](docs/VALIDATION.md); não se deve inferir garantia de produção a partir de um comando que passou.
 
 ## Estrutura
 
@@ -84,8 +85,9 @@ src/
     playbook/playbook.mjs           Experiência do roteiro de entrevista
     playbook/diagram-routing.mjs    Roteamento das arestas dos diagramas
     mindmap/mindmap.mjs             Navegação e consulta do mapa mental
+    fieldnotes/fieldnotes.mjs       Consulta das anotações, fichas e fotos de origem
   ui/studio.mjs                     Interações visuais e controle de movimento
-styles/                            base.css, mindmap.css, playbook.css, studio.css
+styles/                            Estilos gerais e específicos das experiências
 data/                              Conteúdo, modelos editoriais e referências JSON
 assets/                            Ícones, marca e imagens locais
 tests/                             Testes JavaScript (*.test.mjs)

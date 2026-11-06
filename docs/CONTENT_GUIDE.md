@@ -7,6 +7,7 @@ Este documento reúne o escopo editorial, a origem dos materiais e os cuidados d
 - [Processo editorial e assistência de IA](#processo-editorial-e-assistência-de-ia)
 - [Mapa do conteúdo](#mapa-do-conteúdo)
 - [Roteiro do dia e materiais fornecidos](#roteiro-do-dia-e-materiais-fornecidos)
+- [Post-its e folhas de estudo](#post-its-e-folhas-de-estudo)
 - [Vídeos e curso externo](#vídeos-e-curso-externo)
 - [Origem do mapa mental](#origem-do-mapa-mental)
 - [Experimentos e exemplo financeiro](#experimentos-e-exemplo-financeiro)
@@ -35,7 +36,7 @@ Escalas, latências e SLI/SLO/RTO/RPO propostos pertencem ao exercício, salvo q
 
 ## Mapa do conteúdo
 
-Contagens conferidas nos arquivos JSON em **01/11/2026**. São inventário do escopo, não indicadores de qualidade. Alterações futuras devem atualizar dados, validações e documentação em conjunto.
+Contagens do acervo anterior conferidas nos arquivos JSON em **01/11/2026**, com a coleção de fotografias acrescentada em **05/11/2026**. São inventário do escopo, não indicadores de qualidade. Alterações futuras devem atualizar dados, validações e documentação em conjunto.
 
 | Conteúdo                       | Escopo registrado                                                                                                   | Fonte local principal                                                       |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -45,6 +46,7 @@ Contagens conferidas nos arquivos JSON em **01/11/2026**. São inventário do es
 | Entrevistas guiadas            | Cinco casos aprofundados, 50 etapas cronológicas                                                                    | [guided.json](../data/guided.json)                                          |
 | Prática                        | 60 cenários ×20 perspectivas: 1.200 perguntas; 120 simulados em dois modos                                          | [practice.json](../data/practice.json)                                      |
 | Mapa mental                    | 16 temas, 130 conceitos, 136 relações e 368 recortes únicos                                                         | [mindmap.json](../data/mindmap.json)                                        |
+| Post-its Staff                 | 30 fotografias, 60 fichas em sete temas e cinco casos completos com dez passos cada                                 | [fieldnotes.json](../data/fieldnotes.json)                                  |
 | Videoteca                      | 50 vídeos públicos, com guias de estudo e ligações ao atlas                                                         | [videos.json](../data/videos.json)                                          |
 | Curso LINUXtips                | 29 aulas/apresentações, 26 artigos, 26 cases, 16 diagramas e inventário de 341 arquivos                             | [course-linux.json](../data/course-linux.json)                              |
 | Ledger                         | Cinco seções técnicas, diagramas e código executável em memória                                                     | [ledger.json](../data/ledger.json), [exemplo](../examples/ledger/README.md) |
@@ -64,7 +66,7 @@ Os conceitos do mapa são associados às etapas pertinentes, com tecnologias, al
 
 ### Cobertura e método de leitura
 
-O inventário da pasta fornecida registra **77 itens: 71 PDFs, quatro vídeos, um draw.io e um Google Doc**. Os textos extraídos dos 71 PDFs foram lidos integralmente. Isso não significa inspeção visual integral de todas as páginas, revisão externa ou confirmação de todas as afirmações dos materiais.
+O inventário histórico da pasta fornecida registra **77 itens: 71 PDFs, quatro vídeos, um draw.io e um Google Doc**. Em 05/11/2026, foram acrescentadas **30 fotografias**, totalizando 107 materiais catalogados no roteiro. Essa contagem é do catálogo do portal, não um inventário atualizado de todos os arquivos hoje existentes no Drive. Os textos extraídos dos 71 PDFs foram lidos integralmente. Isso não significa inspeção visual integral de todas as páginas, revisão externa ou confirmação de todas as afirmações dos materiais.
 
 - **Cache distribuído:** seis PDFs, 85 páginas. Houve renderização para inspeção geral por folhas de contato e ampliação de diagrama selecionado. Algumas tabelas já tinham colunas cortadas na origem; elas não foram reconstruídas. Após mudança de metadados, os textos foram extraídos novamente e comparados, sem alteração textual.
 - **Atualização de 01/11/2026:** 30 PDFs novos, com 401 páginas, e uma nota em Google Docs. Foram renderizadas amostras dos PDFs e inspecionadas páginas selecionadas. Figuras e colunas ausentes continuam sinalizadas como limitação.
@@ -77,6 +79,18 @@ A atualização de novembro acrescentou 30 notas distribuídas entre os cenário
 As correções técnicas incluem limites de atomicidade entre sistemas, expiração e invalidação de cache, atraso de índices, privacidade de objetos e logs, orçamento de misses e distinção entre média e percentis. O material original é tratado criticamente, não como instrução ou autoridade técnica automática. Cada correção deve manter a fonte que sustenta sua interpretação.
 
 **Não são republicados os PDFs, a captura do convite, email, link de reunião, transcrições ou frames dos vídeos fornecidos.** O portal apresenta sínteses e links com as permissões de origem. Os recortes do anexo local draw.io constituem o acervo visual descrito em seção própria abaixo.
+
+## Post-its e folhas de estudo
+
+A coleção `fieldnotes-2026-11-05` reúne as 30 imagens fornecidas pelo autor, de `IMG_9933.HEIC` a `IMG_9962.HEIC`. Os originais foram enviados para a subpasta [Post-its Staff — 2026-11-05](https://drive.google.com/drive/folders/10ELnvkXOBT67LA9H3i6HzOAo9RO6fxf4), dentro de Nu, e conferidos após o envio por nome e tamanho. As permissões de compartilhamento existentes foram preservadas.
+
+As 30 fotografias foram inspecionadas visualmente. OCR foi usado como apoio de localização e não como transcrição fiel: letra manuscrita, setas e abreviações podem ser ambíguas. Os textos publicados são sínteses editoriais, com ressalvas explícitas; trechos ilegíveis não são completados como se fossem fatos. As fotos preservam a referência original.
+
+O conjunto inclui lembretes de fundamentos e decisões, além de diagramas de chargeback, atendimento, composição de APIs e condução da entrevista. Cada conceito se vincula a fotos, documentação técnica primária e etapas pertinentes do roteiro. As explicações distinguem garantia local de garantia entre sistemas, identidade de negócio de tentativa de transporte e hipótese de exercício de arquitetura interna real.
+
+São 60 fichas em sete temas, com 59 referências técnicas. Cinco fichas percorrem desenhos completos em dez passos cada: chargeback com serviços AWS, chargeback usando PostgreSQL como fila durável, chargeback com Kafka/KEDA, atendimento omnichannel e cockpit com BFF. O roteiro de entrevista é uma proposta autoral baseada nas anotações; suas fotos são a fonte de origem, não uma rubrica oficial do processo seletivo.
+
+Os derivados WebP e as miniaturas publicados em [assets/fieldnotes](../assets/fieldnotes/) têm metadados EXIF removidos. As versões de leitura têm até 3.000 pixels no lado maior; o arquivo HEIC original continua no Drive. O [registro de proveniência](../assets/fieldnotes/provenance.json) relaciona nomes, hashes dos originais, links e derivados. A galeria carrega imagens sob demanda e permite abrir a versão maior, consultar a síntese e retornar às fichas.
 
 ## Vídeos e curso externo
 
@@ -118,7 +132,7 @@ A mesclagem preserva alterações de campos diferentes feitas em outra aba. Para
 
 Miniaturas e players do YouTube são serviços externos; o player só é carregado por ação do usuário e segue as políticas do provedor. Slides externos também carregam sob demanda. A versão hospedada pode requisitar fontes Google Fonts, com fallback local. Portanto, “sem backend próprio” não significa ausência de requisições a terceiros.
 
-O HTML portátil incorpora conteúdo, código, estilos, ícones e recortes do mapa, dispensando Google Fonts. Referências externas, miniaturas, vídeos e apresentações ainda exigem conexão. Em `file://`, o YouTube pode recusar incorporação por ausência de Referer; o link externo ou servir o arquivo por HTTP são alternativas. Conteúdo textual, experimentos e imagens incorporadas permanecem disponíveis offline.
+O HTML portátil incorpora conteúdo, código, estilos, ícones, recortes do mapa e fotografias de estudo, dispensando Google Fonts. Referências externas, miniaturas de vídeos, vídeos e apresentações ainda exigem conexão. Em `file://`, o YouTube pode recusar incorporação por ausência de Referer; o link externo ou servir o arquivo por HTTP são alternativas. Conteúdo textual, experimentos e imagens incorporadas permanecem disponíveis offline.
 
 ## Identidade visual e movimento
 
@@ -147,4 +161,4 @@ O projeto é servido estaticamente pelo GitHub Pages. `.nojekyll` preserva a ent
 
 Não inclua no repositório arquivos privados, transcrições brutas, credenciais ou convites de entrevista. Ao incorporar uma fonte nova, revise também exemplos, metadados e imagens em busca de conteúdo que não pertença ao acervo público.
 
-A pesquisa inicial foi consolidada em **30/10/2026**; mapa e organização receberam atualização em **31/10/2026**, e o acervo foi ampliado em **01/11/2026**. Links, configurações e produtos mudam. Revalide a documentação oficial antes de extrapolar uma garantia para outra versão ou implantação.
+A pesquisa inicial foi consolidada em **30/10/2026**; mapa e organização receberam atualização em **31/10/2026**, o acervo foi ampliado em **01/11/2026** e as 30 fotografias de estudo foram incorporadas em **05/11/2026**. Links, configurações e produtos mudam. Revalide a documentação oficial antes de extrapolar uma garantia para outra versão ou implantação.

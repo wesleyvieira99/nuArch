@@ -1,6 +1,7 @@
-import { loadPortalData } from './core/content-loader.mjs';
+import { loadPortalData } from './core/content-loader.mjs?v=20261105-fieldnotes1';
+import { createFieldnotes } from './features/fieldnotes/fieldnotes.mjs?v=20261105-fieldnotes1';
 import { renderStudyVideo, installStudio } from './ui/studio.mjs?v=20261101-structure1';
-import { createPlaybook } from './features/playbook/playbook.mjs?v=20261101-structure1';
+import { createPlaybook } from './features/playbook/playbook.mjs?v=20261105-fieldnotes1';
 import { createMindMap } from './features/mindmap/mindmap.mjs?v=20261101-structure1';
 import { createProgressStore } from './core/progress-store.mjs';
 import {
@@ -37,6 +38,7 @@ const normalize = (s) =>
     .toLowerCase();
 const matches = (x, q) => normalize(JSON.stringify(x)).includes(normalize(q));
 const icons = {
+  fieldnotes: 'M4 3h16v13l-5 5H4zM15 21v-5h5M8 7h8M8 11h6',
   playbook: 'M5 3h14v18H5zM9 7h6M9 11h6M9 15l2 2 4-4',
   map: 'M12 9V3M5 9H3v6h6V9H5M15 9h6v6h-6zM9 12h6M12 15v6M9 3h6M9 21h6',
   guided: 'M3 3h18v13H3zM12 16v6M7 22l5-6 5 6M7 8h6M7 12h10',
@@ -132,12 +134,26 @@ const mindMap = createMindMap({
     document.title = `${D.mindmap.nodes.find((n) => n.id === id)?.label || D.mindmap.groups.find((g) => g.id === id)?.label || 'Mapa mental'} · nuArch`;
   },
 });
+const fieldnotes = createFieldnotes({
+  escape: e,
+  sources: refs,
+  isRead: (id) => progress.checks.includes(`fieldnotes:${id}`),
+  toggleRead: (id) => toggle(progress.checks, `fieldnotes:${id}`),
+  onNavigate: (id, name) => {
+    currentId = id;
+    activeHash = location.hash;
+    rememberPlace();
+    document.title =
+      name === 'Post-its Staff' ? 'Post-its Staff · nuArch' : `${name} · Post-its Staff · nuArch`;
+  },
+});
 const playbook = createPlaybook({
   escape: e,
   sources: refs,
   architectures: () => D.architectures,
   mindmap: () => D.mindmap,
   technologies: () => D.technologies,
+  fieldnotes: () => D.fieldnotes,
   readNote: (key) => progress.notes[key] || '',
   writeNote: (key, value) => {
     progress.notes[key] = value;
@@ -161,9 +177,11 @@ function rememberPlace() {
         'Mapa mental'
       : currentRoute === 'playbook'
         ? D.playbook?.cases.find((c) => c.id === currentId)?.title || 'Roteiro do dia'
-        : currentRoute === 'guided'
-          ? D.guided?.cases.find((c) => c.id === currentId)?.title || 'Entrevistas guiadas'
-          : $('#main h1')?.textContent;
+        : currentRoute === 'fieldnotes'
+          ? D.fieldnotes?.concepts.find((c) => c.id === currentId)?.title || 'Post-its Staff'
+          : currentRoute === 'guided'
+            ? D.guided?.cases.find((c) => c.id === currentId)?.title || 'Entrevistas guiadas'
+            : $('#main h1')?.textContent;
   resumePlace = {
     hash: activeHash,
     title: name || nav.find((x) => x[0] === currentRoute)?.[1] || 'Seu estudo',
@@ -179,7 +197,7 @@ function enhanceReading() {
   const headings = $$('h2', main).filter(
     (h) => !h.closest('.guided-transcript,.map-page') && h.textContent.trim(),
   );
-  if (!['home', 'map', 'playbook'].includes(currentRoute) && headings.length >= 3) {
+  if (!['home', 'map', 'playbook', 'fieldnotes'].includes(currentRoute) && headings.length >= 3) {
     const navEl = document.createElement('nav');
     navEl.className = 'page-outline';
     navEl.setAttribute('aria-label', 'Índice da página');
@@ -238,6 +256,7 @@ const navGroups = [
     items: [
       ['home', 'Início'],
       ['map', 'Mapa mental'],
+      ['fieldnotes', 'Post-its Staff'],
       ['plan', 'Plano de estudo'],
       ['people', 'Contexto da entrevista'],
     ],
@@ -361,6 +380,7 @@ function studioVideos() {
 
 function home() {
   const descriptions = {
+    fieldnotes: `${D.fieldnotes.photos.length} fotos e ${D.fieldnotes.concepts.length} conceitos: quando usar, mecanismo, alternativas e fala na entrevista.`,
     playbook: `10 etapas adaptadas a ${D.playbook.cases.length} cenários, com fala, desenho e decisões a cada passo.`,
     map: 'Seu draw.io em um mapa de conceitos, conexões e material de origem.',
     plan: 'Prioridades e sessões para organizar o tempo de preparação.',
@@ -416,7 +436,7 @@ function home() {
     )
     .join(
       '',
-    )}</div>${studioVideos()}<div class="section-heading"><h2>Todo o acervo, por objetivo</h2></div><div class="library-groups">${navGroups
+    )}</div>${fieldnotesHome()}${studioVideos()}<div class="section-heading"><h2>Todo o acervo, por objetivo</h2></div><div class="library-groups">${navGroups
     .map(
       (g) =>
         `<section><h2>${g.label}</h2><p>${g.description}</p><ul>${g.items
@@ -432,6 +452,9 @@ function home() {
     )}</div><section class="panel home-progress"><h2>Seu progresso de estudo</h2><p>${progress.read.length} padrões estudados · ${progress.known.length} perguntas dominadas · ${progress.checks.filter((k) => k.startsWith('guided:')).length} etapas guiadas praticadas · ${progress.checks.filter((k) => k.startsWith('map:')).length} conceitos do mapa revisados.</p><p>Marque o que consegue explicar, retorne às lacunas e exporte o progresso pelo menu. Relatos, fontes oficiais e exercícios autorais têm origem identificada no material.</p></section>`;
 }
 
+function fieldnotesHome() {
+  return `<section class="resume-card fn-home-update"><div><span class="eyebrow">DO SEU MURAL AO PORTAL · 05 NOV 2026</span><h2>Suas anotações, conectadas ao raciocínio.</h2><p>${D.fieldnotes.photos.length} fotos organizadas em ${D.fieldnotes.categories.length} temas. Consulte a garantia, o mecanismo e o trade-off, e continue no passo correspondente do roteiro.</p></div><a class="button primary" href="#fieldnotes">Explorar Post-its Staff →</a></section>`;
+}
 function archCard(a) {
   return `<article class="card"><div class="card-top"><span class="card-icon">${icon('layers')}</span>${chip(a.level)}</div><h3><a href="#atlas/${e(a.id)}">${e(a.title)}</a></h3><p>${e(a.summary)}</p><div class="card-bottom"><span>${e(a.category)}</span><a class="button small" href="#atlas/${e(a.id)}">Explorar ↗</a></div></article>`;
 }
@@ -843,6 +866,7 @@ function notFound() {
 function render(keepScroll = false) {
   mindMap.destroy();
   playbook.destroy();
+  fieldnotes.destroy();
   const pos = scrollY,
     active = document.activeElement;
   const focusAttr = [
@@ -868,41 +892,43 @@ function render(keepScroll = false) {
           ? mindMap.html(D.mindmap, currentId)
           : currentRoute === 'playbook'
             ? playbook.html(D.playbook, currentId)
-            : currentRoute === 'atlas'
-              ? currentId
-                ? archDetail(currentId)
-                : atlas()
-              : currentRoute === 'compare'
-                ? comparePage(currentId)
-                : currentRoute === 'questions'
-                  ? questions()
-                  : currentRoute === 'flashcards'
-                    ? flashcards()
-                    : currentRoute === 'guided'
-                      ? guidedPage(currentId)
-                      : currentRoute === 'mocks'
-                        ? currentId
-                          ? mockDetail(currentId)
-                          : mocks()
-                        : currentRoute === 'lab'
-                          ? lab(currentId)
-                          : currentRoute === 'course'
-                            ? coursePage(currentId)
-                            : currentRoute === 'videos'
-                              ? videosPage(currentId)
-                              : currentRoute === 'foundations'
-                                ? foundationPage(currentId)
-                                : currentRoute === 'ledger'
-                                  ? ledgerPage(currentId)
-                                  : currentRoute === 'cases'
-                                    ? researchCases(currentId)
-                                    : currentRoute === 'people'
-                                      ? people()
-                                      : currentRoute === 'plan'
-                                        ? plan()
-                                        : currentRoute === 'sources'
-                                          ? sources()
-                                          : notFound();
+            : currentRoute === 'fieldnotes'
+              ? fieldnotes.html(D.fieldnotes, currentId)
+              : currentRoute === 'atlas'
+                ? currentId
+                  ? archDetail(currentId)
+                  : atlas()
+                : currentRoute === 'compare'
+                  ? comparePage(currentId)
+                  : currentRoute === 'questions'
+                    ? questions()
+                    : currentRoute === 'flashcards'
+                      ? flashcards()
+                      : currentRoute === 'guided'
+                        ? guidedPage(currentId)
+                        : currentRoute === 'mocks'
+                          ? currentId
+                            ? mockDetail(currentId)
+                            : mocks()
+                          : currentRoute === 'lab'
+                            ? lab(currentId)
+                            : currentRoute === 'course'
+                              ? coursePage(currentId)
+                              : currentRoute === 'videos'
+                                ? videosPage(currentId)
+                                : currentRoute === 'foundations'
+                                  ? foundationPage(currentId)
+                                  : currentRoute === 'ledger'
+                                    ? ledgerPage(currentId)
+                                    : currentRoute === 'cases'
+                                      ? researchCases(currentId)
+                                      : currentRoute === 'people'
+                                        ? people()
+                                        : currentRoute === 'plan'
+                                          ? plan()
+                                          : currentRoute === 'sources'
+                                            ? sources()
+                                            : notFound();
     $('#main').innerHTML = html;
     bind();
     bindLedger();
@@ -912,6 +938,7 @@ function render(keepScroll = false) {
     bindGuided();
     if (currentRoute === 'map') mindMap.bind(D.mindmap, currentId);
     if (currentRoute === 'playbook') playbook.bind();
+    if (currentRoute === 'fieldnotes') fieldnotes.bind();
     enhanceReading();
     updateClock();
     updateLabs();
@@ -929,7 +956,7 @@ function route() {
   rememberPlace();
   const [base, query] = (location.hash.slice(1) || 'home').split('?');
   const parts = base.split('/');
-  const next = parts[0];
+  const next = parts[0] === 'postits' ? 'fieldnotes' : parts[0];
   if (next !== currentRoute || parts[1] !== currentId) {
     filter = { q: '', category: '', level: '', priority: '', saved: false, page: 1 };
     tab = 'overview';
@@ -1194,6 +1221,14 @@ function search() {
     return;
   }
   const items = [
+    ...D.fieldnotes.concepts
+      .filter((x) => matches(x, q))
+      .slice(0, 5)
+      .map((x) => ({
+        title: x.title,
+        sub: 'Post-its Staff · mecanismo, escolha e origem',
+        url: `#fieldnotes/${x.id}`,
+      })),
     ...D.playbook.cases
       .filter((x) => matches({ title: x.title, brief: x.brief, invariants: x.invariants }, q))
       .slice(0, 4)
@@ -1371,9 +1406,10 @@ installStudio();
 async function init() {
   try {
     const responses = await loadPortalData();
-    const [a, p, r, l, g, f, v, c, w, m, b] = responses;
+    const [a, p, r, l, g, f, v, c, w, m, b, notes] = responses;
     D = {
       playbook: b,
+      fieldnotes: notes,
       mindmap: m,
       guided: w,
       course: c,
@@ -1399,6 +1435,7 @@ async function init() {
       ...w.sources,
       ...m.sources,
       ...b.sources,
+      ...notes.sources,
     ];
     const byUrl = new Map();
     for (const s of all) {
